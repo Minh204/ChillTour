@@ -302,7 +302,7 @@ public class AccountController : Controller
 
     [Authorize(Roles = ChillTour.Security.RoleConstants.Customer)]
     [HttpGet]
-    public async Task<IActionResult> Bookings(CancellationToken cancellationToken)
+    public async Task<IActionResult> Bookings(string? searchTerm = null, byte? bookingStatus = null, byte? paymentStatus = null, DateOnly? departureFrom = null, DateOnly? departureTo = null, CancellationToken cancellationToken = default)
     {
         var userId = GetCurrentUserId();
         if (!userId.HasValue)
@@ -310,11 +310,40 @@ public class AccountController : Controller
             return RedirectToAction(nameof(Login));
         }
 
-        var bookings = await _dbContext.Bookings
+        var query = _dbContext.Bookings
             .AsNoTracking()
             .Include(x => x.Tour)
             .Include(x => x.TourSchedule)
             .Where(x => x.UserId == userId.Value && (x.PaymentStatus == 1 || x.PaymentStatus == 2 || x.PaymentStatus == 3))
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var normalizedSearch = searchTerm.Trim();
+            query = query.Where(x => x.BookingCode.Contains(normalizedSearch) || x.Tour.TourName.Contains(normalizedSearch));
+        }
+
+        if (bookingStatus.HasValue)
+        {
+            query = query.Where(x => x.BookingStatus == bookingStatus.Value);
+        }
+
+        if (paymentStatus.HasValue)
+        {
+            query = query.Where(x => x.PaymentStatus == paymentStatus.Value);
+        }
+
+        if (departureFrom.HasValue)
+        {
+            query = query.Where(x => x.TourSchedule.DepartureDate >= departureFrom.Value);
+        }
+
+        if (departureTo.HasValue)
+        {
+            query = query.Where(x => x.TourSchedule.DepartureDate <= departureTo.Value);
+        }
+
+        var bookings = await query
             .OrderByDescending(x => x.CreatedAt)
             .Select(x => new CustomerBookingItemViewModel
             {
@@ -333,7 +362,15 @@ public class AccountController : Controller
             })
             .ToListAsync(cancellationToken);
 
-        return View(bookings);
+        return View(new CustomerBookingsPageViewModel
+        {
+            SearchTerm = searchTerm,
+            BookingStatus = bookingStatus,
+            PaymentStatus = paymentStatus,
+            DepartureFrom = departureFrom,
+            DepartureTo = departureTo,
+            Bookings = bookings
+        });
     }
 
     [Authorize(Roles = ChillTour.Security.RoleConstants.Customer)]
@@ -429,7 +466,7 @@ public class AccountController : Controller
 
     [Authorize]
     [HttpGet]
-    public async Task<IActionResult> Inbox(CancellationToken cancellationToken)
+    public async Task<IActionResult> Inbox(string? searchTerm = null, string? relatedEntityType = null, bool? isRead = null, CancellationToken cancellationToken = default)
     {
         var userId = GetCurrentUserId();
         if (!userId.HasValue)
@@ -437,8 +474,27 @@ public class AccountController : Controller
             return RedirectToAction(nameof(Login));
         }
 
-        var notifications = await _dbContext.Notifications
+        var query = _dbContext.Notifications
             .Where(x => x.UserId == userId.Value)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var normalizedSearch = searchTerm.Trim();
+            query = query.Where(x => x.Title.Contains(normalizedSearch) || x.Message.Contains(normalizedSearch));
+        }
+
+        if (!string.IsNullOrWhiteSpace(relatedEntityType))
+        {
+            query = query.Where(x => x.RelatedEntityType == relatedEntityType.Trim());
+        }
+
+        if (isRead.HasValue)
+        {
+            query = query.Where(x => x.IsRead == isRead.Value);
+        }
+
+        var notifications = await query
             .OrderByDescending(x => x.CreatedAt)
             .Select(x => new CustomerNotificationItemViewModel
             {
@@ -468,7 +524,13 @@ public class AccountController : Controller
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        return View(notifications);
+        return View(new CustomerInboxPageViewModel
+        {
+            SearchTerm = searchTerm,
+            RelatedEntityType = relatedEntityType,
+            IsRead = isRead,
+            Notifications = notifications
+        });
     }
 
     [Authorize]

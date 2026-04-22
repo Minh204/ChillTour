@@ -1,4 +1,4 @@
-﻿@model ChillTour.Models.Tours.TourListViewModel
+@model ChillTour.Models.Tours.TourListViewModel
 @{
     ViewData["Title"] = "Danh sách tour";
 }
@@ -8,19 +8,59 @@
 }
 
 <section class="tour-list-page">
-    <div class="container"> 
+    <div class="container">
         <div class="tour-list-hero" data-reveal>
             <div>
                 <span class="eyebrow">Danh sách tour</span>
                 <h1>Chọn hành trình phù hợp cho chuyến đi tiếp theo</h1>
+
                 <form method="get" class="tour-list-toolbar">
-                    <input type="hidden" name="destinationId" value="@Model.SelectedDestinationId" />
-                    <input type="hidden" name="departureDate" value="@(Model.SelectedDepartureDate?.ToString("yyyy-MM-dd"))" />
-                    <input type="hidden" name="budgetRange" value="@Model.SelectedBudgetRange" />
+                    <label>
+                        <span>Từ khóa</span>
+                        <input type="text" name="searchTerm" value="@Model.SearchTerm" class="form-control" placeholder="Tên tour, mã tour, điểm đến..." />
+                    </label>
+
+                    <label>
+                        <span>Điểm đến</span>
+                        <select name="destinationId" class="form-select">
+                            <option value="">Tất cả</option>
+                            @foreach (var item in Model.DestinationOptions)
+                            {
+                                <option value="@item.Id" selected="@(Model.SelectedDestinationId == item.Id)">@item.Name</option>
+                            }
+                        </select>
+                    </label>
+
+                    <label>
+                        <span>Danh mục</span>
+                        <select name="categoryId" class="form-select">
+                            <option value="">Tất cả</option>
+                            @foreach (var item in Model.CategoryOptions)
+                            {
+                                <option value="@item.Id" selected="@(Model.SelectedCategoryId == item.Id)">@item.Name</option>
+                            }
+                        </select>
+                    </label>
+
+                    <label>
+                        <span>Ngày khởi hành</span>
+                        <input type="date" name="departureDate" value="@(Model.SelectedDepartureDate?.ToString("yyyy-MM-dd"))" class="form-control" />
+                    </label>
+
+                    <label>
+                        <span>Ngân sách</span>
+                        <select name="budgetRange" class="form-select">
+                            <option value="">Tất cả</option>
+                            <option value="under-5" selected="@(Model.SelectedBudgetRange == "under-5")">Dưới 5 triệu</option>
+                            <option value="5-10" selected="@(Model.SelectedBudgetRange == "5-10")">5 - 10 triệu</option>
+                            <option value="10-20" selected="@(Model.SelectedBudgetRange == "10-20")">10 - 20 triệu</option>
+                            <option value="over-20" selected="@(Model.SelectedBudgetRange == "over-20")">Trên 20 triệu</option>
+                        </select>
+                    </label>
 
                     <label>
                         <span>Sắp xếp</span>
-                        <select name="sortBy" class="form-select" onchange="this.form.submit()">
+                        <select name="sortBy" class="form-select">
                             <option value="">Mặc định</option>
                             <option value="price-asc" selected="@(Model.SelectedSortBy == "price-asc")">Giá tăng dần</option>
                             <option value="price-desc" selected="@(Model.SelectedSortBy == "price-desc")">Giá giảm dần</option>
@@ -29,16 +69,30 @@
                     </label>
 
                     <label class="tour-list-toolbar__checkbox">
-                        <input type="checkbox" name="lastMinuteOnly" value="true" checked="@Model.LastMinuteOnly" onchange="this.form.submit()" />
+                        <input type="checkbox" name="lastMinuteOnly" value="true" checked="@Model.LastMinuteOnly" />
                         <span>Chỉ xem tour giờ chót</span>
                     </label>
+
+                    <div class="hero-actions">
+                        <button type="submit" class="btn btn-primary">Lọc kết quả</button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Xóa lọc</a>
+                    </div>
                 </form>
-                @if (Model.SelectedDestinationId.HasValue || Model.SelectedDepartureDate.HasValue || !string.IsNullOrWhiteSpace(Model.SelectedBudgetRange) || !string.IsNullOrWhiteSpace(Model.SelectedSortBy) || Model.LastMinuteOnly)
+
+                @if (!string.IsNullOrWhiteSpace(Model.SearchTerm) || Model.SelectedDestinationId.HasValue || Model.SelectedCategoryId.HasValue || Model.SelectedDepartureDate.HasValue || !string.IsNullOrWhiteSpace(Model.SelectedBudgetRange) || !string.IsNullOrWhiteSpace(Model.SelectedSortBy) || Model.LastMinuteOnly)
                 {
                     <div class="tour-list-filter-summary">
+                        @if (!string.IsNullOrWhiteSpace(Model.SearchTerm))
+                        {
+                            <span>Từ khóa: @Model.SearchTerm</span>
+                        }
                         @if (Model.SelectedDestinationId.HasValue)
                         {
                             <span>Lọc theo điểm đến</span>
+                        }
+                        @if (Model.SelectedCategoryId.HasValue)
+                        {
+                            <span>Lọc theo danh mục</span>
                         }
                         @if (Model.SelectedDepartureDate.HasValue)
                         {
@@ -59,6 +113,7 @@
                     </div>
                 }
             </div>
+
             <div class="tour-list-summary">
                 <span>Tổng tour đang mở bán</span>
                 <strong>@Model.TotalItems</strong>
@@ -68,8 +123,8 @@
         @if (Model.Tours.Count == 0)
         {
             <section class="tour-list-empty">
-                <h2>Chưa có tour nào đang mở bán</h2>
-                <p>Hãy quay lại sau hoặc liên hệ quản trị để xuất bản thêm tour.</p>
+                <h2>Không có tour phù hợp</h2>
+                <p>Hãy thử nới rộng bộ lọc hoặc quay lại trang này sau.</p>
             </section>
         }
         else
@@ -87,6 +142,7 @@
                             {
                                 <div class="tour-list-card__placeholder">ChillTour</div>
                             }
+
                             <div class="tour-list-card__badges">
                                 <span class="tour-list-card__code">@tour.TourCode</span>
                                 @if (tour.IsFeatured)
@@ -103,10 +159,12 @@
                                 <strong>@(tour.ReviewCount == 0 ? "Mới" : tour.AverageRating.ToString("0.0"))</strong>
                                 <span>@(tour.ReviewCount == 0 ? "Chưa có đánh giá" : $"{tour.ReviewCount} đánh giá")</span>
                             </div>
+
                             @if (tour.IsLastMinute)
                             {
                                 <div class="tour-list-card__flash">Giờ chót · khởi hành trong 5 ngày</div>
                             }
+
                             <h2>
                                 <a asp-controller="Tours" asp-action="Details" asp-route-slug="@tour.Slug">@tour.TourName</a>
                             </h2>
@@ -130,7 +188,7 @@
                 <div class="tour-list-pagination">
                     @if (Model.CurrentPage > 1)
                     {
-                        <a asp-action="Index" asp-route-page="@(Model.CurrentPage - 1)" asp-route-destinationId="@Model.SelectedDestinationId" asp-route-departureDate="@(Model.SelectedDepartureDate?.ToString("yyyy-MM-dd"))" asp-route-budgetRange="@Model.SelectedBudgetRange" asp-route-sortBy="@Model.SelectedSortBy" asp-route-lastMinuteOnly="@Model.LastMinuteOnly" class="tour-list-pagination__link">Trước</a>
+                        <a asp-action="Index" asp-route-page="@(Model.CurrentPage - 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-destinationId="@Model.SelectedDestinationId" asp-route-categoryId="@Model.SelectedCategoryId" asp-route-departureDate="@(Model.SelectedDepartureDate?.ToString("yyyy-MM-dd"))" asp-route-budgetRange="@Model.SelectedBudgetRange" asp-route-sortBy="@Model.SelectedSortBy" asp-route-lastMinuteOnly="@Model.LastMinuteOnly" class="tour-list-pagination__link">Trước</a>
                     }
                     else
                     {
@@ -139,19 +197,22 @@
 
                     @for (var pageNumber = 1; pageNumber <= Model.TotalPages; pageNumber++)
                     {
-                        <a asp-action="Index" asp-route-page="@pageNumber" asp-route-destinationId="@Model.SelectedDestinationId" asp-route-departureDate="@(Model.SelectedDepartureDate?.ToString("yyyy-MM-dd"))" asp-route-budgetRange="@Model.SelectedBudgetRange" asp-route-sortBy="@Model.SelectedSortBy" asp-route-lastMinuteOnly="@Model.LastMinuteOnly" class="tour-list-pagination__link @(pageNumber == Model.CurrentPage ? "is-active" : "")">@pageNumber</a>
+                        <a asp-action="Index" asp-route-page="@pageNumber" asp-route-searchTerm="@Model.SearchTerm" asp-route-destinationId="@Model.SelectedDestinationId" asp-route-categoryId="@Model.SelectedCategoryId" asp-route-departureDate="@(Model.SelectedDepartureDate?.ToString("yyyy-MM-dd"))" asp-route-budgetRange="@Model.SelectedBudgetRange" asp-route-sortBy="@Model.SelectedSortBy" asp-route-lastMinuteOnly="@Model.LastMinuteOnly" class="tour-list-pagination__link @(pageNumber == Model.CurrentPage ? "is-active" : "")">@pageNumber</a>
                     }
 
                     @if (Model.CurrentPage < Model.TotalPages)
                     {
-                        <a asp-action="Index" asp-route-page="@(Model.CurrentPage + 1)" asp-route-destinationId="@Model.SelectedDestinationId" asp-route-departureDate="@(Model.SelectedDepartureDate?.ToString("yyyy-MM-dd"))" asp-route-budgetRange="@Model.SelectedBudgetRange" asp-route-sortBy="@Model.SelectedSortBy" asp-route-lastMinuteOnly="@Model.LastMinuteOnly" class="tour-list-pagination__link">Sau</a>
+                        <a asp-action="Index" asp-route-page="@(Model.CurrentPage + 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-destinationId="@Model.SelectedDestinationId" asp-route-categoryId="@Model.SelectedCategoryId" asp-route-departureDate="@(Model.SelectedDepartureDate?.ToString("yyyy-MM-dd"))" asp-route-budgetRange="@Model.SelectedBudgetRange" asp-route-sortBy="@Model.SelectedSortBy" asp-route-lastMinuteOnly="@Model.LastMinuteOnly" class="tour-list-pagination__link">Sau</a>
                     }
                     else
                     {
                         <span class="tour-list-pagination__link is-disabled">Sau</span>
                     }
                 </div>
-}
+            }
+        }
+    </div>
+</section>
 
 @functions {
     private static string BudgetLabel(string? budgetRange) => budgetRange?.Trim().ToLowerInvariant() switch
@@ -171,6 +232,3 @@
         _ => "Mặc định"
     };
 }
-        }
-    </div>
-</section>

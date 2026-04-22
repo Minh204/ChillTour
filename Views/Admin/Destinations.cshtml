@@ -1,4 +1,4 @@
-﻿@model IReadOnlyList<ChillTour.Models.Admin.AdminDestinationItemViewModel>
+@model ChillTour.Models.Admin.AdminDestinationListViewModel
 @{
     ViewData["Title"] = "Điểm đến";
 }
@@ -22,6 +22,47 @@
     }
 
     <section class="admin-panel">
+        <form method="get" class="admin-form-grid mb-4">
+            <label>
+                Từ khóa
+                <input type="text" name="searchTerm" value="@Model.Filter.SearchTerm" class="form-control" placeholder="Mã, tên điểm đến, quốc gia..." />
+            </label>
+            <label>
+                Loại
+                <select name="destinationType" class="form-select">
+                    <option value="">Tất cả</option>
+                    <option value="1" selected="@(Model.Filter.DestinationType == 1)">Thành phố</option>
+                    <option value="2" selected="@(Model.Filter.DestinationType == 2)">Điểm tham quan</option>
+                    <option value="3" selected="@(Model.Filter.DestinationType == 3)">Quốc gia</option>
+                    <option value="4" selected="@(Model.Filter.DestinationType == 4)">Khác</option>
+                </select>
+            </label>
+            <label>
+                Quốc gia
+                <input type="text" name="countryCode" value="@Model.Filter.CountryCode" class="form-control" placeholder="VN, TH, SG..." />
+            </label>
+            <label>
+                Nổi bật
+                <select name="isFeatured" class="form-select">
+                    <option value="">Tất cả</option>
+                    <option value="true" selected="@(Model.Filter.IsFeatured == true)">Nổi bật</option>
+                    <option value="false" selected="@(Model.Filter.IsFeatured == false)">Thường</option>
+                </select>
+            </label>
+            <label>
+                Trạng thái
+                <select name="isActive" class="form-select">
+                    <option value="">Tất cả</option>
+                    <option value="true" selected="@(Model.Filter.IsActive == true)">Đang dùng</option>
+                    <option value="false" selected="@(Model.Filter.IsActive == false)">Ngừng dùng</option>
+                </select>
+            </label>
+            <div class="hero-actions align-items-end">
+                <button type="submit" class="btn btn-primary">Lọc điểm đến</button>
+                <a asp-action="Destinations" class="btn btn-outline-secondary">Xóa lọc</a>
+            </div>
+        </form>
+
         <div class="admin-table-wrap">
             <table class="admin-table">
                 <thead>
@@ -36,15 +77,15 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @if (Model.Count == 0)
+                    @if (Model.Destinations.Count == 0)
                     {
                         <tr>
-                            <td colspan="7" class="text-center py-4">Chưa có điểm đến nào.</td>
+                            <td colspan="7" class="text-center py-4">Không có điểm đến phù hợp với bộ lọc hiện tại.</td>
                         </tr>
                     }
                     else
                     {
-                        @foreach (var item in Model)
+                        @foreach (var item in Model.Destinations)
                         {
                             <tr>
                                 <td><strong>@item.DestinationCode</strong></td>

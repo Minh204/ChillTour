@@ -39,6 +39,29 @@
             <div class="auth-alert auth-alert--error">@errorMessage</div>
         }
 
+        <form method="get" class="admin-form-grid mb-4">
+            <label>
+                Từ khóa
+                <input type="text" name="searchTerm" value="@Model.SearchTerm" class="form-control" placeholder="Mã, tên ưu đãi..." />
+            </label>
+            <label>
+                Loại ưu đãi
+                <select name="type" class="form-select">
+                    <option value="">Tất cả</option>
+                    <option value="auto" selected="@(Model.SelectedType == "auto")">Tự áp dụng</option>
+                    <option value="manual" selected="@(Model.SelectedType == "manual")">Nhận thủ công</option>
+                    @if (Model.IsCustomer)
+                    {
+                        <option value="claimed" selected="@(Model.SelectedType == "claimed")">Đã nhận</option>
+                    }
+                </select>
+            </label>
+            <div class="hero-actions align-items-end">
+                <button type="submit" class="btn btn-primary">Lọc ưu đãi</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Xóa lọc</a>
+            </div>
+        </form>
+
         @if (Model.IsCustomer && Model.MyPromotions.Count > 0)
         {
             <section class="promotion-page__section">
@@ -74,7 +97,7 @@
             @if (Model.ActivePromotions.Count == 0)
             {
                 <div class="auth-card">
-                    <p class="m-0">Hiện chưa có ưu đãi nào đang hoạt động.</p>
+                    <p class="m-0">Không có ưu đãi phù hợp với bộ lọc hiện tại.</p>
                 </div>
             }
             else

@@ -1,4 +1,4 @@
-﻿@model ChillTour.Models.Admin.EmployeeOrdersViewModel
+@model ChillTour.Models.Admin.EmployeeOrdersViewModel
 @using ChillTour.Security
 @{
     ViewData["Title"] = "Xử lý đơn";
@@ -50,6 +50,47 @@
             <div class="admin-topbar__badge">@Model.TotalItems đơn</div>
         </div>
 
+        <form method="get" class="admin-form-grid mb-4">
+            <input type="hidden" name="page" value="1" />
+            <label>
+                Từ khóa
+                <input type="text" name="searchTerm" value="@Model.Filter.SearchTerm" class="form-control" placeholder="Mã đơn, khách hàng, tour..." />
+            </label>
+            <label>
+                Trạng thái đơn
+                <select name="bookingStatus" class="form-select">
+                    <option value="">Tất cả</option>
+                    @for (var status = 0; status <= 10; status++)
+                    {
+                        <option value="@status" selected="@(Model.Filter.BookingStatus == status)">@StatusLabel(status)</option>
+                    }
+                </select>
+            </label>
+            <label>
+                Trạng thái thanh toán
+                <select name="paymentStatus" class="form-select">
+                    <option value="">Tất cả</option>
+                    <option value="0" selected="@(Model.Filter.PaymentStatus == 0)">Chưa thanh toán</option>
+                    <option value="1" selected="@(Model.Filter.PaymentStatus == 1)">Chờ đối soát</option>
+                    <option value="2" selected="@(Model.Filter.PaymentStatus == 2)">Đã cọc</option>
+                    <option value="3" selected="@(Model.Filter.PaymentStatus == 3)">Đã thanh toán đủ</option>
+                    <option value="4" selected="@(Model.Filter.PaymentStatus == 4)">Thanh toán lỗi</option>
+                </select>
+            </label>
+            <label>
+                Từ ngày khởi hành
+                <input type="date" name="departureFrom" value="@(Model.Filter.DepartureFrom?.ToString("yyyy-MM-dd"))" class="form-control" />
+            </label>
+            <label>
+                Đến ngày khởi hành
+                <input type="date" name="departureTo" value="@(Model.Filter.DepartureTo?.ToString("yyyy-MM-dd"))" class="form-control" />
+            </label>
+            <div class="hero-actions align-items-end">
+                <button type="submit" class="btn btn-primary">Lọc đơn</button>
+                <a asp-action="Orders" class="btn btn-outline-secondary">Xóa lọc</a>
+            </div>
+        </form>
+
         <div class="table-responsive">
             <table class="table align-middle">
                 <thead>
@@ -68,7 +109,7 @@
                     @if (Model.Bookings.Count == 0)
                     {
                         <tr>
-                            <td colspan="8" class="text-center py-4">Chưa có đơn nào.</td>
+                            <td colspan="8" class="text-center py-4">Không có đơn phù hợp với bộ lọc hiện tại.</td>
                         </tr>
                     }
                     else
@@ -203,16 +244,16 @@
             <nav aria-label="Phân trang đơn">
                 <ul class="pagination justify-content-end mb-0">
                     <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : string.Empty)">
-                        <a class="page-link" asp-action="Orders" asp-route-page="@(Model.CurrentPage - 1)">Trước</a>
+                        <a class="page-link" asp-action="Orders" asp-route-page="@(Model.CurrentPage - 1)" asp-route-searchTerm="@Model.Filter.SearchTerm" asp-route-bookingStatus="@Model.Filter.BookingStatus" asp-route-paymentStatus="@Model.Filter.PaymentStatus" asp-route-departureFrom="@(Model.Filter.DepartureFrom?.ToString("yyyy-MM-dd"))" asp-route-departureTo="@(Model.Filter.DepartureTo?.ToString("yyyy-MM-dd"))">Trước</a>
                     </li>
                     @for (var pageNumber = 1; pageNumber <= Model.TotalPages; pageNumber++)
                     {
                         <li class="page-item @(pageNumber == Model.CurrentPage ? "active" : string.Empty)">
-                            <a class="page-link" asp-action="Orders" asp-route-page="@(pageNumber)">@pageNumber</a>
+                            <a class="page-link" asp-action="Orders" asp-route-page="@pageNumber" asp-route-searchTerm="@Model.Filter.SearchTerm" asp-route-bookingStatus="@Model.Filter.BookingStatus" asp-route-paymentStatus="@Model.Filter.PaymentStatus" asp-route-departureFrom="@(Model.Filter.DepartureFrom?.ToString("yyyy-MM-dd"))" asp-route-departureTo="@(Model.Filter.DepartureTo?.ToString("yyyy-MM-dd"))">@pageNumber</a>
                         </li>
                     }
                     <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : string.Empty)">
-                        <a class="page-link" asp-action="Orders" asp-route-page="@(Model.CurrentPage + 1)">Sau</a>
+                        <a class="page-link" asp-action="Orders" asp-route-page="@(Model.CurrentPage + 1)" asp-route-searchTerm="@Model.Filter.SearchTerm" asp-route-bookingStatus="@Model.Filter.BookingStatus" asp-route-paymentStatus="@Model.Filter.PaymentStatus" asp-route-departureFrom="@(Model.Filter.DepartureFrom?.ToString("yyyy-MM-dd"))" asp-route-departureTo="@(Model.Filter.DepartureTo?.ToString("yyyy-MM-dd"))">Sau</a>
                     </li>
                 </ul>
             </nav>
@@ -368,5 +409,3 @@
         _ => "status-pill--warning"
     };
 }
-
-

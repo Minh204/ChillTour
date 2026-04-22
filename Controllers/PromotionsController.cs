@@ -17,7 +17,7 @@ public class PromotionsController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(string? searchTerm = null, string? type = null, CancellationToken cancellationToken = default)
     {
         var now = DateTime.UtcNow;
         var userId = GetCurrentUserId();
@@ -38,10 +38,30 @@ public class PromotionsController : Controller
                 .ToListAsync(cancellationToken)
             : [];
 
-        var promotions = await _dbContext.Promotions
+        var query = _dbContext.Promotions
             .AsNoTracking()
             .Where(x => x.IsActive && x.StartAt <= now && x.EndAt >= now)
             .Where(x => !hasPaidBooking || x.PromotionCode != "FIRST15")
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var normalizedSearch = searchTerm.Trim();
+            query = query.Where(x =>
+                x.PromotionCode.Contains(normalizedSearch) ||
+                x.PromotionName.Contains(normalizedSearch) ||
+                (x.Description != null && x.Description.Contains(normalizedSearch)));
+        }
+
+        query = (type ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            "auto" => query.Where(x => x.IsAutoApply),
+            "manual" => query.Where(x => !x.IsAutoApply),
+            "claimed" when userId.HasValue && User.IsInRole(RoleConstants.Customer) => query.Where(x => claimedPromotionIds.Contains(x.PromotionId)),
+            _ => query
+        };
+
+        var promotions = await query
             .OrderByDescending(x => x.IsAutoApply)
             .ThenBy(x => x.EndAt)
             .Select(x => new PromotionListItemViewModel
@@ -66,6 +86,8 @@ public class PromotionsController : Controller
 
         var model = new PromotionPageViewModel
         {
+            SearchTerm = searchTerm,
+            SelectedType = type,
             IsCustomer = User.IsInRole(RoleConstants.Customer),
             ActivePromotions = promotions,
             MyPromotions = promotions.Where(x => x.IsClaimed).OrderBy(x => x.EndAt).ToList()

@@ -16,11 +16,36 @@ public class GuidesController : Controller
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index(CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(string? searchTerm = null, int? year = null, CancellationToken cancellationToken = default)
     {
-        var articles = await _dbContext.Articles
+        var query = _dbContext.Articles
             .AsNoTracking()
             .Where(x => x.Status == 1 && x.PublishedAt != null)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var normalizedSearch = searchTerm.Trim();
+            query = query.Where(x =>
+                x.Title.Contains(normalizedSearch) ||
+                (x.Summary != null && x.Summary.Contains(normalizedSearch)) ||
+                x.Slug.Contains(normalizedSearch));
+        }
+
+        if (year.HasValue)
+        {
+            query = query.Where(x => x.PublishedAt!.Value.Year == year.Value);
+        }
+
+        var availableYears = await _dbContext.Articles
+            .AsNoTracking()
+            .Where(x => x.Status == 1 && x.PublishedAt != null)
+            .Select(x => x.PublishedAt!.Value.Year)
+            .Distinct()
+            .OrderByDescending(x => x)
+            .ToListAsync(cancellationToken);
+
+        var articles = await query
             .OrderByDescending(x => x.PublishedAt)
             .Select(x => new GuideListItemViewModel
             {
@@ -34,6 +59,9 @@ public class GuidesController : Controller
 
         return View(new GuidePageViewModel
         {
+            SearchTerm = searchTerm,
+            SelectedYear = year,
+            AvailableYears = availableYears,
             Articles = articles
         });
     }

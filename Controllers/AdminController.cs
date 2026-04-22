@@ -6,6 +6,7 @@ using ChillTour.Security;
 using ChillTour.Services.Auth;
 using ChillTour.Services.Notifications;
 using ChillTour.Services.Reports;
+using ChillTour.Models.Tours;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -243,11 +244,34 @@ public class AdminController : Controller
 
     [Authorize(Policy = PermissionConstants.ManageUsers)]
     [HttpGet]
-    public async Task<IActionResult> Users(CancellationToken cancellationToken)
+    public async Task<IActionResult> Users([FromQuery] AdminUsersFilterViewModel filter, CancellationToken cancellationToken)
     {
-        var users = await _dbContext.Users
+        var query = _dbContext.Users
             .Include(x => x.UserRoles)
             .ThenInclude(x => x.Role)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+        {
+            var normalizedSearch = filter.SearchTerm.Trim();
+            query = query.Where(x =>
+                x.FullName.Contains(normalizedSearch) ||
+                x.Email.Contains(normalizedSearch) ||
+                (x.PhoneNumber != null && x.PhoneNumber.Contains(normalizedSearch)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.RoleCode))
+        {
+            var normalizedRole = filter.RoleCode.Trim().ToUpperInvariant();
+            query = query.Where(x => x.UserRoles.Any(r => r.Role.RoleCode.ToUpper() == normalizedRole));
+        }
+
+        if (filter.IsLocked.HasValue)
+        {
+            query = query.Where(x => (x.Status == 2) == filter.IsLocked.Value);
+        }
+
+        var users = await query
             .OrderByDescending(x => x.CreatedAt)
             .Select(x => new AdminUserItemViewModel
             {
@@ -273,6 +297,7 @@ public class AdminController : Controller
             TotalUsers = users.Count,
             ActiveUsers = users.Count(x => !x.IsLocked),
             LockedUsers = users.Count(x => x.IsLocked),
+            Filter = filter,
             Users = users
         });
     }
@@ -484,8 +509,10 @@ public class AdminController : Controller
 
     [Authorize(Policy = PermissionConstants.ViewBookings)]
     [HttpGet]
-    public async Task<IActionResult> Orders(int page = 1, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Orders(int page = 1, [FromQuery] AdminOrdersFilterViewModel? filter = null, CancellationToken cancellationToken = default)
     {
+        filter ??= new AdminOrdersFilterViewModel();
+
         if (page < 1)
         {
             page = 1;
@@ -497,7 +524,42 @@ public class AdminController : Controller
             .Include(x => x.Tour)
             .Include(x => x.TourSchedule)
             .Include(x => x.Payments)
-            .OrderByDescending(x => x.CreatedAt);
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+        {
+            var normalizedSearch = filter.SearchTerm.Trim();
+            query = query.Where(x =>
+                x.BookingCode.Contains(normalizedSearch) ||
+                x.User.FullName.Contains(normalizedSearch) ||
+                x.ContactName.Contains(normalizedSearch) ||
+                x.ContactEmail.Contains(normalizedSearch) ||
+                x.ContactPhone.Contains(normalizedSearch) ||
+                x.Tour.TourName.Contains(normalizedSearch) ||
+                x.Tour.TourCode.Contains(normalizedSearch));
+        }
+
+        if (filter.BookingStatus.HasValue)
+        {
+            query = query.Where(x => x.BookingStatus == filter.BookingStatus.Value);
+        }
+
+        if (filter.PaymentStatus.HasValue)
+        {
+            query = query.Where(x => x.PaymentStatus == filter.PaymentStatus.Value);
+        }
+
+        if (filter.DepartureFrom.HasValue)
+        {
+            query = query.Where(x => x.TourSchedule.DepartureDate >= filter.DepartureFrom.Value);
+        }
+
+        if (filter.DepartureTo.HasValue)
+        {
+            query = query.Where(x => x.TourSchedule.DepartureDate <= filter.DepartureTo.Value);
+        }
+
+        query = query.OrderByDescending(x => x.CreatedAt);
 
         var totalItems = await query.CountAsync(cancellationToken);
         var totalPages = totalItems == 0 ? 1 : (int)Math.Ceiling(totalItems / (double)OrderPageSize);
@@ -577,17 +639,42 @@ public class AdminController : Controller
             TotalPages = totalPages,
             TotalItems = totalItems,
             PageSize = OrderPageSize,
+            Filter = filter,
             Bookings = bookings
         });
     }
 
     [Authorize(Policy = PermissionConstants.ManagePromotions)]
     [HttpGet]
-    public async Task<IActionResult> Promotions(CancellationToken cancellationToken)
+    public async Task<IActionResult> Promotions([FromQuery] AdminPromotionsFilterViewModel filter, CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;
-        var items = await _dbContext.Promotions
+        var query = _dbContext.Promotions
             .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+        {
+            var normalizedSearch = filter.SearchTerm.Trim();
+            query = query.Where(x =>
+                x.PromotionCode.Contains(normalizedSearch) ||
+                x.PromotionName.Contains(normalizedSearch) ||
+                (x.Description != null && x.Description.Contains(normalizedSearch)));
+        }
+
+        query = (filter.Status ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            "live" => query.Where(x => x.IsActive && x.EndAt >= now),
+            "expired" => query.Where(x => !x.IsActive || x.EndAt < now),
+            _ => query
+        };
+
+        if (filter.IsAutoApply.HasValue)
+        {
+            query = query.Where(x => x.IsAutoApply == filter.IsAutoApply.Value);
+        }
+
+        var items = await query
             .OrderByDescending(x => x.IsActive)
             .ThenByDescending(x => x.EndAt)
             .Select(x => new AdminPromotionItemViewModel
@@ -609,17 +696,37 @@ public class AdminController : Controller
             TotalPromotions = items.Count,
             ActivePromotions = items.Count(x => x.IsActive && x.EndAt >= now),
             ExpiredPromotions = items.Count(x => x.EndAt < now || !x.IsActive),
+            Filter = filter,
             Promotions = items
         });
     }
 
     [Authorize(Policy = PermissionConstants.ManageContent)]
     [HttpGet]
-    public async Task<IActionResult> Articles(CancellationToken cancellationToken)
+    public async Task<IActionResult> Articles([FromQuery] AdminArticlesFilterViewModel filter, CancellationToken cancellationToken)
     {
-        var items = await _dbContext.Articles
+        var query = _dbContext.Articles
             .AsNoTracking()
             .Include(x => x.AuthorUser)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+        {
+            var normalizedSearch = filter.SearchTerm.Trim();
+            query = query.Where(x =>
+                x.ArticleCode.Contains(normalizedSearch) ||
+                x.Title.Contains(normalizedSearch) ||
+                x.Slug.Contains(normalizedSearch) ||
+                (x.Summary != null && x.Summary.Contains(normalizedSearch)));
+        }
+
+        if (filter.IsPublished.HasValue)
+        {
+            var status = filter.IsPublished.Value ? (byte)1 : (byte)0;
+            query = query.Where(x => x.Status == status);
+        }
+
+        var items = await query
             .OrderByDescending(x => x.PublishedAt ?? x.CreatedAt)
             .ThenByDescending(x => x.CreatedAt)
             .Select(x => new AdminArticleItemViewModel
@@ -640,6 +747,7 @@ public class AdminController : Controller
             TotalArticles = items.Count,
             PublishedArticles = items.Count(x => x.IsPublished),
             DraftArticles = items.Count(x => !x.IsPublished),
+            Filter = filter,
             Articles = items
         });
     }
@@ -970,10 +1078,27 @@ public class AdminController : Controller
 
     [Authorize(Policy = PermissionConstants.ManageTours)]
     [HttpGet]
-    public async Task<IActionResult> Categories(CancellationToken cancellationToken)
+    public async Task<IActionResult> Categories([FromQuery] AdminCategoriesFilterViewModel filter, CancellationToken cancellationToken)
     {
-        var items = await _dbContext.Categories
+        var query = _dbContext.Categories
             .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+        {
+            var normalizedSearch = filter.SearchTerm.Trim();
+            query = query.Where(x =>
+                x.CategoryCode.Contains(normalizedSearch) ||
+                x.CategoryName.Contains(normalizedSearch) ||
+                (x.Description != null && x.Description.Contains(normalizedSearch)));
+        }
+
+        if (filter.IsActive.HasValue)
+        {
+            query = query.Where(x => x.IsActive == filter.IsActive.Value);
+        }
+
+        var items = await query
             .OrderBy(x => x.DisplayOrder)
             .ThenBy(x => x.CategoryName)
             .Select(x => new AdminCategoryItemViewModel
@@ -987,7 +1112,11 @@ public class AdminController : Controller
             })
             .ToListAsync(cancellationToken);
 
-        return View(items);
+        return View(new AdminCategoryListViewModel
+        {
+            Filter = filter,
+            Categories = items
+        });
     }
 
     [Authorize(Policy = PermissionConstants.ManageTours)]
@@ -1103,10 +1232,44 @@ public class AdminController : Controller
 
     [Authorize(Policy = PermissionConstants.ManageTours)]
     [HttpGet]
-    public async Task<IActionResult> Destinations(CancellationToken cancellationToken)
+    public async Task<IActionResult> Destinations([FromQuery] AdminDestinationsFilterViewModel filter, CancellationToken cancellationToken)
     {
-        var items = await _dbContext.Destinations
+        var query = _dbContext.Destinations
             .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+        {
+            var normalizedSearch = filter.SearchTerm.Trim();
+            query = query.Where(x =>
+                x.DestinationCode.Contains(normalizedSearch) ||
+                x.DestinationName.Contains(normalizedSearch) ||
+                x.CountryCode.Contains(normalizedSearch) ||
+                (x.ProvinceName != null && x.ProvinceName.Contains(normalizedSearch)));
+        }
+
+        if (filter.DestinationType.HasValue)
+        {
+            query = query.Where(x => x.DestinationType == filter.DestinationType.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.CountryCode))
+        {
+            var normalizedCountry = filter.CountryCode.Trim().ToUpperInvariant();
+            query = query.Where(x => x.CountryCode == normalizedCountry);
+        }
+
+        if (filter.IsFeatured.HasValue)
+        {
+            query = query.Where(x => x.IsFeatured == filter.IsFeatured.Value);
+        }
+
+        if (filter.IsActive.HasValue)
+        {
+            query = query.Where(x => x.IsActive == filter.IsActive.Value);
+        }
+
+        var items = await query
             .OrderBy(x => x.DestinationName)
             .Select(x => new AdminDestinationItemViewModel
             {
@@ -1121,7 +1284,11 @@ public class AdminController : Controller
             })
             .ToListAsync(cancellationToken);
 
-        return View(items);
+        return View(new AdminDestinationListViewModel
+        {
+            Filter = filter,
+            Destinations = items
+        });
     }
 
     [Authorize(Policy = PermissionConstants.ManageTours)]
@@ -1249,14 +1416,49 @@ public class AdminController : Controller
 
     [Authorize(Policy = PermissionConstants.ManageTours)]
     [HttpGet]
-    public async Task<IActionResult> Tours(int page = 1, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Tours(int page = 1, [FromQuery] AdminToursFilterViewModel? filter = null, CancellationToken cancellationToken = default)
     {
+        filter ??= new AdminToursFilterViewModel();
+
         if (page < 1)
         {
             page = 1;
         }
 
-        var totalItems = await _dbContext.Tours.CountAsync(cancellationToken);
+        var query = _dbContext.Tours
+            .AsNoTracking()
+            .Include(x => x.Category)
+            .Include(x => x.StartDestination)
+            .Include(x => x.EndDestination)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+        {
+            var normalizedSearch = filter.SearchTerm.Trim();
+            query = query.Where(x =>
+                x.TourCode.Contains(normalizedSearch) ||
+                x.TourName.Contains(normalizedSearch) ||
+                x.Category.CategoryName.Contains(normalizedSearch) ||
+                x.StartDestination.DestinationName.Contains(normalizedSearch) ||
+                x.EndDestination.DestinationName.Contains(normalizedSearch));
+        }
+
+        if (filter.CategoryId.HasValue)
+        {
+            query = query.Where(x => x.CategoryId == filter.CategoryId.Value);
+        }
+
+        if (filter.IsPublished.HasValue)
+        {
+            query = query.Where(x => x.IsPublished == filter.IsPublished.Value);
+        }
+
+        if (filter.IsFeatured.HasValue)
+        {
+            query = query.Where(x => x.IsFeatured == filter.IsFeatured.Value);
+        }
+
+        var totalItems = await query.CountAsync(cancellationToken);
         var totalPages = totalItems == 0 ? 1 : (int)Math.Ceiling(totalItems / (double)TourPageSize);
 
         if (page > totalPages)
@@ -1264,11 +1466,7 @@ public class AdminController : Controller
             page = totalPages;
         }
 
-        var tours = await _dbContext.Tours
-            .AsNoTracking()
-            .Include(x => x.Category)
-            .Include(x => x.StartDestination)
-            .Include(x => x.EndDestination)
+        var tours = await query
             .OrderByDescending(x => x.CreatedAt)
             .Skip((page - 1) * TourPageSize)
             .Take(TourPageSize)
@@ -1287,12 +1485,26 @@ public class AdminController : Controller
             })
             .ToListAsync(cancellationToken);
 
+        var categoryOptions = await _dbContext.Categories
+            .AsNoTracking()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.DisplayOrder)
+            .ThenBy(x => x.CategoryName)
+            .Select(x => new TourFilterOptionViewModel
+            {
+                Id = x.CategoryId,
+                Name = x.CategoryName
+            })
+            .ToListAsync(cancellationToken);
+
         return View(new AdminTourListViewModel
         {
             CurrentPage = page,
             PageSize = TourPageSize,
             TotalItems = totalItems,
             TotalPages = totalPages,
+            Filter = filter,
+            CategoryOptions = categoryOptions,
             Tours = tours
         });
     }

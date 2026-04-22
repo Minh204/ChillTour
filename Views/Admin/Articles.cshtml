@@ -40,6 +40,25 @@
         </article>
     </div>
 
+    <form method="get" class="admin-form-grid mb-4">
+        <label>
+            Từ khóa
+            <input type="text" name="searchTerm" value="@Model.Filter.SearchTerm" class="form-control" placeholder="Mã bài, tiêu đề, slug..." />
+        </label>
+        <label>
+            Trạng thái
+            <select name="isPublished" class="form-select">
+                <option value="">Tất cả</option>
+                <option value="true" selected="@(Model.Filter.IsPublished == true)">Đã xuất bản</option>
+                <option value="false" selected="@(Model.Filter.IsPublished == false)">Bản nháp</option>
+            </select>
+        </label>
+        <div class="hero-actions align-items-end">
+            <button type="submit" class="btn btn-primary">Lọc bài viết</button>
+            <a asp-action="Articles" class="btn btn-outline-secondary">Xóa lọc</a>
+        </div>
+    </form>
+
     <div class="admin-table-wrap">
         <table class="admin-table">
             <thead>
@@ -53,36 +72,45 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach (var article in Model.Articles)
+                @if (Model.Articles.Count == 0)
                 {
                     <tr>
-                        <td>
-                            <strong>@article.Title</strong>
-                            <div class="admin-table__sub">@article.ArticleCode</div>
-                            @if (!string.IsNullOrWhiteSpace(article.Summary))
-                            {
-                                <div class="admin-table__sub">@article.Summary</div>
-                            }
-                        </td>
-                        <td>@article.Slug</td>
-                        <td>@(article.PublishedAt?.ToString("dd/MM/yyyy HH:mm") ?? "Chưa đặt")</td>
-                        <td>@(string.IsNullOrWhiteSpace(article.AuthorName) ? "Hệ thống" : article.AuthorName)</td>
-                        <td>
-                            <span class="status-pill @(article.IsPublished ? "status-pill--success" : "status-pill--info")">
-                                @(article.IsPublished ? "Đã xuất bản" : "Bản nháp")
-                            </span>
-                        </td>
-                        <td>
-                            <div class="admin-inline-form">
-                                <a asp-action="EditArticle" asp-route-id="@article.ArticleId" class="btn btn-outline-primary btn-sm">Sửa</a>
-                                <form asp-action="DeleteArticle" method="post" onsubmit="return confirm('Xóa bài cẩm nang này?');">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="id" value="@article.ArticleId" />
-                                    <button type="submit" class="btn btn-outline-danger btn-sm">Xóa</button>
-                                </form>
-                            </div>
-                        </td>
+                        <td colspan="6" class="text-center py-4">Không có bài viết phù hợp với bộ lọc hiện tại.</td>
                     </tr>
+                }
+                else
+                {
+                    @foreach (var article in Model.Articles)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@article.Title</strong>
+                                <div class="admin-table__sub">@article.ArticleCode</div>
+                                @if (!string.IsNullOrWhiteSpace(article.Summary))
+                                {
+                                    <div class="admin-table__sub">@article.Summary</div>
+                                }
+                            </td>
+                            <td>@article.Slug</td>
+                            <td>@(article.PublishedAt?.ToString("dd/MM/yyyy HH:mm") ?? "Chưa đặt")</td>
+                            <td>@(string.IsNullOrWhiteSpace(article.AuthorName) ? "Hệ thống" : article.AuthorName)</td>
+                            <td>
+                                <span class="status-pill @(article.IsPublished ? "status-pill--success" : "status-pill--info")">
+                                    @(article.IsPublished ? "Đã xuất bản" : "Bản nháp")
+                                </span>
+                            </td>
+                            <td>
+                                <div class="admin-inline-form">
+                                    <a asp-action="EditArticle" asp-route-id="@article.ArticleId" class="btn btn-outline-primary btn-sm">Sửa</a>
+                                    <form asp-action="DeleteArticle" method="post" onsubmit="return confirm('Xóa bài cẩm nang này?');">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@article.ArticleId" />
+                                        <button type="submit" class="btn btn-outline-danger btn-sm">Xóa</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
                 }
             </tbody>
         </table>

@@ -1,4 +1,4 @@
-﻿@model IReadOnlyList<ChillTour.Models.Account.CustomerBookingItemViewModel>
+@model ChillTour.Models.Account.CustomerBookingsPageViewModel
 @{
     ViewData["Title"] = "Lịch sử đơn hàng";
 }
@@ -21,14 +21,52 @@
                 <div class="auth-alert auth-alert--error">@bookingErrorMessage</div>
             }
 
-            @if (Model.Count == 0)
+            <form method="get" class="admin-form-grid mb-4">
+                <label>
+                    Từ khóa
+                    <input type="text" name="searchTerm" value="@Model.SearchTerm" class="form-control" placeholder="Mã đơn hoặc tên tour..." />
+                </label>
+                <label>
+                    Trạng thái đơn
+                    <select name="bookingStatus" class="form-select">
+                        <option value="">Tất cả</option>
+                        @for (var status = 0; status <= 10; status++)
+                        {
+                            <option value="@status" selected="@(Model.BookingStatus == status)">@StatusLabel(status)</option>
+                        }
+                    </select>
+                </label>
+                <label>
+                    Trạng thái thanh toán
+                    <select name="paymentStatus" class="form-select">
+                        <option value="">Tất cả</option>
+                        <option value="1" selected="@(Model.PaymentStatus == 1)">Chờ xác nhận</option>
+                        <option value="2" selected="@(Model.PaymentStatus == 2)">Đã cọc</option>
+                        <option value="3" selected="@(Model.PaymentStatus == 3)">Đã thanh toán đủ</option>
+                    </select>
+                </label>
+                <label>
+                    Từ ngày khởi hành
+                    <input type="date" name="departureFrom" value="@(Model.DepartureFrom?.ToString("yyyy-MM-dd"))" class="form-control" />
+                </label>
+                <label>
+                    Đến ngày khởi hành
+                    <input type="date" name="departureTo" value="@(Model.DepartureTo?.ToString("yyyy-MM-dd"))" class="form-control" />
+                </label>
+                <div class="hero-actions align-items-end">
+                    <button type="submit" class="btn btn-primary">Lọc đơn</button>
+                    <a asp-action="Bookings" class="btn btn-outline-secondary">Xóa lọc</a>
+                </div>
+            </form>
+
+            @if (Model.Bookings.Count == 0)
             {
-                <div class="auth-alert auth-alert--error">Bạn chưa có đơn nào đã phát sinh thanh toán.</div>
+                <div class="auth-alert auth-alert--error">Không có đơn nào phù hợp với bộ lọc hiện tại.</div>
             }
             else
             {
                 <div class="customer-booking-list">
-                    @foreach (var booking in Model)
+                    @foreach (var booking in Model.Bookings)
                     {
                         <article class="customer-booking-card">
                             <div class="customer-booking-card__top">

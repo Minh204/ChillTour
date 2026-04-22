@@ -36,11 +36,38 @@
         <article class="admin-stat-card admin-mini-card--orange">
             <span class="admin-panel__label">Expired</span>
             <strong>@Model.ExpiredPromotions</strong>
-            <p>Đã hết hạn / ngừng áp dụng</p>
+            <p>Đã hết hạn hoặc ngừng áp dụng</p>
         </article>
     </div>
 
     <section class="admin-panel">
+        <form method="get" class="admin-form-grid mb-4">
+            <label>
+                Từ khóa
+                <input type="text" name="searchTerm" value="@Model.Filter.SearchTerm" class="form-control" placeholder="Mã hoặc tên ưu đãi..." />
+            </label>
+            <label>
+                Trạng thái
+                <select name="status" class="form-select">
+                    <option value="">Tất cả</option>
+                    <option value="live" selected="@(Model.Filter.Status == "live")">Còn hiệu lực</option>
+                    <option value="expired" selected="@(Model.Filter.Status == "expired")">Hết hiệu lực</option>
+                </select>
+            </label>
+            <label>
+                Cơ chế áp dụng
+                <select name="isAutoApply" class="form-select">
+                    <option value="">Tất cả</option>
+                    <option value="true" selected="@(Model.Filter.IsAutoApply == true)">Tự áp dụng</option>
+                    <option value="false" selected="@(Model.Filter.IsAutoApply == false)">Nhập thủ công</option>
+                </select>
+            </label>
+            <div class="hero-actions align-items-end">
+                <button type="submit" class="btn btn-primary">Lọc ưu đãi</button>
+                <a asp-action="Promotions" class="btn btn-outline-secondary">Xóa lọc</a>
+            </div>
+        </form>
+
         <div class="admin-table-wrap">
             <table class="admin-table">
                 <thead>
@@ -59,7 +86,7 @@
                     @if (Model.Promotions.Count == 0)
                     {
                         <tr>
-                            <td colspan="8" class="text-center py-4">Chưa có ưu đãi nào.</td>
+                            <td colspan="8" class="text-center py-4">Không có ưu đãi phù hợp với bộ lọc hiện tại.</td>
                         </tr>
                     }
                     else

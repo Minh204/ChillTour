@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="~/pages/guides/guides.css" asp-append-version="true" />
 }
 
-
 <section class="guide-page">
     <div class="container">
         <div class="guide-page__hero">
@@ -15,10 +14,31 @@
             <h1>Cẩm nang du lịch</h1>
         </div>
 
+        <form method="get" class="admin-form-grid mb-4">
+            <label>
+                Từ khóa
+                <input type="text" name="searchTerm" value="@Model.SearchTerm" class="form-control" placeholder="Tiêu đề, tóm tắt, slug..." />
+            </label>
+            <label>
+                Năm xuất bản
+                <select name="year" class="form-select">
+                    <option value="">Tất cả</option>
+                    @foreach (var year in Model.AvailableYears)
+                    {
+                        <option value="@year" selected="@(Model.SelectedYear == year)">@year</option>
+                    }
+                </select>
+            </label>
+            <div class="hero-actions align-items-end">
+                <button type="submit" class="btn btn-primary">Lọc bài viết</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Xóa lọc</a>
+            </div>
+        </form>
+
         @if (Model.Articles.Count == 0)
         {
             <div class="auth-card">
-                <p class="m-0">Hiện chưa có bài viết cẩm nang nào được xuất bản.</p>
+                <p class="m-0">Không có bài viết phù hợp với bộ lọc hiện tại.</p>
             </div>
         }
         else
@@ -52,4 +72,3 @@
         }
     </div>
 </section>
-

@@ -1,4 +1,4 @@
-﻿@model ChillTour.Models.Admin.AdminUsersViewModel
+@model ChillTour.Models.Admin.AdminUsersViewModel
 @using ChillTour.Security
 @{
     ViewData["Title"] = "Quản lý tài khoản";
@@ -48,6 +48,36 @@
                 <h2>Danh sách tài khoản</h2>
             </div>
         </div>
+
+        <form method="get" class="admin-form-grid mb-4">
+            <label>
+                Từ khóa
+                <input type="text" name="searchTerm" value="@Model.Filter.SearchTerm" class="form-control" placeholder="Tên, email, số điện thoại..." />
+            </label>
+            <label>
+                Quyền
+                <select name="roleCode" class="form-select">
+                    <option value="">Tất cả</option>
+                    @foreach (var roleCode in RoleConstants.All)
+                    {
+                        <option value="@roleCode" selected="@string.Equals(Model.Filter.RoleCode, roleCode, StringComparison.OrdinalIgnoreCase)">@RoleConstants.DisplayName(roleCode)</option>
+                    }
+                </select>
+            </label>
+            <label>
+                Trạng thái
+                <select name="isLocked" class="form-select">
+                    <option value="">Tất cả</option>
+                    <option value="false" selected="@(Model.Filter.IsLocked == false)">Đang hoạt động</option>
+                    <option value="true" selected="@(Model.Filter.IsLocked == true)">Đang bị khóa</option>
+                </select>
+            </label>
+            <div class="hero-actions align-items-end">
+                <button type="submit" class="btn btn-primary">Lọc tài khoản</button>
+                <a asp-action="Users" class="btn btn-outline-secondary">Xóa lọc</a>
+            </div>
+        </form>
+
         <div class="admin-table-wrap">
             <table class="admin-table">
                 <thead>
@@ -76,14 +106,7 @@
                                 <select name="roleCode" class="form-select form-select-sm">
                                     @foreach (var roleCode in RoleConstants.All)
                                     {
-                                        if (user.RoleCode.Equals(roleCode, StringComparison.OrdinalIgnoreCase))
-                                        {
-                                            <option value="@roleCode" selected>@RoleConstants.DisplayName(roleCode)</option>
-                                        }
-                                        else
-                                        {
-                                            <option value="@roleCode">@RoleConstants.DisplayName(roleCode)</option>
-                                        }
+                                        <option value="@roleCode" selected="@user.RoleCode.Equals(roleCode, StringComparison.OrdinalIgnoreCase)">@RoleConstants.DisplayName(roleCode)</option>
                                     }
                                 </select>
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Đổi quyền</button>

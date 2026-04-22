@@ -10,5 +10,6 @@ public class EmployeeOrdersViewModel
     public int TotalPages { get; set; }
     public int TotalItems { get; set; }
     public int PageSize { get; set; }
+    public AdminOrdersFilterViewModel Filter { get; set; } = new();
     public IReadOnlyCollection<BookingItemViewModel> Bookings { get; set; } = Array.Empty<BookingItemViewModel>();
 }

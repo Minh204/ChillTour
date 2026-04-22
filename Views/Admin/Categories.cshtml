@@ -1,4 +1,4 @@
-﻿@model IReadOnlyList<ChillTour.Models.Admin.AdminCategoryItemViewModel>
+@model ChillTour.Models.Admin.AdminCategoryListViewModel
 @{
     ViewData["Title"] = "Danh mục tour";
 }
@@ -22,6 +22,25 @@
     }
 
     <section class="admin-panel">
+        <form method="get" class="admin-form-grid mb-4">
+            <label>
+                Từ khóa
+                <input type="text" name="searchTerm" value="@Model.Filter.SearchTerm" class="form-control" placeholder="Mã, tên danh mục..." />
+            </label>
+            <label>
+                Trạng thái
+                <select name="isActive" class="form-select">
+                    <option value="">Tất cả</option>
+                    <option value="true" selected="@(Model.Filter.IsActive == true)">Đang dùng</option>
+                    <option value="false" selected="@(Model.Filter.IsActive == false)">Ngừng dùng</option>
+                </select>
+            </label>
+            <div class="hero-actions align-items-end">
+                <button type="submit" class="btn btn-primary">Lọc danh mục</button>
+                <a asp-action="Categories" class="btn btn-outline-secondary">Xóa lọc</a>
+            </div>
+        </form>
+
         <div class="admin-table-wrap">
             <table class="admin-table">
                 <thead>
@@ -35,15 +54,15 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @if (Model.Count == 0)
+                    @if (Model.Categories.Count == 0)
                     {
                         <tr>
-                            <td colspan="6" class="text-center py-4">Chưa có danh mục nào.</td>
+                            <td colspan="6" class="text-center py-4">Không có danh mục phù hợp với bộ lọc hiện tại.</td>
                         </tr>
                     }
                     else
                     {
-                        @foreach (var item in Model)
+                        @foreach (var item in Model.Categories)
                         {
                             <tr>
                                 <td><strong>@item.CategoryCode</strong></td>

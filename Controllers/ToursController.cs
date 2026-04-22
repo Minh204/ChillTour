@@ -29,7 +29,7 @@ public class ToursController : Controller
     }
 
     [HttpGet("/tours")]
-    public async Task<IActionResult> Index(int page = 1, int? destinationId = null, DateOnly? departureDate = null, string? budgetRange = null, string? sortBy = null, bool lastMinuteOnly = false, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Index(int page = 1, string? searchTerm = null, int? destinationId = null, int? categoryId = null, DateOnly? departureDate = null, string? budgetRange = null, string? sortBy = null, bool lastMinuteOnly = false, CancellationToken cancellationToken = default)
     {
         if (page < 1)
         {
@@ -50,9 +50,25 @@ public class ToursController : Controller
             .Include(x => x.Reviews)
             .AsQueryable();
 
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var normalizedSearch = searchTerm.Trim();
+            query = query.Where(x =>
+                x.TourName.Contains(normalizedSearch) ||
+                x.TourCode.Contains(normalizedSearch) ||
+                x.Category.CategoryName.Contains(normalizedSearch) ||
+                x.StartDestination.DestinationName.Contains(normalizedSearch) ||
+                x.EndDestination.DestinationName.Contains(normalizedSearch));
+        }
+
         if (destinationId.HasValue)
         {
             query = query.Where(x => x.EndDestinationId == destinationId.Value);
+        }
+
+        if (categoryId.HasValue)
+        {
+            query = query.Where(x => x.CategoryId == categoryId.Value);
         }
 
         if (departureDate.HasValue)
@@ -129,17 +145,44 @@ public class ToursController : Controller
             })
             .ToListAsync(cancellationToken);
 
+        var destinationOptions = await _dbContext.Destinations
+            .AsNoTracking()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.DestinationName)
+            .Select(x => new TourFilterOptionViewModel
+            {
+                Id = x.DestinationId,
+                Name = x.DestinationName
+            })
+            .ToListAsync(cancellationToken);
+
+        var categoryOptions = await _dbContext.Categories
+            .AsNoTracking()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.DisplayOrder)
+            .ThenBy(x => x.CategoryName)
+            .Select(x => new TourFilterOptionViewModel
+            {
+                Id = x.CategoryId,
+                Name = x.CategoryName
+            })
+            .ToListAsync(cancellationToken);
+
         return View(new TourListViewModel
         {
             CurrentPage = page,
             TotalPages = totalPages,
             TotalItems = totalItems,
             PageSize = PageSize,
+            SearchTerm = searchTerm,
             SelectedDestinationId = destinationId,
+            SelectedCategoryId = categoryId,
             SelectedDepartureDate = departureDate,
             SelectedBudgetRange = budgetRange,
             SelectedSortBy = sortBy,
             LastMinuteOnly = lastMinuteOnly,
+            DestinationOptions = destinationOptions,
+            CategoryOptions = categoryOptions,
             Tours = tours
         });
     }
