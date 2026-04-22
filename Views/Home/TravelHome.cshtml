@@ -1,0 +1,324 @@
+﻿@model ChillTour.Models.Home.HomePageViewModel
+@{
+    ViewData["Title"] = "Trang chủ";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/pages/home/home.css" asp-append-version="true" />
+}
+
+<section class="travel-home">
+    <section class="travel-home__hero">
+        <div class="container">
+            <div class="travel-home__hero-banner" data-reveal style="@(string.IsNullOrWhiteSpace(Model.HeroImageUrl) ? null : $"background-image: linear-gradient(90deg, rgba(12, 34, 58, 0.86), rgba(12, 34, 58, 0.28)), url('{Model.HeroImageUrl}')")">
+                <div class="travel-home__hero-copy">
+                    <span class="eyebrow">ChillTour Booking Platform</span>
+                    <h1>Khởi hành đến những hành trình đẹp nhất cùng ChillTour.</h1>
+                    <p>
+                        Từ biển xanh, đảo nhiệt đới đến những cung đường núi lộng gió, ChillTour giúp bạn chọn tour,
+                        lịch khởi hành và khoảng giá phù hợp chỉ trong một lần tìm kiếm.
+                    </p>
+
+                    <div class="travel-home__hero-actions">
+                        <a class="btn btn-primary btn-lg" asp-controller="Tours" asp-action="Index">Xem danh sách tour</a>
+                        <a class="btn btn-outline-light btn-lg" href="#diem-den-hot">Khám phá điểm đến</a>
+                    </div>
+                </div>
+
+                <div class="travel-home__hero-stats">
+                    <div>
+                        <strong>@Model.PublishedTourCount+</strong>
+                        <span>Tour đã xuất bản</span>
+                    </div>
+                    <div>
+                        <strong>@Model.ActiveDestinationCount+</strong>
+                        <span>Điểm đến đang hoạt động</span>
+                    </div>
+                    <div>
+                        <strong>@Model.UpcomingDepartureCount+</strong>
+                        <span>Lịch khởi hành đang mở bán</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="travel-home__search-card travel-home__search-card--horizontal" data-reveal>
+                <form asp-controller="Tours" asp-action="Index" method="get" class="travel-home__search-inline">
+                    <label>
+                        <span>Điểm đến</span>
+                        <select name="destinationId">
+                            <option value="">Chọn điểm đến</option>
+                            @foreach (var destination in Model.SearchDestinations)
+                            {
+                                <option value="@destination.DestinationId">@destination.DestinationName</option>
+                            }
+                        </select>
+                    </label>
+
+                    <label>
+                        <span>Ngày đi</span>
+                        <input type="date" name="departureDate" />
+                    </label>
+
+                    <label>
+                        <span>Ngân sách</span>
+                        <select name="budgetRange">
+                            <option value="">Chọn khoảng giá</option>
+                            <option value="under-5">Dưới 5 triệu</option>
+                            <option value="5-10">5 - 10 triệu</option>
+                            <option value="10-20">10 - 20 triệu</option>
+                            <option value="over-20">Trên 20 triệu</option>
+                        </select>
+                    </label>
+
+                    <button type="submit" class="btn btn-primary btn-lg">Tìm tour</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <section class="travel-home__destination-section" id="diem-den-hot">
+        <div class="container">
+            <div class="travel-home__section-head travel-home__section-head--rail" data-reveal>
+                <div>
+                    <span class="eyebrow eyebrow--warm">Điểm đến nổi bật</span>
+                    <h2>Những điểm đến đang có tour mở bán trên ChillTour</h2>
+                </div>
+                <div class="travel-home__section-actions">
+                    <button type="button" class="travel-home__rail-button" data-scroll-left aria-label="Cuộn trái">
+                        <span aria-hidden="true">←</span>
+                    </button>
+                    <button type="button" class="travel-home__rail-button" data-scroll-right aria-label="Cuộn phải">
+                        <span aria-hidden="true">→</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="travel-home__rail" data-scroll-rail>
+                <div class="travel-home__rail-track">
+                    @foreach (var destination in Model.Destinations)
+                    {
+                        <article class="travel-home__destination-card travel-home__destination-card--rail @destination.ThemeClass" data-reveal style="@(string.IsNullOrWhiteSpace(destination.ThumbnailUrl) ? null : $"background-image: linear-gradient(180deg, rgba(8, 18, 34, 0.12), rgba(8, 18, 34, 0.78)), url('{destination.ThumbnailUrl}')")">
+                            <div class="travel-home__destination-overlay"></div>
+                            <div class="travel-home__destination-content">
+                                <span class="travel-home__destination-chip">Điểm đến nổi bật</span>
+                                <h3>@destination.DestinationName</h3>
+                                <p>@(string.IsNullOrWhiteSpace(destination.Summary) ? $"Khám phá hành trình đến {(string.IsNullOrWhiteSpace(destination.ProvinceName) ? destination.DestinationName : destination.ProvinceName)} với các tour khởi hành linh hoạt." : destination.Summary)</p>
+                                <a asp-controller="Tours" asp-action="Index" asp-route-destinationId="@destination.DestinationId" class="travel-home__destination-link">Xem tour liên quan</a>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </div>
+
+            <div class="travel-home__rail-footer" data-reveal>
+                <a asp-controller="Tours" asp-action="Index" class="travel-home__section-link travel-home__section-link--footer">Xem tất cả</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="travel-home__feature-section">
+        <div class="container">
+            <div class="travel-home__section-head travel-home__section-head--rail" data-reveal>
+                <div>
+                    <span class="eyebrow">Tour đánh giá cao</span>
+                    <h2>Tours được khách hàng đánh giá cao trên ChillTour</h2>
+                </div>
+                <div class="travel-home__section-actions">
+                    <button type="button" class="travel-home__rail-button" data-scroll-left aria-label="Cuộn trái">
+                        <span aria-hidden="true">←</span>
+                    </button>
+                    <button type="button" class="travel-home__rail-button" data-scroll-right aria-label="Cuộn phải">
+                        <span aria-hidden="true">→</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="travel-home__rail" data-scroll-rail>
+                <div class="travel-home__rail-track">
+                    @foreach (var tour in Model.FeaturedTours)
+                    {
+                        <article class="travel-home__tour-card travel-home__tour-card--rail" data-reveal>
+                            <a asp-controller="Tours" asp-action="Details" asp-route-slug="@tour.Slug" class="travel-home__tour-image">
+                                @if (!string.IsNullOrWhiteSpace(tour.ImageUrl))
+                                {
+                                    <img src="@tour.ImageUrl" alt="@tour.TourName" />
+                                }
+                                else
+                                {
+                                    <span class="travel-home__tour-image-fallback">@tour.CategoryName</span>
+                                }
+                                <span class="travel-home__tour-badge">@(tour.IsFeatured ? "Nổi bật" : "Đang mở bán")</span>
+                            </a>
+                            <div class="travel-home__tour-body">
+                                <div class="travel-home__tour-meta">
+                                    <span>@tour.TourCode</span>
+                                    <span>@tour.CategoryName</span>
+                                </div>
+                                <div class="travel-home__tour-rating">
+                                    <span class="travel-home__tour-rating-star">★</span>
+                                    <strong>@(tour.ReviewCount == 0 ? "Mới" : tour.AverageRating.ToString("0.0"))</strong>
+                                    <span>@(tour.ReviewCount == 0 ? "Chưa có đánh giá" : $"{tour.ReviewCount} đánh giá")</span>
+                                </div>
+                                <h3>
+                                    <a asp-controller="Tours" asp-action="Details" asp-route-slug="@tour.Slug">@tour.TourName</a>
+                                </h3>
+                                <p class="travel-home__tour-route">@tour.RouteName</p>
+                                <p class="travel-home__tour-copy">@(string.IsNullOrWhiteSpace(tour.ShortDescription) ? "Lịch trình được trình bày rõ ràng, phù hợp để khách xem nhanh và giữ chỗ ngay." : tour.ShortDescription)</p>
+                                <div class="travel-home__tour-facts">
+                                    <span>@tour.DurationDays ngày @tour.DurationNights đêm</span>
+                                    <span>@(tour.DepartureDate.HasValue ? $"Khởi hành {tour.DepartureDate.Value:dd/MM/yyyy}" : "Linh hoạt lịch đi")</span>
+                                    <span class="@(tour.IsLowStock ? "is-low" : string.Empty)">@(tour.RemainingSeats > 0 ? $"Còn {tour.RemainingSeats} chỗ" : "Đã hết chỗ")</span>
+                                </div>
+                                <div class="travel-home__tour-foot">
+                                    <div>
+                                        <span>Giá từ</span>
+                                        <strong>@tour.BasePrice.ToString("N0") đ</strong>
+                                    </div>
+                                    <a asp-controller="Tours" asp-action="Details" asp-route-slug="@tour.Slug" class="btn btn-outline-primary">Xem chi tiết</a>
+                                </div>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </div>
+
+            <div class="travel-home__rail-footer" data-reveal>
+                <a asp-controller="Tours" asp-action="Index" class="travel-home__section-link travel-home__section-link--footer">Xem tất cả</a>
+            </div>
+        </div>
+    </section>
+
+    @if (Model.LastMinuteTours.Count > 0)
+    {
+        <section class="travel-home__last-minute-section">
+            <div class="container">
+                <div class="travel-home__section-head travel-home__section-head--rail" data-reveal>
+                    <div>
+                        <span class="eyebrow eyebrow--warm">Ưu đãi giờ chót</span>
+                        <h2>Những tour khởi hành trong vòng 5 ngày tới</h2>
+                    </div>
+                    <div class="travel-home__section-actions">
+                        <button type="button" class="travel-home__rail-button" data-scroll-left aria-label="Cuộn trái">
+                            <span aria-hidden="true">←</span>
+                        </button>
+                        <button type="button" class="travel-home__rail-button" data-scroll-right aria-label="Cuộn phải">
+                            <span aria-hidden="true">→</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="travel-home__rail" data-scroll-rail>
+                    <div class="travel-home__rail-track">
+                        @foreach (var tour in Model.LastMinuteTours)
+                        {
+                            <article class="travel-home__last-minute-card travel-home__last-minute-card--rail" data-reveal>
+                                <a asp-controller="Tours" asp-action="Details" asp-route-slug="@tour.Slug" class="travel-home__last-minute-image">
+                                    @if (!string.IsNullOrWhiteSpace(tour.ImageUrl))
+                                    {
+                                        <img src="@tour.ImageUrl" alt="@tour.TourName" />
+                                    }
+                                    else
+                                    {
+                                        <span class="travel-home__tour-image-fallback">@tour.CategoryName</span>
+                                    }
+                                </a>
+
+                                <div class="travel-home__last-minute-body">
+                                    <div class="travel-home__last-minute-top">
+                                        <span class="travel-home__last-minute-badge">Giờ chót</span>
+                                        <span class="travel-home__last-minute-rating">★ @(tour.ReviewCount == 0 ? "Mới" : tour.AverageRating.ToString("0.0"))</span>
+                                    </div>
+
+                                    <h3>
+                                        <a asp-controller="Tours" asp-action="Details" asp-route-slug="@tour.Slug">@tour.TourName</a>
+                                    </h3>
+                                    <p>@tour.RouteName</p>
+
+                                    <div class="travel-home__last-minute-facts">
+                                        <span>Khởi hành: @(tour.DepartureDate?.ToString("dd/MM/yyyy") ?? "Sắp cập nhật")</span>
+                                        <span>@tour.DurationDays ngày @tour.DurationNights đêm</span>
+                                        <span>Còn @tour.RemainingSeats/@tour.TotalSeats chỗ</span>
+                                    </div>
+
+                                    <div class="travel-home__last-minute-foot">
+                                        <div>
+                                            <span>Giá từ</span>
+                                            <strong>@tour.BasePrice.ToString("N0") đ</strong>
+                                        </div>
+                                        <a asp-controller="Tours" asp-action="Details" asp-route-slug="@tour.Slug" class="btn btn-outline-primary">Đặt ngay</a>
+                                    </div>
+                                </div>
+                            </article>
+                        }
+                    </div>
+                </div>
+
+                <div class="travel-home__rail-footer" data-reveal>
+                    <a asp-controller="Tours" asp-action="Index" asp-route-lastMinuteOnly="true" class="travel-home__section-link travel-home__section-link--footer">Xem tất cả</a>
+                </div>
+            </div>
+        </section>
+    }
+
+    <section class="travel-home__promo-section" id="cam-nang">
+        <div class="container">
+            <div class="travel-home__section-head travel-home__section-head--rail" data-reveal>
+                <div>
+                    <span class="eyebrow eyebrow--warm">Giá tốt trong hôm nay</span>
+                    <h2>Những tour với mức giá tốt cho khách hàng</h2>
+                </div>
+                <div class="travel-home__section-actions">
+                    <button type="button" class="travel-home__rail-button" data-scroll-left aria-label="Cuộn trái">
+                        <span aria-hidden="true">←</span>
+                    </button>
+                    <button type="button" class="travel-home__rail-button" data-scroll-right aria-label="Cuộn phải">
+                        <span aria-hidden="true">→</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="travel-home__rail" data-scroll-rail>
+                <div class="travel-home__rail-track">
+                    @foreach (var tour in Model.ValueTours)
+                    {
+                        <article class="travel-home__value-card travel-home__value-card--rail" data-reveal>
+                            <a asp-controller="Tours" asp-action="Details" asp-route-slug="@tour.Slug" class="travel-home__value-image">
+                                @if (!string.IsNullOrWhiteSpace(tour.ImageUrl))
+                                {
+                                    <img src="@tour.ImageUrl" alt="@tour.TourName" />
+                                }
+                                else
+                                {
+                                    <span class="travel-home__tour-image-fallback">@tour.CategoryName</span>
+                                }
+                            </a>
+                            <div class="travel-home__value-body">
+                                <span>@tour.CategoryName</span>
+                                <h3>
+                                    <a asp-controller="Tours" asp-action="Details" asp-route-slug="@tour.Slug">@tour.TourName</a>
+                                </h3>
+                                <p>@tour.RouteName</p>
+                                <div class="travel-home__value-meta">
+                                    <span>@tour.DurationDays ngày @tour.DurationNights đêm</span>
+                                    <span>@(tour.DepartureDate.HasValue ? $"Khởi hành {tour.DepartureDate.Value:dd/MM/yyyy}" : "Mở bán liên tục")</span>
+                                </div>
+                                <div class="travel-home__value-foot">
+                                    <strong>@tour.BasePrice.ToString("N0") đ</strong>
+                                    <a asp-controller="Tours" asp-action="Details" asp-route-slug="@tour.Slug" class="btn btn-outline-primary">Xem chi tiết</a>
+                                </div>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </div>
+
+            <div class="travel-home__rail-footer" data-reveal>
+                <a asp-controller="Tours" asp-action="Index" asp-route-sortBy="price-asc" class="travel-home__section-link travel-home__section-link--footer">Xem tất cả</a>
+            </div>
+        </div>
+    </section>
+</section>
+
+@section Scripts {
+    <script src="~/pages/home/home.js" asp-append-version="true"></script>
+}

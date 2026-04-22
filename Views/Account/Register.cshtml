@@ -1,0 +1,56 @@
+@model ChillTour.Models.Account.RegisterViewModel
+@{
+    ViewData["Title"] = "Đăng ký";
+}
+
+<section class="auth-page">
+    <div class="container">
+        <div class="auth-card">
+            <div class="auth-card__intro">
+                <span class="eyebrow eyebrow--warm">Tạo tài khoản</span>
+                <h1>Đăng ký Customer</h1>
+            </div>
+
+            <form asp-action="Register" method="post" class="auth-form">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                <label>
+                    Họ tên
+                    <input asp-for="FullName" class="form-control" />
+                    <span asp-validation-for="FullName" class="text-danger"></span>
+                </label>
+
+                <label>
+                    Email
+                    <input asp-for="Email" class="form-control" />
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </label>
+
+                <label>
+                    Số điện thoại
+                    <input asp-for="PhoneNumber" class="form-control" />
+                    <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                </label>
+
+                <label>
+                    Mật khẩu
+                    <input asp-for="Password" class="form-control" />
+                    <span asp-validation-for="Password" class="text-danger"></span>
+                </label>
+
+                <label>
+                    Xác nhận mật khẩu
+                    <input asp-for="ConfirmPassword" class="form-control" />
+                    <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+                </label>
+
+                <button type="submit" class="btn btn-primary booking-submit">Đăng ký</button>
+                <p class="auth-switch">Đã có tài khoản? <a asp-action="Login">Đăng nhập</a></p>
+            </form>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

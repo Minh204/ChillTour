@@ -1,0 +1,111 @@
+﻿@model ChillTour.Models.Admin.AdminUsersViewModel
+@using ChillTour.Security
+@{
+    ViewData["Title"] = "Quản lý tài khoản";
+}
+
+<section class="admin-page-stack">
+    <div class="admin-page-head">
+        <div>
+            <span class="admin-panel__label">Admin tools</span>
+            <h2>Quản lý tài khoản người dùng</h2>
+            <p>Thêm tài khoản mới, đổi quyền và khóa hoặc mở khóa user trong hệ thống.</p>
+        </div>
+        <a asp-action="CreateUser" class="btn btn-primary nav-cta">Thêm tài khoản</a>
+    </div>
+
+    @if (TempData["AdminSuccessMessage"] is string successMessage)
+    {
+        <div class="auth-alert auth-alert--success">@successMessage</div>
+    }
+    @if (TempData["AdminErrorMessage"] is string errorMessage)
+    {
+        <div class="auth-alert auth-alert--error">@errorMessage</div>
+    }
+
+    <div class="admin-metrics">
+        <div class="admin-stat-card admin-stat-card--blue">
+            <span>Tổng tài khoản</span>
+            <strong>@Model.TotalUsers</strong>
+            <p>Tổng người dùng đang có trong hệ thống.</p>
+        </div>
+        <div class="admin-stat-card">
+            <span>Đang hoạt động</span>
+            <strong>@Model.ActiveUsers</strong>
+            <p>Các tài khoản hiện có thể đăng nhập.</p>
+        </div>
+        <div class="admin-stat-card admin-stat-card--orange">
+            <span>Đang bị khóa</span>
+            <strong>@Model.LockedUsers</strong>
+            <p>Những tài khoản tạm thời bị vô hiệu hóa.</p>
+        </div>
+    </div>
+
+    <section class="admin-panel">
+        <div class="admin-panel__header">
+            <div>
+                <span class="admin-panel__label">User Management</span>
+                <h2>Danh sách tài khoản</h2>
+            </div>
+        </div>
+        <div class="admin-table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Tài khoản</th>
+                        <th>Liên hệ</th>
+                        <th>Quyền</th>
+                        <th>Trạng thái</th>
+                        <th>Đăng nhập gần nhất</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var user in Model.Users)
+                {
+                    <tr>
+                        <td>
+                            <strong>@user.FullName</strong>
+                            <div class="admin-table__sub">@user.Email</div>
+                        </td>
+                        <td>@(string.IsNullOrWhiteSpace(user.PhoneNumber) ? "Chưa cập nhật" : user.PhoneNumber)</td>
+                        <td>
+                            <form asp-action="ChangeRole" method="post" class="admin-inline-form">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="userId" value="@user.UserId" />
+                                <select name="roleCode" class="form-select form-select-sm">
+                                    @foreach (var roleCode in RoleConstants.All)
+                                    {
+                                        if (user.RoleCode.Equals(roleCode, StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            <option value="@roleCode" selected>@RoleConstants.DisplayName(roleCode)</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@roleCode">@RoleConstants.DisplayName(roleCode)</option>
+                                        }
+                                    }
+                                </select>
+                                <button type="submit" class="btn btn-outline-primary btn-sm">Đổi quyền</button>
+                            </form>
+                        </td>
+                        <td>
+                            <span class="status-pill @(user.IsLocked ? "status-pill--danger" : "status-pill--success")">@user.StatusLabel</span>
+                        </td>
+                        <td>@(user.LastLoginAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Chưa đăng nhập")</td>
+                        <td>
+                            <form asp-action="ToggleLock" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="userId" value="@user.UserId" />
+                                <button type="submit" class="btn @(user.IsLocked ? "btn-outline-success" : "btn-outline-danger") btn-sm">
+                                    @(user.IsLocked ? "Mở khóa" : "Khóa")
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>

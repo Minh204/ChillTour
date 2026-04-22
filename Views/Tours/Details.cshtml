@@ -1,0 +1,463 @@
+﻿@model ChillTour.Models.Tours.TourDetailViewModel
+@{
+    ViewData["Title"] = Model.TourName;
+}
+
+@{
+    var heroImage = Model.ImageUrls.FirstOrDefault();
+    var openSchedules = Model.Schedules.Where(x => x.IsOpenForBooking).ToList();
+    var hasLongDescription = !string.IsNullOrWhiteSpace(Model.Description) && Model.Description.Length > 320;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/pages/tours/tours.css" asp-append-version="true" />
+}
+
+<section class="tour-program-page">
+    @if (TempData["TourSuccessMessage"] is string successMessage)
+    {
+        <div class="auth-alert auth-alert--success">@successMessage</div>
+    }
+    @if (TempData["TourErrorMessage"] is string errorMessage)
+    {
+        <div class="auth-alert auth-alert--error">@errorMessage</div>
+    }
+
+    <div class="tour-program-hero">
+        <div class="tour-program-hero__content">
+            <div class="tour-program-badges">
+                <span class="tour-detail-code">@Model.TourCode</span>
+                <span class="tour-program-chip">@Model.CategoryName</span>
+                @if (Model.IsSoldOut)
+                {
+                    <span class="tour-program-chip is-danger">Đã hết chỗ</span>
+                }
+                else if (Model.IsLowStock)
+                {
+                    <span class="tour-program-chip is-warn">Còn ít chỗ</span>
+                }
+            </div>
+            <h1>@Model.TourName</h1>
+            <p class="tour-program-lead">@Model.RouteName</p>
+            @if (!string.IsNullOrWhiteSpace(Model.ShortDescription))
+            {
+                <p class="tour-program-summary">@Model.ShortDescription</p>
+            }
+
+            <div class="tour-program-facts">
+                <div><span>Thời gian</span><strong>@Model.DurationDays ngày @Model.DurationNights đêm</strong></div>
+                <div><span>Giá từ</span><strong data-schedule-adult-price>@Model.BasePrice.ToString("N0") đ</strong></div>
+                <div><span>Khởi hành gần nhất</span><strong data-schedule-departure>@(Model.DepartureDate?.ToString("dd/MM/yyyy") ?? "Liên hệ")</strong></div>
+                <div><span>Tình trạng</span><strong data-schedule-seat-status>@(Model.IsSoldOut ? "Đã hết vé" : $"Còn {Model.RemainingSeats}/{Model.TotalSeats} vé")</strong></div>
+            </div>
+        </div>
+        <div class="tour-program-hero__gallery">
+            @if (!string.IsNullOrWhiteSpace(heroImage))
+            {
+                <button type="button" class="tour-program-image-trigger tour-program-image-trigger--main" data-image-src="@heroImage" data-image-alt="@Model.TourName">
+                    <img src="@heroImage" alt="@Model.TourName" class="tour-program-hero__main-image" />
+                </button>
+            }
+            @if (Model.ImageUrls.Count > 1)
+            {
+                <div class="tour-program-thumb-grid">
+                    @foreach (var imageUrl in Model.ImageUrls.Skip(1).Take(4))
+                    {
+                        <button type="button" class="tour-program-image-trigger" data-image-src="@imageUrl" data-image-alt="@Model.TourName">
+                            <img src="@imageUrl" alt="@Model.TourName" class="tour-program-thumb-grid__image" />
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="tour-program-layout">
+        <div class="tour-program-main">
+            <section class="tour-program-panel">
+                <div class="tour-program-panel__head">
+                    <span class="tour-program-panel__label">Thông tin chung</span>
+                    <h2>Tổng quan chuyến đi</h2>
+                </div>
+                <div class="tour-program-info-grid">
+                    <div><span>Điểm đi</span><strong>@Model.StartDestinationName</strong></div>
+                    <div><span>Điểm đến</span><strong>@Model.EndDestinationName</strong></div>
+                    <div><span>Điểm khởi hành</span><strong>@(string.IsNullOrWhiteSpace(Model.DeparturePoint) ? "Theo lịch hẹn" : Model.DeparturePoint)</strong></div>
+                    <div><span>Điểm trả khách</span><strong>@(string.IsNullOrWhiteSpace(Model.ReturnPoint) ? "Theo lịch hẹn" : Model.ReturnPoint)</strong></div>
+                    <div><span>Đón khách</span><strong>@(Model.PickupIncluded ? "Có hỗ trợ đón khách" : "Không bao gồm")</strong></div>
+                    <div><span>Phụ thu phòng đơn</span><strong>@(Model.SingleSupplement.HasValue ? $"{Model.SingleSupplement.Value:N0} đ" : "Liên hệ")</strong></div>
+                </div>
+            </section>
+
+            @if (!string.IsNullOrWhiteSpace(Model.Description))
+            {
+                <section class="tour-program-panel">
+                    <div class="tour-program-panel__head">
+                        <span class="tour-program-panel__label">Giới thiệu</span>
+                        <h2>Điểm nổi bật của tour</h2>
+                    </div>
+                    <div class="tour-detail-description @(hasLongDescription ? "is-collapsed" : string.Empty)" id="tourHighlightContent">@Model.Description</div>
+                    @if (hasLongDescription)
+                    {
+                        <button type="button" class="tour-expand-btn" id="tourHighlightToggle" aria-expanded="false">Xem thêm</button>
+                    }
+                </section>
+            }
+
+            <section class="tour-program-panel">
+                <div class="tour-program-panel__head">
+                    <span class="tour-program-panel__label">Khởi hành</span>
+                    <h2>Lịch khởi hành khả dụng</h2>
+                </div>
+                @if (Model.Schedules.Count == 0)
+                {
+                    <p class="tour-program-empty">Hiện chưa có lịch khởi hành cho tour này.</p>
+                }
+                else
+                {
+                    <div class="tour-schedule-list">
+                        @foreach (var schedule in Model.Schedules)
+                        {
+                            <article class="tour-schedule-card @(schedule.IsOpenForBooking ? string.Empty : "is-disabled")">
+                                <div>
+                                    <strong>@schedule.DepartureDate.ToString("dd/MM/yyyy")</strong>
+                                    <span>đến @schedule.ReturnDate.ToString("dd/MM/yyyy")</span>
+                                </div>
+                                <div>
+                                    <strong>@schedule.AdultPrice.ToString("N0") đ</strong>
+                                    <span>@(schedule.IsOpenForBooking ? $"Còn {schedule.AvailableSeats}/{schedule.TotalSeats} chỗ" : "Chưa mở bán / đã hết chỗ")</span>
+                                </div>
+                            </article>
+                        }
+                    </div>
+                }
+            </section>
+
+            <section class="tour-program-panel">
+                <div class="tour-program-panel__head">
+                    <span class="tour-program-panel__label">Chương trình tour</span>
+                    <h2>Lịch trình chi tiết</h2>
+                </div>
+                @if (Model.ItineraryDays.Count == 0)
+                {
+                    <p class="tour-program-empty">Tour này đang được cập nhật lịch trình chi tiết.</p>
+                }
+                else
+                {
+                    <div class="tour-itinerary-list tour-itinerary-accordion">
+                        @for (var i = 0; i < Model.ItineraryDays.Count; i++)
+                        {
+                            var day = Model.ItineraryDays[i];
+                            var meals = new List<string>();
+                            if (day.BreakfastIncluded) meals.Add("sáng");
+                            if (day.LunchIncluded) meals.Add("trưa");
+                            if (day.DinnerIncluded) meals.Add("chiều");
+                            var collapseId = $"itinerary-day-{day.DayNumber}";
+                            <article class="tour-itinerary-accordion__item">
+                                <button type="button"
+                                        class="tour-itinerary-accordion__toggle collapsed"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#@collapseId"
+                                        aria-expanded="false">
+                                    <span class="tour-itinerary-accordion__title">Ngày @day.DayNumber: @day.Title</span>
+                                    <span class="tour-itinerary-accordion__meals">@(meals.Count == 0 ? "Không bao gồm bữa ăn" : $"{meals.Count:00} bữa ăn ({string.Join(", ", meals).ToLowerInvariant()})")</span>
+                                </button>
+                                <div id="@collapseId" class="collapse">
+                                    <div class="tour-itinerary-accordion__body">
+                                        @if (!string.IsNullOrWhiteSpace(day.Summary))
+                                        {
+                                            <p class="tour-itinerary-card__summary">@day.Summary</p>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(day.Description))
+                                        {
+                                            <div class="tour-itinerary-card__description">@day.Description</div>
+                                        }
+                                        <div class="tour-itinerary-meta">
+                                            @if (!string.IsNullOrWhiteSpace(day.TransportationName))
+                                            {
+                                                <span>Phương tiện: @day.TransportationName</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(day.HotelName))
+                                            {
+                                                <span>Khách sạn: @day.HotelName</span>
+                                            }
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(day.OvernightStay))
+                                        {
+                                            <div class="tour-itinerary-accordion__overnight">Nghỉ đêm tại @day.OvernightStay</div>
+                                        }
+                                    </div>
+                                </div>
+                            </article>
+                        }
+                    </div>
+                }
+            </section>
+
+            <section class="tour-program-panel">
+                <div class="tour-program-panel__head">
+                    <span class="tour-program-panel__label">Điều kiện</span>
+                    <h2>Ghi chú và chính sách</h2>
+                </div>
+                <div class="tour-policy-grid">
+                    <article><h3>Giá tour</h3><p>Giá người lớn từ @Model.BasePrice.ToString("N0") đ. Trẻ em tính 50% giá người lớn, em bé được miễn phí.</p></article>
+                    <article><h3>Đặt cọc</h3><p>Khách hàng thanh toán cọc 30% để giữ chỗ. Sau khi đối soát thành công, hệ thống sẽ xác nhận đơn và gửi thông báo trong hộp thư.</p></article>
+                    <article><h3>Chỗ ngồi</h3><p>@(Model.IsSoldOut ? "Tour hiện đã hết chỗ." : $"Hiện còn {Model.RemainingSeats}/{Model.TotalSeats} chỗ trên hệ thống. Danh sách lịch khởi hành bên trên có thể có số chỗ khác nhau theo từng đợt.")</p></article>
+                    <article><h3>Lưu ý</h3><p>Lịch trình, thời gian bay và dịch vụ thực tế có thể thay đổi tùy điều kiện vận hành, nhưng vẫn đảm bảo đầy đủ các điểm tham quan chính của chương trình.</p></article>
+                </div>
+            </section>
+
+            <section class="tour-program-panel">
+                <div class="tour-program-panel__head">
+                    <span class="tour-program-panel__label">Đánh giá</span>
+                    <h2>Nhận xét từ khách hàng</h2>
+                </div>
+
+                <div class="tour-review-summary">
+                    <div class="tour-review-summary__score">
+                        <strong>@(Model.ReviewCount == 0 ? "Mới" : Model.AverageRating.ToString("0.0"))</strong>
+                        <span>@(Model.ReviewCount == 0 ? "Chưa có đánh giá" : $"{Model.ReviewCount} đánh giá")</span>
+                    </div>
+                    <div class="tour-review-summary__stars" aria-label="@Model.AverageRating sao">
+                        @for (var star = 1; star <= 5; star++)
+                        {
+                            <span class="@(star <= Math.Round(Model.AverageRating, MidpointRounding.AwayFromZero) ? "is-active" : string.Empty)">★</span>
+                        }
+                    </div>
+                </div>
+
+                @if (!User.Identity?.IsAuthenticated ?? true)
+                {
+                    <p class="tour-program-empty">Đăng nhập bằng tài khoản khách hàng để gửi đánh giá sau khi đã trải nghiệm tour.</p>
+                }
+                else if (!User.IsInRole("Customer"))
+                {
+                    <p class="tour-program-empty">Chỉ tài khoản Customer mới có thể đánh giá tour.</p>
+                }
+                else if (Model.HasReviewed)
+                {
+                    <p class="tour-program-empty">Bạn đã đánh giá tour này rồi.</p>
+                }
+                else if (Model.CanReview)
+                {
+                    <form asp-controller="Tours" asp-action="AddReview" asp-route-slug="@Model.Slug" method="post" enctype="multipart/form-data" class="auth-form tour-review-form">
+                        @Html.AntiForgeryToken()
+                        <input asp-for="ReviewForm.TourId" type="hidden" />
+
+                        <div class="tour-review-stars">
+                            <span>Đánh giá số sao</span>
+                            <div class="tour-review-stars__list">
+                                @for (var star = 5; star >= 1; star--)
+                                {
+                                    <input type="radio" id="review-star-@star" name="ReviewForm.Rating" value="@star" @(star == 5 ? "checked" : null) />
+                                    <label for="review-star-@star" title="@star sao">★</label>
+                                }
+                            </div>
+                        </div>
+
+                        <label>
+                            Bình luận
+                            <textarea asp-for="ReviewForm.Comment" class="form-control admin-textarea" placeholder="Chia sẻ trải nghiệm thực tế của bạn về tour này..."></textarea>
+                        </label>
+
+                        <label>
+                            Ảnh trải nghiệm
+                            <input type="file" name="reviewImages" class="form-control" accept="image/*" multiple />
+                            <small class="admin-field-help">Có thể tải nhiều ảnh. Mỗi ảnh tối đa 5MB.</small>
+                        </label>
+
+                        <button type="submit" class="btn btn-primary">Gửi đánh giá</button>
+                    </form>
+                }
+                else
+                {
+                    <p class="tour-program-empty">Chỉ khách hàng đã đặt và thanh toán tour mới có thể đánh giá.</p>
+                }
+
+                @if (Model.Reviews.Count == 0)
+                {
+                    <p class="tour-program-empty">Chưa có đánh giá nào cho tour này.</p>
+                }
+                else
+                {
+                    <div class="tour-review-list">
+                        @foreach (var review in Model.Reviews)
+                        {
+                            <article class="tour-review-card">
+                                <div class="tour-review-card__head">
+                                    <div>
+                                        <h3>@review.FullName</h3>
+                                        <span>@review.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                                    </div>
+                                    <div class="tour-review-card__rating" aria-label="@review.Rating sao">
+                                        @for (var star = 1; star <= 5; star++)
+                                        {
+                                            <span class="@(star <= Math.Round(review.Rating, MidpointRounding.AwayFromZero) ? "is-active" : string.Empty)">★</span>
+                                        }
+                                    </div>
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(review.Comment))
+                                {
+                                    <p class="tour-review-card__comment">@review.Comment</p>
+                                }
+
+                                @if (review.ImageUrls.Count > 0)
+                                {
+                                    <div class="tour-review-card__gallery">
+                                        @foreach (var imageUrl in review.ImageUrls)
+                                        {
+                                            <button type="button" class="tour-program-image-trigger" data-image-src="@imageUrl" data-image-alt="Ảnh đánh giá của @review.FullName">
+                                                <img src="@imageUrl" alt="Ảnh đánh giá của @review.FullName" class="tour-review-card__image" />
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                            </article>
+                        }
+                    </div>
+                }
+            </section>
+        </div>
+
+        <aside class="tour-booking-card tour-booking-card--sticky">
+            <span class="tour-booking-card__label">Đặt tour</span>
+            <h2>Giữ chỗ ngay</h2>
+            <div class="tour-booking-price">
+                <span>Giá từ</span>
+                <strong data-schedule-adult-price>@Model.BasePrice.ToString("N0") đ</strong>
+            </div>
+            <ul class="tour-booking-points">
+                <li>@Model.DurationDays ngày @Model.DurationNights đêm</li>
+                <li data-schedule-departure>@(Model.DepartureDate?.ToString("dd/MM/yyyy") ?? "Lịch khởi hành đang cập nhật")</li>
+                <li data-schedule-seat-status>@(Model.IsSoldOut ? "Đã hết chỗ" : $"Còn {Model.RemainingSeats}/{Model.TotalSeats} chỗ")</li>
+            </ul>
+          
+            @if (Model.IsLastMinuteDeal)
+            {
+                <p class="tour-booking-card__note">Lịch khởi hành hiện tại đang thuộc diện tour giờ chót, hệ thống sẽ tự giảm 15% và yêu cầu thanh toán toàn bộ để giữ chỗ.</p>
+            }
+
+            @if (!User.Identity?.IsAuthenticated ?? true)
+            {
+                <p class="tour-booking-card__note">Bạn cần đăng nhập bằng tài khoản khách hàng để đặt tour.</p>
+                <a asp-controller="Account" asp-action="Login" class="btn btn-primary booking-submit">Đăng nhập để đặt</a>
+            }
+            else if (!User.IsInRole("Customer"))
+            {
+                <p class="tour-booking-card__note">Chỉ tài khoản Customer mới có thể đặt tour.</p>
+            }
+            else if (!Model.TourScheduleId.HasValue)
+            {
+                <p class="tour-booking-card__note">Tour này chưa có lịch khởi hành khả dụng để đặt.</p>
+            }
+            else if (Model.IsSoldOut)
+            {
+                <p class="tour-booking-card__note">Tour này đã hết vé.</p>
+            }
+            else
+            {
+                <form asp-controller="Tours" asp-action="Book" method="post" class="auth-form">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="BookingForm.TourId" type="hidden" />
+
+                    <label>
+                        Họ tên liên hệ
+                        <input asp-for="BookingForm.ContactName" class="form-control" />
+                        <span asp-validation-for="BookingForm.ContactName" class="text-danger"></span>
+                    </label>
+
+                    <label>
+                        Email liên hệ
+                        <input asp-for="BookingForm.ContactEmail" class="form-control" />
+                        <span asp-validation-for="BookingForm.ContactEmail" class="text-danger"></span>
+                    </label>
+
+                    <label>
+                        Số điện thoại
+                        <input asp-for="BookingForm.ContactPhone" class="form-control" />
+                        <span asp-validation-for="BookingForm.ContactPhone" class="text-danger"></span>
+                    </label>
+
+                    @if (openSchedules.Count > 0)
+                    {
+                        <label>
+                            Ngày khởi hành
+                                <select asp-for="BookingForm.TourScheduleId" class="form-select">
+                                    @foreach (var schedule in openSchedules)
+                                    {
+                                        <option value="@schedule.TourScheduleId"
+                                                data-adult-price="@schedule.AdultPrice"
+                                                data-child-price="@schedule.ChildPrice"
+                                                data-single-supplement="@schedule.SingleSupplement"
+                                                data-departure-date="@schedule.DepartureDate.ToString("dd/MM/yyyy")"
+                                                data-seat-status="Còn @schedule.AvailableSeats/@schedule.TotalSeats chỗ">
+                                            @schedule.DepartureDate.ToString("dd/MM/yyyy") - @schedule.AdultPrice.ToString("N0") đ
+                                        </option>
+                                    }
+                                </select>
+                            </label>
+                        }
+                    else
+                    {
+                        <input asp-for="BookingForm.TourScheduleId" type="hidden" />
+                    }
+
+                    <div class="tour-booking-grid">
+                        <label>
+                            Người lớn
+                            <input asp-for="BookingForm.AdultCount" class="form-control" />
+                            <span asp-validation-for="BookingForm.AdultCount" class="text-danger"></span>
+                        </label>
+
+                        <label>
+                            Trẻ em
+                            <input asp-for="BookingForm.ChildCount" class="form-control" />
+                            <span asp-validation-for="BookingForm.ChildCount" class="text-danger"></span>
+                        </label>
+                    </div>
+
+                    <label>
+                        Em bé
+                        <input asp-for="BookingForm.InfantCount" class="form-control" />
+                        <span asp-validation-for="BookingForm.InfantCount" class="text-danger"></span>
+                    </label>
+
+                    <label>
+                        Phòng đơn
+                        <input asp-for="BookingForm.SingleRoomCount" class="form-control" />
+                        <span asp-validation-for="BookingForm.SingleRoomCount" class="text-danger"></span>
+                    </label>
+
+                    <p class="tour-booking-card__note tour-booking-card__note--supplement">
+                        @(Model.SingleSupplement.HasValue
+                            ? $"Phụ thu phòng đơn: {Model.SingleSupplement.Value:N0} đ / phòng."
+                            : "Tour này hiện chưa cấu hình phụ thu phòng đơn.")
+                    </p>
+
+                    <label>
+                        Ghi chú
+                        <textarea asp-for="BookingForm.SpecialRequests" class="form-control admin-textarea"></textarea>
+                        <span asp-validation-for="BookingForm.SpecialRequests" class="text-danger"></span>
+                    </label>
+
+                    <button type="submit" class="btn btn-primary booking-submit">Đặt tour ngay</button>
+                </form>
+            }
+        </aside>
+    </div>
+</section>
+
+<div class="modal fade" id="tourImageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content tour-image-modal">
+            <button type="button" class="tour-image-modal__close" data-bs-dismiss="modal" aria-label="Đóng">×</button>
+            <img src="" alt="" id="tourImageModalPreview" class="tour-image-modal__preview" />
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/pages/tours/details.js" asp-append-version="true"></script>
+}

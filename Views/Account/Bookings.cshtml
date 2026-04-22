@@ -1,0 +1,156 @@
+﻿@model IReadOnlyList<ChillTour.Models.Account.CustomerBookingItemViewModel>
+@{
+    ViewData["Title"] = "Lịch sử đơn hàng";
+}
+
+<section class="auth-page">
+    <div class="container">
+        <div class="auth-card booking-history-card">
+            <div class="auth-card__intro">
+                <span class="eyebrow">Đơn hàng</span>
+                <h1>Lịch sử đặt tour</h1>
+                <p>Theo dõi trạng thái đơn, thanh toán và hoàn tiền trên một luồng xử lý thống nhất.</p>
+            </div>
+
+            @if (TempData["BookingSuccessMessage"] is string bookingSuccessMessage)
+            {
+                <div class="auth-alert auth-alert--success">@bookingSuccessMessage</div>
+            }
+            @if (TempData["BookingErrorMessage"] is string bookingErrorMessage)
+            {
+                <div class="auth-alert auth-alert--error">@bookingErrorMessage</div>
+            }
+
+            @if (Model.Count == 0)
+            {
+                <div class="auth-alert auth-alert--error">Bạn chưa có đơn nào đã phát sinh thanh toán.</div>
+            }
+            else
+            {
+                <div class="customer-booking-list">
+                    @foreach (var booking in Model)
+                    {
+                        <article class="customer-booking-card">
+                            <div class="customer-booking-card__top">
+                                <div>
+                                    <span class="tour-tag">@booking.BookingCode</span>
+                                    <h3>@booking.TourName</h3>
+                                    <p>Khởi hành @booking.DepartureDate.ToString("dd/MM/yyyy") • @booking.Travelers khách</p>
+                                </div>
+                                <div class="customer-booking-card__actions">
+                                    <span class="status-pill @StatusClass(booking.BookingStatus)">
+                                        @StatusLabel(booking.BookingStatus)
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="destination-meta customer-booking-card__meta">
+                                <strong>@booking.TotalAmount.ToString("N0") đ</strong>
+                                <span>Tạo lúc @booking.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(booking.CancellationReason))
+                            {
+                                <p class="tour-booking-card__note">Lý do hủy: @booking.CancellationReason</p>
+                            }
+                            <div class="hero-actions">
+                                <a asp-controller="Tours" asp-action="Details" asp-route-slug="@booking.TourSlug" class="btn btn-outline-primary">Xem tour</a>
+                                <a asp-controller="Payments" asp-action="Checkout" asp-route-bookingId="@booking.BookingId" class="btn btn-primary">Xem thanh toán</a>
+                                @if (booking.CanCancel)
+                                {
+                                    <button type="button"
+                                            class="btn btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#cancelBookingModal"
+                                            data-booking-id="@booking.BookingId"
+                                            data-booking-code="@booking.BookingCode"
+                                            data-tour-name="@booking.TourName"
+                                            data-refund-request="@booking.RequiresRefundRequest.ToString().ToLowerInvariant()">
+                                        @(booking.RequiresRefundRequest ? "Yêu cầu hoàn tiền" : "Hủy đặt")
+                                    </button>
+                                }
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+<div class="modal fade" id="cancelBookingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form asp-action="CancelBooking" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 id="cancelBookingTitle" class="modal-title">Xác nhận hủy đơn</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="cancelBookingId" name="BookingId" />
+                    <p id="cancelBookingText" class="mb-3"></p>
+                    <label>
+                        Lý do
+                        <textarea id="cancelBookingReason" name="CancellationReason" class="form-control admin-textarea" maxlength="500" required></textarea>
+                    </label>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button id="cancelBookingSubmit" type="submit" class="btn btn-danger">Xác nhận hủy</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    (() => {
+        const cancelModal = document.getElementById('cancelBookingModal');
+        if (!cancelModal) {
+            return;
+        }
+
+        cancelModal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            if (!button) {
+                return;
+            }
+
+            document.getElementById('cancelBookingId').value = button.getAttribute('data-booking-id') || '';
+            document.getElementById('cancelBookingReason').value = '';
+            const isRefundRequest = button.getAttribute('data-refund-request') === 'true';
+            const bookingCode = button.getAttribute('data-booking-code') || '';
+            const tourName = button.getAttribute('data-tour-name') || '';
+            document.getElementById('cancelBookingTitle').textContent = isRefundRequest ? 'Yêu cầu hoàn tiền' : 'Xác nhận hủy đơn';
+            document.getElementById('cancelBookingSubmit').textContent = isRefundRequest ? 'Gửi yêu cầu hoàn tiền' : 'Xác nhận hủy';
+            document.getElementById('cancelBookingText').textContent = isRefundRequest
+                ? `Bạn muốn gửi yêu cầu hoàn tiền cho đơn ${bookingCode} của tour "${tourName}"? Staff sẽ kiểm tra trước khi chuyển Accountant hoàn tiền.`
+                : `Bạn có chắc muốn hủy đơn ${bookingCode} của tour "${tourName}" không?`;
+        });
+    })();
+</script>
+
+@functions {
+    private static string StatusLabel(int status) => status switch
+    {
+        0 => "Chờ thanh toán",
+        1 => "Chờ xác nhận cọc",
+        2 => "Đã cọc",
+        3 => "Đã xác nhận booking",
+        4 => "Đã hủy",
+        5 => "Đã hoàn tiền",
+        6 => "Chờ thanh toán còn lại",
+        7 => "Chờ xác nhận thanh toán đủ",
+        8 => "Đã thanh toán đủ",
+        9 => "Yêu cầu hoàn tiền",
+        10 => "Chờ hoàn tiền",
+        _ => "Không xác định"
+    };
+
+    private static string StatusClass(int status) => status switch
+    {
+        2 or 3 or 8 => "status-pill--success",
+        4 or 5 => "status-pill--danger",
+        9 or 10 => "status-pill--warning",
+        _ => "status-pill--info"
+    };
+}

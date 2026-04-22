@@ -1,0 +1,44 @@
+﻿@model ChillTour.Models.Payments.PaymentResultViewModel
+@{
+    ViewData["Title"] = "Kết quả thanh toán";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/pages/payments/payments.css" asp-append-version="true" />
+}
+
+<section class="auth-page">
+    <div class="container">
+        <div class="auth-card payment-result-card">
+            <div class="auth-card__intro">
+                <span class="eyebrow @(Model.IsSuccess ? string.Empty : "eyebrow--warm")">VNPay</span>
+                <h1>@(Model.IsSuccess ? "Thanh toán thành công" : "Thanh toán chưa thành công")</h1>
+                <p>@Model.Message</p>
+            </div>
+
+            <div class="payment-summary-grid">
+                <div class="payment-summary-card">
+                    <span>Mã đơn</span>
+                    <strong class="payment-summary-card__value">@Model.BookingCode</strong>
+                </div>
+                <div class="payment-summary-card">
+                    <span>Mã thanh toán</span>
+                    <strong class="payment-summary-card__value">@Model.PaymentCode</strong>
+                </div>
+                <div class="payment-summary-card payment-summary-card--accent">
+                    <span>Số tiền thanh toán</span>
+                    <strong class="payment-summary-card__value">@Model.Amount.ToString("N0") đ</strong>
+                    <p>@(string.IsNullOrWhiteSpace(Model.TransactionReference) ? "Chưa có mã giao dịch từ VNPay" : $"Mã giao dịch: {Model.TransactionReference}")</p>
+                </div>
+            </div>
+
+            <div class="hero-actions">
+                @if (Model.BookingId > 0)
+                {
+                    <a asp-controller="Payments" asp-action="Checkout" asp-route-bookingId="@Model.BookingId" class="btn btn-primary">Xem trạng thái đơn</a>
+                }
+                <a asp-controller="Tours" asp-action="Index" class="btn btn-outline-primary">Quay lại danh sách tour</a>
+            </div>
+        </div>
+    </div>
+</section>

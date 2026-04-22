@@ -1,0 +1,150 @@
+﻿@using ChillTour.Data
+@using ChillTour.Security
+@using System.Security.Claims
+@inject ChillTourDbContext DbContext
+@{
+    var currentUserIdRaw = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var hasCurrentUserId = long.TryParse(currentUserIdRaw, out var currentUserId);
+    var unreadNotificationCount = 0;
+
+    if (User.Identity?.IsAuthenticated == true && hasCurrentUserId)
+    {
+        unreadNotificationCount = DbContext.Notifications.Count(x => x.UserId == currentUserId && !x.IsRead);
+    }
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - ChillTour</title>
+    <meta name="description" content="ChillTour - nền tảng đặt tour du lịch hiện đại, săn ưu đãi nhanh và lên lịch trình dễ dàng." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/ChillTour.styles.css" asp-append-version="true" />
+@await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    <header class="site-header">
+        <nav class="navbar navbar-expand-lg">
+            <div class="container">
+                <a class="navbar-brand brand-mark" asp-area="" asp-controller="Home" asp-action="Index">
+                    <span class="brand-mark__icon">C</span>
+                    <span>ChillTour</span>
+                </a>
+                <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav"
+                        aria-expanded="false" aria-label="Điều hướng">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse" id="mainNav">
+                    <ul class="navbar-nav mx-auto mb-3 mb-lg-0">
+                        <li class="nav-item"><a class="nav-link @(IsActive("Home", "Index") ? "nav-link--active" : string.Empty)" asp-controller="Home" asp-action="Index" asp-fragment="kham-pha">Khám phá</a></li>
+                        <li class="nav-item"><a class="nav-link @(IsControllerActive("Tours") ? "nav-link--active" : string.Empty)" asp-controller="Tours" asp-action="Index">Danh sách tour</a></li>
+                        <li class="nav-item"><a class="nav-link @(IsControllerActive("Promotions") ? "nav-link--active" : string.Empty)" asp-controller="Promotions" asp-action="Index">Ưu đãi</a></li>
+                        <li class="nav-item"><a class="nav-link @(IsControllerActive("Guides") ? "nav-link--active" : string.Empty)" asp-controller="Guides" asp-action="Index">Cẩm nang</a></li>
+                    </ul>
+                    <div class="d-flex align-items-center gap-2">
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <a class="mailbox-link" asp-controller="Account" asp-action="Inbox" aria-label="Hộp thư">
+                                <span class="mailbox-link__icon">&#9993;</span>
+                                @if (unreadNotificationCount > 0)
+                                {
+                                    <span class="mailbox-link__badge">@unreadNotificationCount</span>
+                                }
+                            </a>
+                            @if (User.IsInRole(RoleConstants.Customer))
+                            {
+                                <a class="btn btn-link nav-action @(IsActive("Account", "Bookings") ? "nav-action--active" : string.Empty)" asp-controller="Account" asp-action="Bookings">Đơn của tôi</a>
+                            }
+                            @if (RoleConstants.BackOffice.Any(User.IsInRole))
+                            {
+                                <a class="btn btn-link nav-action @(IsControllerActive("Admin") ? "nav-action--active" : string.Empty)" asp-controller="Admin" asp-action="Index">Quản trị</a>
+                            }
+                            <a class="btn btn-link nav-action @(IsActive("Account", "Profile") ? "nav-action--active" : string.Empty)" asp-controller="Account" asp-action="Profile">@User.Identity.Name</a>
+                            <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-primary nav-cta">Đăng xuất</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <a class="btn btn-link nav-action" asp-controller="Account" asp-action="Login">Đăng nhập</a>
+                            <a class="btn btn-primary nav-cta" asp-controller="Account" asp-action="Register">Đăng ký</a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main role="main">
+        @RenderBody()
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="site-footer__grid">
+                <div class="site-footer__brand-block">
+                    <a class="brand-mark brand-mark--footer" asp-area="" asp-controller="Home" asp-action="Index">
+                        <span class="brand-mark__icon">C</span>
+                        <span>ChillTour</span>
+                    </a>
+                    <p class="site-footer__copy">Nền tảng đặt tour trong nước và quốc tế với lịch khởi hành rõ ràng, ưu đãi minh bạch và luồng giữ chỗ gọn.</p>
+                    <div class="site-footer__contact-list">
+                        <a href="tel:0348326394">0348326394</a>
+                        <a href="mailto:minhabc2004@gmail.com">minhabc2004@gmail.com</a>
+                        <span>Tây Tựu, Hà Nội</span>
+                    </div>
+                </div>
+                <div>
+                    <h3>Khám phá</h3>
+                    <a asp-controller="Home" asp-action="Index" asp-fragment="kham-pha">Điểm đến</a>
+                    <a asp-controller="Tours" asp-action="Index">Danh sách tour</a>
+                    <a asp-controller="Promotions" asp-action="Index">Ưu đãi theo mùa</a>
+                </div>
+                <div>
+                    <h3>Hỗ trợ</h3>
+                    <a asp-controller="Guides" asp-action="Index">Cẩm nang du lịch</a>
+                    <a asp-controller="Home" asp-action="Index" asp-fragment="dat-tour">Điều khoản đặt tour</a>
+                    <a asp-area="" asp-controller="Home" asp-action="Privacy">Chính sách riêng tư</a>
+                </div>
+                <div>
+                    <h3>Liên hệ nhanh</h3>
+                    <a href="tel:0348326394">Hotline: 0348326394</a>
+                    <a href="mailto:minhabc2004@gmail.com">Email hỗ trợ</a>
+                    <span class="site-footer__contact-note">Hỗ trợ tư vấn tour, lịch đi, giá đoàn và xác nhận booking mỗi ngày.</span>
+                </div>
+            </div>
+            <div class="site-footer__bottom">
+                <span>&copy; 2026 ChillTour. All rights reserved.</span>
+                <span>Tây Tựu, Hà Nội</span>
+            </div>
+        </div>
+    </footer>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+
+@functions {
+    private bool IsControllerActive(string controller)
+    {
+        var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+        return string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool IsActive(string controller, string action)
+    {
+        var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+        var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
+        return string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase)
+               && string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase);
+    }
+}
+

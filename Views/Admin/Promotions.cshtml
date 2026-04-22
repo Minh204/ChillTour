@@ -1,0 +1,99 @@
+@model ChillTour.Models.Admin.AdminPromotionListViewModel
+@{
+    ViewData["Title"] = "Quản lý ưu đãi";
+}
+
+<section class="admin-page-stack">
+    <div class="admin-page-head">
+        <div>
+            <span class="admin-panel__label">Promotion</span>
+            <h2>Quản lý ưu đãi</h2>
+            <p>Tạo sự kiện ưu đãi, theo dõi thời hạn và số lượng khách đã nhận hoặc sử dụng.</p>
+        </div>
+        <a asp-action="CreatePromotion" class="btn btn-primary nav-cta">Thêm ưu đãi</a>
+    </div>
+
+    @if (TempData["AdminSuccessMessage"] is string successMessage)
+    {
+        <div class="auth-alert auth-alert--success">@successMessage</div>
+    }
+    @if (TempData["AdminErrorMessage"] is string errorMessage)
+    {
+        <div class="auth-alert auth-alert--error">@errorMessage</div>
+    }
+
+    <div class="admin-overview-grid">
+        <article class="admin-stat-card">
+            <span class="admin-panel__label">Total</span>
+            <strong>@Model.TotalPromotions</strong>
+            <p>Tổng số ưu đãi</p>
+        </article>
+        <article class="admin-stat-card admin-mini-card--green">
+            <span class="admin-panel__label">Live</span>
+            <strong>@Model.ActivePromotions</strong>
+            <p>Đang còn hiệu lực</p>
+        </article>
+        <article class="admin-stat-card admin-mini-card--orange">
+            <span class="admin-panel__label">Expired</span>
+            <strong>@Model.ExpiredPromotions</strong>
+            <p>Đã hết hạn / ngừng áp dụng</p>
+        </article>
+    </div>
+
+    <section class="admin-panel">
+        <div class="admin-table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Mã</th>
+                        <th>Sự kiện ưu đãi</th>
+                        <th>% giảm</th>
+                        <th>Hạn dùng</th>
+                        <th>Đã nhận</th>
+                        <th>Đã dùng</th>
+                        <th>Trạng thái</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Promotions.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-4">Chưa có ưu đãi nào.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in Model.Promotions)
+                        {
+                            var isLive = item.IsActive && item.EndAt >= DateTime.UtcNow;
+                            <tr>
+                                <td><strong>@item.PromotionCode</strong></td>
+                                <td>@item.PromotionName</td>
+                                <td>@(item.DiscountPercent.HasValue ? $"{item.DiscountPercent.Value:N0}%" : "-")</td>
+                                <td>@item.EndAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>@item.ClaimedCount</td>
+                                <td>@item.UsedCount</td>
+                                <td>
+                                    <span class="status-pill @(isLive ? "status-pill--success" : "status-pill--danger")">
+                                        @(isLive ? "Còn hiệu lực" : "Hết hiệu lực")
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <a asp-action="EditPromotion" asp-route-id="@item.PromotionId" class="btn btn-outline-primary btn-sm">Sửa</a>
+                                        <form asp-action="DeletePromotion" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@item.PromotionId" />
+                                            <button type="submit" class="btn btn-outline-danger btn-sm">Xóa</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>

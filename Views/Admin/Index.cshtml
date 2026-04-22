@@ -1,0 +1,363 @@
+@model ChillTour.Models.Admin.AdminDashboardViewModel
+@using System.Globalization
+@using System.Text
+
+@functions {
+    private string BuildLinePath(IReadOnlyList<decimal> values, double width, double height, double padding)
+    {
+        if (values.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var max = values.Max();
+        var innerWidth = Math.Max(width - (padding * 2), 1);
+        var innerHeight = Math.Max(height - (padding * 2), 1);
+        var stepX = values.Count == 1 ? 0 : innerWidth / (values.Count - 1);
+        var builder = new StringBuilder();
+
+        for (var index = 0; index < values.Count; index++)
+        {
+            var normalized = max <= 0 ? 0 : (double)(values[index] / max);
+            var x = padding + (stepX * index);
+            var y = height - padding - (innerHeight * normalized);
+            builder.Append(index == 0 ? "M " : " L ");
+            builder.Append(x.ToString("0.##", CultureInfo.InvariantCulture));
+            builder.Append(' ');
+            builder.Append(y.ToString("0.##", CultureInfo.InvariantCulture));
+        }
+
+        return builder.ToString();
+    }
+
+    private string BuildAreaPath(IReadOnlyList<decimal> values, double width, double height, double padding)
+    {
+        if (values.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var linePath = BuildLinePath(values, width, height, padding);
+        var innerWidth = Math.Max(width - (padding * 2), 1);
+        var stepX = values.Count == 1 ? 0 : innerWidth / (values.Count - 1);
+        var baseline = height - padding;
+        var startX = padding;
+        var endX = padding + (stepX * (values.Count - 1));
+
+        return $"{linePath} L {endX.ToString("0.##", CultureInfo.InvariantCulture)} {baseline.ToString("0.##", CultureInfo.InvariantCulture)} L {startX.ToString("0.##", CultureInfo.InvariantCulture)} {baseline.ToString("0.##", CultureInfo.InvariantCulture)} Z";
+    }
+
+    private IReadOnlyList<(double X, double Y)> BuildPoints(IReadOnlyList<decimal> values, double width, double height, double padding)
+    {
+        if (values.Count == 0)
+        {
+            return Array.Empty<(double X, double Y)>();
+        }
+
+        var max = values.Max();
+        var innerWidth = Math.Max(width - (padding * 2), 1);
+        var innerHeight = Math.Max(height - (padding * 2), 1);
+        var stepX = values.Count == 1 ? 0 : innerWidth / (values.Count - 1);
+
+        return Enumerable.Range(0, values.Count)
+            .Select(index =>
+            {
+                var normalized = max <= 0 ? 0 : (double)(values[index] / max);
+                var x = padding + (stepX * index);
+                var y = height - padding - (innerHeight * normalized);
+                return (x, y);
+            })
+            .ToList();
+    }
+
+    private string BookingStatusLabel(byte status) => status switch
+    {
+        0 => "Chờ thanh toán",
+        1 => "Chờ xác nhận cọc",
+        2 => "Đã cọc",
+        3 => "Đã xác nhận booking",
+        4 => "Đã hủy",
+        5 => "Đã hoàn tiền",
+        6 => "Chờ thanh toán còn lại",
+        7 => "Chờ xác nhận thanh toán đủ",
+        8 => "Đã thanh toán đủ",
+        9 => "Yêu cầu hoàn tiền",
+        10 => "Chờ hoàn tiền",
+        _ => "Không rõ"
+    };
+
+    private string PaymentStatusLabel(byte status) => status switch
+    {
+        0 => "Chưa thanh toán",
+        1 => "Chờ Accountant",
+        2 => "Đã cọc",
+        3 => "Đã thanh toán đủ",
+        4 => "Thanh toán lỗi",
+        _ => "Không rõ"
+    };
+
+    private string StatusClass(byte status) => status switch
+    {
+        2 or 3 or 8 => "admin-status-pill--success",
+        4 or 5 => "admin-status-pill--danger",
+        _ => "admin-status-pill--warning"
+    };
+
+    private string FormatCurrency(decimal amount) => string.Format(new CultureInfo("vi-VN"), "{0:N0} đ", amount);
+}
+
+@{
+    ViewData["Title"] = "Dashboard";
+
+    const double chartWidth = 920;
+    const double chartHeight = 320;
+    const double chartPadding = 34;
+    var revenueValues = Model.DailyMetrics.Select(x => x.DepositRevenue).ToList();
+    var revenuePath = BuildLinePath(revenueValues, chartWidth, chartHeight, chartPadding);
+    var revenueAreaPath = BuildAreaPath(revenueValues, chartWidth, chartHeight, chartPadding);
+    var revenuePoints = BuildPoints(revenueValues, chartWidth, chartHeight, chartPadding);
+}
+
+<section class="admin-dashboard admin-dashboard-page">
+    <section class="admin-panel admin-dashboard-hero">
+        <div class="admin-dashboard-hero__copy">
+            <span class="admin-panel__label">Executive Dashboard</span>
+            <h2>Tổng quan vận hành ChillTour</h2>
+
+        </div>
+        <div class="admin-dashboard-hero__meta">
+            <div>
+                <span>Doanh thu kỳ vọng</span>
+                <strong>@FormatCurrency(Model.ExpectedRevenue)</strong>
+            </div>
+            <div>
+                <span>Tỷ lệ xác nhận</span>
+                <strong>@Model.ConfirmationRate.ToString("N1")%</strong>
+            </div>
+        </div>
+    </section>
+
+    <div class="admin-overview-grid">
+        <article class="admin-stat-card admin-stat-card--blue">
+            <span>Tổng tài khoản</span>
+            <strong>@Model.TotalUsers</strong>
+            <p>+@Model.NewUsersThisWeek tài khoản mới trong 7 ngày gần nhất.</p>
+        </article>
+        <article class="admin-stat-card">
+            <span>Tổng đơn đặt tour</span>
+            <strong>@Model.TotalBookings</strong>
+            <p>@Model.PendingBookings đơn đang chờ xử lý.</p>
+        </article>
+        <article class="admin-stat-card admin-stat-card--mint">
+            <span>Doanh thu đã ghi nhận</span>
+            <strong>@FormatCurrency(Model.DepositRevenue)</strong>
+            <p>Từ các giao dịch đã được accountant xác nhận.</p>
+        </article>
+        <article class="admin-stat-card admin-stat-card--orange">
+            <span>Tour đang bán</span>
+            <strong>@Model.PublishedTours</strong>
+            <p>@Model.UpcomingSchedules lịch khởi hành sắp tới.</p>
+        </article>
+    </div>
+
+    <div class="admin-dashboard-grid">
+        <section class="admin-panel admin-panel--hero admin-report-chart-panel">
+            <div class="admin-panel__header">
+                <div>
+                    <span class="admin-panel__label">Revenue Pulse</span>
+                    <h2>Đường doanh thu cọc trong 7 ngày</h2>
+                </div>
+                <div class="admin-chart-legend">
+                    <span><i class="admin-dot admin-dot--blue"></i> Doanh thu</span>
+                    <span><i class="admin-dot admin-dot--green"></i> Booking/ngày</span>
+                </div>
+            </div>
+
+            <div class="admin-line-chart admin-line-chart--dashboard" data-line-chart>
+                <svg viewBox="0 0 @chartWidth @chartHeight" preserveAspectRatio="none" role="img" aria-label="Biểu đồ doanh thu 7 ngày">
+                    <defs>
+                        <linearGradient id="dashboardRevenueFill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="rgba(11,116,255,0.38)" />
+                            <stop offset="100%" stop-color="rgba(11,116,255,0.05)" />
+                        </linearGradient>
+                    </defs>
+
+                    @for (var row = 0; row < 5; row++)
+                    {
+                        var y = chartPadding + ((chartHeight - (chartPadding * 2)) / 4 * row);
+                        <line x1="@chartPadding" y1="@y.ToString("0.##", CultureInfo.InvariantCulture)" x2="@(chartWidth - chartPadding)" y2="@y.ToString("0.##", CultureInfo.InvariantCulture)" class="admin-line-chart__grid" />
+                    }
+
+                    @if (revenueValues.Count > 0)
+                    {
+                        <path d="@revenueAreaPath" class="admin-line-chart__area"></path>
+                        <path d="@revenuePath" class="admin-line-chart__line"></path>
+
+                        @for (var index = 0; index < revenuePoints.Count; index++)
+                        {
+                            var point = revenuePoints[index];
+                            <circle cx="@point.X.ToString("0.##", CultureInfo.InvariantCulture)"
+                                    cy="@point.Y.ToString("0.##", CultureInfo.InvariantCulture)"
+                                    r="5.4"
+                                    class="admin-line-chart__point">
+                                <title>@Model.DailyMetrics[index].Date.ToString("dd/MM") - @FormatCurrency(Model.DailyMetrics[index].DepositRevenue)</title>
+                            </circle>
+                        }
+                    }
+                </svg>
+
+                <div class="admin-line-chart__labels">
+                    @foreach (var item in Model.DailyMetrics)
+                    {
+                        <div>
+                            <strong>@item.Date.ToString("dd/MM")</strong>
+                            <span>@item.BookingCount đơn</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="admin-metric-strip">
+                <div>
+                    <span>Đơn đã thanh toán</span>
+                    <strong>@Model.PaidBookings</strong>
+                </div>
+                <div>
+                    <span>Đơn đã xác nhận</span>
+                    <strong>@Model.ConfirmedBookings</strong>
+                </div>
+                <div>
+                    <span>Đánh giá trung bình</span>
+                    <strong>@Model.AverageRating.ToString("N1")/5</strong>
+                    <p>@Model.ReviewCount đánh giá</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="admin-side-stats admin-report-kpis">
+            <article class="admin-mini-card">
+                <span>Đơn đã hủy</span>
+                <strong>@Model.CancelledBookings</strong>
+                <p>Số booking đã hủy hoặc hoàn tiền.</p>
+            </article>
+            <article class="admin-mini-card admin-mini-card--green">
+                <span>Lịch gần kín chỗ</span>
+                <strong>@Model.LowSeatSchedules</strong>
+                <p>Các lịch còn từ 5 chỗ trở xuống.</p>
+            </article>
+            <article class="admin-mini-card admin-mini-card--orange">
+                <span>Lịch sắp chạy</span>
+                <strong>@Model.UpcomingSchedules</strong>
+                <p>Tổng lịch khởi hành đang mở bán.</p>
+            </article>
+            <article class="admin-mini-card">
+                <span>Tăng trưởng user</span>
+                <strong>@Model.NewUsersThisWeek</strong>
+                <p>Tài khoản mới tạo trong tuần gần nhất.</p>
+            </article>
+        </section>
+    </div>
+
+    <div class="admin-lower-grid">
+        <section class="admin-panel">
+            <div class="admin-panel__header">
+                <div>
+                    <span class="admin-panel__label">Recent bookings</span>
+                    <h2>Đơn gần đây</h2>
+                </div>
+                <a asp-controller="Admin" asp-action="Orders" class="admin-panel__link">Xem xử lý đơn</a>
+            </div>
+
+            <div class="admin-dashboard-table">
+                @if (Model.RecentBookings.Count == 0)
+                {
+                    <p class="admin-empty-state">Chưa có đơn đặt tour nào.</p>
+                }
+                else
+                {
+                    @foreach (var booking in Model.RecentBookings)
+                    {
+                        <article class="admin-dashboard-row">
+                            <div>
+                                <strong>@booking.BookingCode</strong>
+                                <p>@booking.CustomerName • @booking.TourName</p>
+                            </div>
+                            <div>
+                                <span>@booking.DepartureDate.ToString("dd/MM/yyyy")</span>
+                                <p>@FormatCurrency(booking.TotalAmount)</p>
+                            </div>
+                            <div class="admin-dashboard-row__status">
+                                <span class="admin-status-pill @StatusClass(booking.BookingStatus)">@BookingStatusLabel(booking.BookingStatus)</span>
+                                <small>@PaymentStatusLabel(booking.PaymentStatus)</small>
+                            </div>
+                        </article>
+                    }
+                }
+            </div>
+        </section>
+
+        <section class="admin-panel">
+            <div class="admin-panel__header">
+                <div>
+                    <span class="admin-panel__label">Top tours</span>
+                    <h2>Tour hiệu quả nhất</h2>
+                </div>
+                <a asp-controller="Admin" asp-action="Reports" class="admin-panel__link">Xem báo cáo</a>
+            </div>
+
+            <div class="admin-rank-list">
+                @if (Model.TopTours.Count == 0)
+                {
+                    <p class="admin-empty-state">Chưa có dữ liệu booking để xếp hạng tour.</p>
+                }
+                else
+                {
+                    @for (var i = 0; i < Model.TopTours.Count; i++)
+                    {
+                        var tour = Model.TopTours[i];
+                        <article class="admin-rank-item">
+                            <span>@(i + 1)</span>
+                            <div>
+                                <strong>@tour.TourName</strong>
+                                <p>@tour.BookingCount booking • @FormatCurrency(tour.Revenue)</p>
+                            </div>
+                            <small>★ @tour.Rating.ToString("N1") (@tour.ReviewCount)</small>
+                        </article>
+                    }
+                }
+            </div>
+        </section>
+    </div>
+
+    <section class="admin-panel">
+        <div class="admin-panel__header">
+            <div>
+                <span class="admin-panel__label">Upcoming departures</span>
+                <h2>Lịch khởi hành trong 30 ngày</h2>
+            </div>
+        </div>
+
+        <div class="admin-departure-grid">
+            @if (Model.UpcomingDepartures.Count == 0)
+            {
+                <p class="admin-empty-state">Chưa có lịch khởi hành sắp tới.</p>
+            }
+            else
+            {
+                @foreach (var schedule in Model.UpcomingDepartures)
+                {
+                    <article class="admin-departure-card">
+                        <span>@schedule.DepartureDate.ToString("dd/MM/yyyy")</span>
+                        <strong>@schedule.TourName</strong>
+                        <p>@schedule.AvailableSeats/@schedule.TotalSeats chỗ còn lại</p>
+                        <small>@FormatCurrency(schedule.AdultPrice) / khách</small>
+                    </article>
+                }
+            }
+        </div>
+    </section>
+</section>
+
+@section Scripts {
+    <script src="~/pages/admin/charts.js" asp-append-version="true"></script>
+}

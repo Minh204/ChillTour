@@ -1,0 +1,271 @@
+﻿@{
+    ViewData["Title"] = "Trang chủ";
+}
+
+<section class="hero-section">
+    <div class="container">
+        <div class="hero-shell">
+            <div class="hero-copy" data-reveal>
+                <span class="eyebrow">Nền tảng đặt tour phong cách mới</span>
+                <h1>Đi khắp nơi theo cách nhẹ đầu hơn cùng ChillTour.</h1>
+                <p>
+                    Tìm tour trong vài giây, xem lịch trình rõ ràng, so sánh mức giá minh bạch
+                    và chốt chuyến đi chỉ trong một luồng thao tác.
+                </p>
+                <div class="hero-actions">
+                    <a class="btn btn-primary btn-lg hero-primary" href="#dat-tour">Tìm tour ngay</a>
+                    <a class="btn btn-outline-light btn-lg hero-secondary" href="#cam-nang">Xem cảm hứng</a>
+                </div>
+                <div class="hero-metrics">
+                    <div>
+                        <strong>3.500+</strong>
+                        <span>Lịch khởi hành mỗi tháng</span>
+                    </div>
+                    <div>
+                        <strong>450K</strong>
+                        <span>Khách đã đặt qua nền tảng</span>
+                    </div>
+                    <div>
+                        <strong>4.8/5</strong>
+                        <span>Điểm hài lòng sau chuyến đi</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="booking-card" id="dat-tour" data-reveal>
+                <div class="booking-card__header">
+                    <span class="booking-chip">Đặt tour</span>
+                    <h2>Săn tour theo nhu cầu</h2>
+                    <p>Gợi ý theo điểm đến, ngân sách và thời lượng phù hợp.</p>
+                </div>
+
+                <form class="booking-form">
+                    <div class="booking-form__grid">
+                        <label>
+                            Điểm đến
+                            <select>
+                                <option>Đà Nẵng</option>
+                                <option>Phú Quốc</option>
+                                <option>Bangkok</option>
+                                <option>Seoul</option>
+                            </select>
+                        </label>
+                        <label>
+                            Ngày khởi hành
+                            <input type="date" value="2026-04-18" />
+                        </label>
+                        <label>
+                            Số khách
+                            <select>
+                                <option>2 người lớn</option>
+                                <option>4 người lớn</option>
+                                <option>Gia đình 2 lớn 2 bé</option>
+                            </select>
+                        </label>
+                        <label>
+                            Ngân sách
+                            <select>
+                                <option>Dưới 5 triệu</option>
+                                <option>5 - 10 triệu</option>
+                                <option>10 - 20 triệu</option>
+                            </select>
+                        </label>
+                    </div>
+                    <button type="button" class="btn btn-primary booking-submit">Tìm chuyến đi phù hợp</button>
+                </form>
+
+                <div class="booking-highlights">
+                    <div>
+                        <span>Ưu đãi hôm nay</span>
+                        <strong>Giảm tới 35% tour biển hè</strong>
+                    </div>
+                    <div>
+                        <span>Thanh toán</span>
+                        <strong>Giữ chỗ trước, xác nhận sau</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="partners-strip">
+    <div class="container">
+        <div class="partners-strip__inner" data-reveal>
+            <span>Được khách hàng lựa chọn cho các chuyến đi đến</span>
+            <div class="partners-list">
+                <span>Đà Nẵng</span>
+                <span>Phú Quốc</span>
+                <span>Bangkok</span>
+                <span>Seoul</span>
+                <span>Singapore</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section-block" id="kham-pha">
+    <div class="container">
+        <div class="section-heading" data-reveal>
+            <span class="eyebrow eyebrow--warm">Điểm đến nổi bật</span>
+            <h2>Khám phá những hành trình đang được tìm nhiều nhất</h2>
+            <p>Thiết kế theo phong cách OTA hiện đại: nhiều dữ liệu, dễ quét, ưu tiên quyết định nhanh.</p>
+        </div>
+
+        <div class="destination-grid">
+            <article class="destination-card destination-card--large" data-reveal>
+                <span class="destination-badge">Biển & nghỉ dưỡng</span>
+                <h3>Phú Quốc 4N3Đ</h3>
+                <p>Combo resort, cano 4 đảo, sunset town và buffet hải sản.</p>
+                <div class="destination-meta">
+                    <strong>Từ 6.490.000đ</strong>
+                    <span>Khởi hành mỗi ngày</span>
+                </div>
+            </article>
+
+            <article class="destination-card" data-reveal>
+                <span class="destination-badge">City break</span>
+                <h3>Bangkok vui hết cỡ</h3>
+                <p>Đi chợ đêm, shopping, cafe hopping và cruise sông Chao Phraya.</p>
+                <div class="destination-meta">
+                    <strong>Từ 7.290.000đ</strong>
+                    <span>Visa thuận tiện</span>
+                </div>
+            </article>
+
+            <article class="destination-card" data-reveal>
+                <span class="destination-badge">Thiên nhiên</span>
+                <h3>Đà Lạt chậm mà chill</h3>
+                <p>Lịch trình nhẹ, nhiều không gian nghỉ, phù hợp nhóm bạn và cặp đôi.</p>
+                <div class="destination-meta">
+                    <strong>Từ 3.990.000đ</strong>
+                    <span>Cuối tuần nào cũng có</span>
+                </div>
+            </article>
+        </div>
+    </div>
+</section>
+
+<section class="section-block section-block--tint" id="tour-hot">
+    <div class="container">
+        <div class="section-heading" data-reveal>
+            <span class="eyebrow">Tour bán chạy</span>
+            <h2>Những sản phẩm gần nhất với mô hình đặt tour thực tế</h2>
+        </div>
+
+        <div class="tour-grid">
+            <article class="tour-card" data-reveal>
+                <div class="tour-card__top">
+                    <span class="rating-pill">4.9</span>
+                    <span class="tour-tag">Best Seller</span>
+                </div>
+                <h3>Seoul - Nami - Everland 5N4Đ</h3>
+                <p>Bay thẳng, khách sạn trung tâm, lịch trình cân bằng giữa tham quan và tự do.</p>
+                <ul class="tour-features">
+                    <li>Khởi hành thứ 5 hằng tuần</li>
+                    <li>Đã gồm vé tham quan chính</li>
+                    <li>Hướng dẫn viên suốt tuyến</li>
+                </ul>
+                <div class="tour-price">
+                    <div>
+                        <span>Giá từ</span>
+                        <strong>14.990.000đ</strong>
+                    </div>
+                    <a class="btn btn-outline-primary" href="#">Xem chi tiết</a>
+                </div>
+            </article>
+
+            <article class="tour-card" data-reveal>
+                <div class="tour-card__top">
+                    <span class="rating-pill">4.8</span>
+                    <span class="tour-tag">Gia đình</span>
+                </div>
+                <h3>Đà Nẵng - Hội An - Bà Nà 3N2Đ</h3>
+                <p>Tiết tấu vừa phải, khách sạn gần biển, phù hợp đi cùng trẻ nhỏ và người lớn tuổi.</p>
+                <ul class="tour-features">
+                    <li>Xe đưa đón sân bay</li>
+                    <li>Ăn sáng khách sạn</li>
+                    <li>Linh hoạt chọn thêm option</li>
+                </ul>
+                <div class="tour-price">
+                    <div>
+                        <span>Giá từ</span>
+                        <strong>5.490.000đ</strong>
+                    </div>
+                    <a class="btn btn-outline-primary" href="#">Xem chi tiết</a>
+                </div>
+            </article>
+
+            <article class="tour-card" data-reveal>
+                <div class="tour-card__top">
+                    <span class="rating-pill">5.0</span>
+                    <span class="tour-tag">Cặp đôi</span>
+                </div>
+                <h3>Singapore city lights 4N3Đ</h3>
+                <p>Tập trung trải nghiệm đẹp về đêm, Garden by the Bay, Marina Bay và outlet shopping.</p>
+                <ul class="tour-features">
+                    <li>Khách sạn 4 sao</li>
+                    <li>Có ngày tự do</li>
+                    <li>Hỗ trợ thủ tục nhanh</li>
+                </ul>
+                <div class="tour-price">
+                    <div>
+                        <span>Giá từ</span>
+                        <strong>12.290.000đ</strong>
+                    </div>
+                    <a class="btn btn-outline-primary" href="#">Xem chi tiết</a>
+                </div>
+            </article>
+        </div>
+    </div>
+</section>
+
+<section class="section-block" id="uu-dai">
+    <div class="container">
+        <div class="promo-panel" data-reveal>
+            <div>
+                <span class="eyebrow eyebrow--warm">Ưu đãi mùa hè</span>
+                <h2>Một giao diện bán tour tốt phải đẩy được quyết định đặt nhanh.</h2>
+                <p>ChillTour đang hiển thị các khối CTA, giá, lịch khởi hành và độ tin cậy theo đúng tư duy đó.</p>
+            </div>
+            <div class="promo-stats">
+                <div>
+                    <strong>35%</strong>
+                    <span>Giảm tối đa cho tour biển</span>
+                </div>
+                <div>
+                    <strong>0%</strong>
+                    <span>Trả góp qua thẻ tín dụng</span>
+                </div>
+                <div>
+                    <strong>24/7</strong>
+                    <span>Hỗ trợ trước và trong chuyến đi</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section-block section-block--soft" id="cam-nang">
+    <div class="container">
+        <div class="section-heading" data-reveal>
+            <span class="eyebrow">Cẩm nang & niềm tin</span>
+            <h2>Không chỉ bán tour, website còn cần nội dung để thuyết phục người dùng mới</h2>
+        </div>
+
+        <div class="insight-grid">
+            <article class="insight-card" data-reveal>
+                <h3>Lịch trình minh bạch</h3>
+                <p>Mỗi tour cần có đủ điểm nhấn, dịch vụ bao gồm, phụ thu và chính sách hủy để tránh rớt đơn ở bước cuối.</p>
+            </article>
+            <article class="insight-card" data-reveal>
+                <h3>Tìm kiếm nhanh</h3>
+                <p>Form đầu trang phải hỗ trợ điểm đến, ngày đi, ngân sách và quy mô đoàn vì đó là các bộ lọc chính của người dùng.</p>
+            </article>
+            <article class="insight-card" data-reveal>
+                <h3>Social proof</h3>
+                <p>Điểm đánh giá, số lượt đặt và ưu đãi thời gian thực là ba tín hiệu quan trọng giúp giao diện giống sản phẩm thương mại thật.</p>
+            </article>
+        </div>
+    </div>
+</section>

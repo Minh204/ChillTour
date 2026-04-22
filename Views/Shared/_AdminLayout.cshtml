@@ -1,0 +1,123 @@
+﻿@using ChillTour.Security
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - ChillTour Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/pages/admin/admin.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="admin-body">
+    <div class="admin-shell">
+        <aside class="admin-sidebar">
+            <div class="admin-sidebar__brand">
+                <span class="admin-sidebar__logo">C</span>
+                <div>
+                    <strong>ChillTour</strong>
+                    <span>Admin Console</span>
+                </div>
+            </div>
+
+            <nav class="admin-nav">
+                <a asp-controller="Admin" asp-action="Index" class="admin-nav__item @(ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "is-active" : "")">
+                    <span>Dashboard</span>
+                </a>
+
+                @if (User.IsInRole(RoleConstants.Admin))
+                {
+                    <a asp-controller="Admin" asp-action="Users" class="admin-nav__item @(ViewContext.RouteData.Values["action"]?.ToString() == "Users" || ViewContext.RouteData.Values["action"]?.ToString() == "CreateUser" ? "is-active" : "")">
+                        <span>Quản lý tài khoản</span>
+                    </a>
+                }
+
+                @if (RoleConstants.ManageTours.Any(User.IsInRole))
+                {
+                    <a asp-controller="Admin" asp-action="Categories" class="admin-nav__item @((ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty) is "Categories" or "CreateCategory" or "EditCategory" ? "is-active" : "")">
+                        <span>Danh mục tour</span>
+                    </a>
+                    <a asp-controller="Admin" asp-action="Destinations" class="admin-nav__item @((ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty) is "Destinations" or "CreateDestination" or "EditDestination" ? "is-active" : "")">
+                        <span>Điểm đến</span>
+                    </a>
+                    <a asp-controller="Admin" asp-action="Tours" class="admin-nav__item @((ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty) is "Tours" or "CreateTour" or "EditTour" ? "is-active" : "")">
+                        <span>Quản lý tour</span>
+                    </a>
+                }
+
+                @if (RoleConstants.ManagePromotions.Any(User.IsInRole))
+                {
+                    <a asp-controller="Admin" asp-action="Promotions" class="admin-nav__item @((ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty) is "Promotions" or "CreatePromotion" or "EditPromotion" ? "is-active" : "")">
+                        <span>Quản lý ưu đãi</span>
+                    </a>
+                }
+
+                @if (RoleConstants.ManageContent.Any(User.IsInRole))
+                {
+                    <a asp-controller="Admin" asp-action="Articles" class="admin-nav__item @((ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty) is "Articles" or "CreateArticle" or "EditArticle" ? "is-active" : "")">
+                        <span>Quản lý cẩm nang</span>
+                    </a>
+                }
+
+                @if (RoleConstants.ViewBookings.Any(User.IsInRole))
+                {
+                    <a asp-controller="Admin" asp-action="Orders" class="admin-nav__item @(ViewContext.RouteData.Values["action"]?.ToString() == "Orders" ? "is-active" : "")">
+                        <span>Xử lý đơn</span>
+                    </a>
+                }
+
+                @if (RoleConstants.ViewReports.Any(User.IsInRole))
+                {
+                    <a asp-controller="Admin" asp-action="Reports" class="admin-nav__item @(ViewContext.RouteData.Values["action"]?.ToString() == "Reports" ? "is-active" : "")">
+                        <span>Báo cáo & thống kê</span>
+                    </a>
+                }
+
+                <a asp-controller="Account" asp-action="Profile" class="admin-nav__item">
+                    <span>Tài khoản của tôi</span>
+                </a>
+            </nav>
+
+            <div class="admin-sidebar__foot">
+                <div class="admin-user-chip">
+                    <div class="admin-user-chip__avatar">@((User.Identity?.Name ?? "U").Substring(0, 1).ToUpper())</div>
+                    <div>
+                        <strong>@User.Identity?.Name</strong>
+                        <span>@string.Join(", ", User.Claims.Where(x => x.Type == System.Security.Claims.ClaimTypes.Role).Select(x => RoleConstants.DisplayName(x.Value)))</span>
+                    </div>
+                </div>
+                <form asp-controller="Account" asp-action="Logout" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-light admin-logout">Đăng xuất</button>
+                </form>
+            </div>
+        </aside>
+
+        <div class="admin-main">
+            <header class="admin-topbar">
+                <div>
+                    <p class="admin-topbar__crumb">Admin / @ViewData["Title"]</p>
+                    <h1>@ViewData["Title"]</h1>
+                </div>
+                <div class="admin-topbar__actions">
+                    <a asp-controller="Home" asp-action="Index" class="admin-topbar__ghost">Về website</a>
+                    <div class="admin-topbar__badge">Live</div>
+                </div>
+            </header>
+
+            <main class="admin-content">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

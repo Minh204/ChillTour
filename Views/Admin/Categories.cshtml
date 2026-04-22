@@ -1,0 +1,68 @@
+﻿@model IReadOnlyList<ChillTour.Models.Admin.AdminCategoryItemViewModel>
+@{
+    ViewData["Title"] = "Danh mục tour";
+}
+
+<section class="admin-page-stack">
+    <div class="admin-page-head">
+        <div>
+            <span class="admin-panel__label">Catalog</span>
+            <h2>Danh mục tour</h2>
+        </div>
+        <a asp-action="CreateCategory" class="btn btn-primary nav-cta">Thêm danh mục</a>
+    </div>
+
+    @if (TempData["AdminSuccessMessage"] is string successMessage)
+    {
+        <div class="auth-alert auth-alert--success">@successMessage</div>
+    }
+    @if (TempData["AdminErrorMessage"] is string errorMessage)
+    {
+        <div class="auth-alert auth-alert--error">@errorMessage</div>
+    }
+
+    <section class="admin-panel">
+        <div class="admin-table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Mã</th>
+                        <th>Tên danh mục</th>
+                        <th>Thứ tự</th>
+                        <th>Tour đang dùng</th>
+                        <th>Trạng thái</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-4">Chưa có danh mục nào.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in Model)
+                        {
+                            <tr>
+                                <td><strong>@item.CategoryCode</strong></td>
+                                <td>@item.CategoryName</td>
+                                <td>@item.DisplayOrder</td>
+                                <td>@item.TourCount</td>
+                                <td>
+                                    <span class="status-pill @(item.IsActive ? "status-pill--success" : "status-pill--danger")">
+                                        @(item.IsActive ? "Đang dùng" : "Ngừng dùng")
+                                    </span>
+                                </td>
+                                <td>
+                                    <a asp-action="EditCategory" asp-route-id="@item.CategoryId" class="btn btn-outline-primary btn-sm">Sửa</a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>

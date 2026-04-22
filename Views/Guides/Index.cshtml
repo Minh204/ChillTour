@@ -1,0 +1,55 @@
+@model ChillTour.Models.Guides.GuidePageViewModel
+@{
+    ViewData["Title"] = "Cẩm nang";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/pages/guides/guides.css" asp-append-version="true" />
+}
+
+
+<section class="guide-page">
+    <div class="container">
+        <div class="guide-page__hero">
+            <span class="eyebrow eyebrow--warm">ChillTour Guide</span>
+            <h1>Cẩm nang du lịch</h1>
+        </div>
+
+        @if (Model.Articles.Count == 0)
+        {
+            <div class="auth-card">
+                <p class="m-0">Hiện chưa có bài viết cẩm nang nào được xuất bản.</p>
+            </div>
+        }
+        else
+        {
+            <div class="guide-grid">
+                @foreach (var article in Model.Articles)
+                {
+                    <article class="guide-card">
+                        <a class="guide-card__image" asp-controller="Guides" asp-action="Details" asp-route-slug="@article.Slug">
+                            @if (!string.IsNullOrWhiteSpace(article.ThumbnailUrl))
+                            {
+                                <img src="@article.ThumbnailUrl" alt="@article.Title" />
+                            }
+                            else
+                            {
+                                <span class="travel-home__tour-image-fallback">Cẩm nang</span>
+                            }
+                        </a>
+
+                        <div class="guide-card__body">
+                            <span class="guide-card__date">@(article.PublishedAt?.ToString("dd/MM/yyyy") ?? "Mới cập nhật")</span>
+                            <h2>
+                                <a asp-controller="Guides" asp-action="Details" asp-route-slug="@article.Slug">@article.Title</a>
+                            </h2>
+                            <p>@article.Summary</p>
+                            <a class="guide-card__link" asp-controller="Guides" asp-action="Details" asp-route-slug="@article.Slug">Đọc bài viết</a>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </div>
+</section>
+

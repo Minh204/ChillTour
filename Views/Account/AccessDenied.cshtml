@@ -1,0 +1,16 @@
+@{
+    ViewData["Title"] = "Không có quyền truy cập";
+}
+
+<section class="auth-page">
+    <div class="container">
+        <div class="auth-card">
+            <div class="auth-card__intro">
+                <span class="eyebrow eyebrow--warm">Access Denied</span>
+                <h1>Bạn không có quyền truy cập</h1>
+                <p>Tài khoản hiện tại không đủ quyền để mở trang này.</p>
+                <a asp-controller="Dashboard" asp-action="Index" class="btn btn-primary booking-submit">Về Dashboard</a>
+            </div>
+        </div>
+    </div>
+</section>

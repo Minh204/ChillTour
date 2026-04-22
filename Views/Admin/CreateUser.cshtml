@@ -1,0 +1,63 @@
+﻿@model ChillTour.Models.Admin.CreateUserViewModel
+@using ChillTour.Security
+@{
+    ViewData["Title"] = "Thêm tài khoản";
+}
+
+<section class="admin-page-stack">
+    <div class="admin-page-head">
+        <div>
+            <span class="admin-panel__label">Admin tools</span>
+            <h2>Tạo tài khoản mới</h2>
+            <p>Admin có thể thêm tài khoản và gán quyền ngay khi tạo.</p>
+        </div>
+        <a asp-action="Users" class="btn btn-outline-primary">Quay lại</a>
+    </div>
+
+    <section class="admin-panel admin-form-panel">
+        <form asp-action="CreateUser" method="post" class="auth-form">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <label>
+                Họ tên
+                <input asp-for="FullName" class="form-control" />
+                <span asp-validation-for="FullName" class="text-danger"></span>
+            </label>
+
+            <label>
+                Email
+                <input asp-for="Email" class="form-control" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </label>
+
+            <label>
+                Số điện thoại
+                <input asp-for="PhoneNumber" class="form-control" />
+                <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+            </label>
+
+            <label>
+                Mật khẩu
+                <input asp-for="Password" class="form-control" />
+                <span asp-validation-for="Password" class="text-danger"></span>
+            </label>
+
+            <label>
+                Quyền tài khoản
+                <select asp-for="RoleCode" class="form-select">
+                    @foreach (var roleCode in RoleConstants.All)
+                    {
+                        <option value="@roleCode">@RoleConstants.DisplayName(roleCode)</option>
+                    }
+                </select>
+                <span asp-validation-for="RoleCode" class="text-danger"></span>
+            </label>
+
+            <button type="submit" class="btn btn-primary booking-submit">Tạo tài khoản</button>
+        </form>
+    </section>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

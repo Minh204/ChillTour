@@ -1,0 +1,67 @@
+@model ChillTour.Models.Guides.GuideDetailViewModel
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/pages/guides/guides.css" asp-append-version="true" />
+}
+
+
+<section class="guide-detail-page">
+    <div class="container">
+        <div class="guide-detail-layout">
+            <article class="guide-detail-card">
+                <div class="guide-detail-card__hero">
+                    <span class="eyebrow">Cẩm nang ChillTour</span>
+                    <h1>@Model.Title</h1>
+                    <div class="guide-detail-card__meta">
+                        <span>@(Model.PublishedAt?.ToString("dd/MM/yyyy") ?? "Mới cập nhật")</span>
+                        @if (!string.IsNullOrWhiteSpace(Model.AuthorName))
+                        {
+                            <span>Tác giả: @Model.AuthorName</span>
+                        }
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(Model.Summary))
+                    {
+                        <p class="guide-detail-card__summary">@Model.Summary</p>
+                    }
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Model.ThumbnailUrl))
+                {
+                    <div class="guide-detail-card__image">
+                        <img src="@Model.ThumbnailUrl" alt="@Model.Title" />
+                    </div>
+                }
+
+                <div class="guide-detail-card__content">
+                    @Html.Raw(Model.ContentHtml)
+                </div>
+            </article>
+
+            <aside class="guide-sidebar">
+                <div class="guide-sidebar__card">
+                    <span class="eyebrow eyebrow--warm">Xem thêm</span>
+                    <h2>Bài viết liên quan</h2>
+                    <div class="guide-sidebar__list">
+                        @foreach (var article in Model.RelatedArticles)
+                        {
+                            <a class="guide-sidebar__item" asp-controller="Guides" asp-action="Details" asp-route-slug="@article.Slug">
+                                @if (!string.IsNullOrWhiteSpace(article.ThumbnailUrl))
+                                {
+                                    <img src="@article.ThumbnailUrl" alt="@article.Title" />
+                                }
+                                <div>
+                                    <strong>@article.Title</strong>
+                                    <span>@(article.PublishedAt?.ToString("dd/MM/yyyy") ?? "Mới cập nhật")</span>
+                                </div>
+                            </a>
+                        }
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+</section>
+

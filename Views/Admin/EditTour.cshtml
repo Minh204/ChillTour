@@ -1,0 +1,21 @@
+﻿@model ChillTour.Models.Admin.TourFormViewModel
+@{
+    ViewData["Title"] = "Sửa tour";
+}
+
+<section class="admin-page-stack">
+    <div class="admin-page-head">
+        <div>
+            <span class="admin-panel__label">Tour Management</span>
+            <h2>Cập nhật tour</h2>
+            <p>Chỉnh sửa dữ liệu tour và lưu trực tiếp vào hệ thống.</p>
+        </div>
+        <a asp-action="Tours" class="btn btn-outline-primary">Quay lại</a>
+    </div>
+
+    <partial name="_TourForm" model="Model" />
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

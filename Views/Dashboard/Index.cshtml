@@ -1,0 +1,40 @@
+﻿@using System.Security.Claims
+@using ChillTour.Security
+@{
+    ViewData["Title"] = "Dashboard";
+    var roles = User.Claims.Where(x => x.Type == ClaimTypes.Role).Select(x => x.Value).ToArray();
+}
+
+<section class="section-block">
+    <div class="container">
+        <div class="section-heading">
+            <span class="eyebrow">Dashboard</span>
+            <h2>Xin chào @User.Identity?.Name</h2>
+            <p>Quyền hiện tại: @string.Join(", ", roles)</p>
+        </div>
+
+        <div class="insight-grid">
+            @if (User.IsInRole(RoleConstants.Manager))
+            {
+                <article class="insight-card">
+                    <h3>Manager Dashboard</h3>
+                    <p>Quản lý tài khoản, thay đổi role và khóa hoặc mở khóa user trong hệ thống.</p>
+                    <a asp-controller="Admin" asp-action="Users" class="btn btn-outline-primary">Mở quản lý tài khoản</a>
+                </article>
+            }
+            @if (User.IsInRole(RoleConstants.Manager) || User.IsInRole(RoleConstants.Employee))
+            {
+                <article class="insight-card">
+                    <h3>Employee Dashboard</h3>
+                    <p>Xử lý đơn đặt tour, xác nhận booking và cập nhật trạng thái thanh toán.</p>
+                    <a asp-controller="Admin" asp-action="Orders" class="btn btn-outline-primary">Mở xử lý đơn</a>
+                </article>
+            }
+            <article class="insight-card">
+                <h3>Khu vực Customer</h3>
+                <p>Khách hàng xem hồ sơ, đơn đặt tour và lịch sử chuyến đi.</p>
+                <a asp-action="Customer" class="btn btn-outline-primary">Mở trang Customer</a>
+            </article>
+        </div>
+    </div>
+</section>

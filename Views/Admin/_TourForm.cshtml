@@ -1,0 +1,627 @@
+﻿@model ChillTour.Models.Admin.TourFormViewModel
+
+<section class="admin-panel admin-form-panel admin-form-panel--wide">
+    <form method="post" enctype="multipart/form-data" class="auth-form">
+        @if (Model.TourId.HasValue)
+        {
+            <input asp-for="TourId" type="hidden" />
+        }
+
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.TourCode))
+        {
+            <div class="admin-form-grid">
+                <label>
+                    Mã tour
+                    <input value="@Model.TourCode" class="form-control" readonly />
+                    <small class="admin-field-help">Mã tour được hệ thống tự sinh theo ID.</small>
+                </label>
+            </div>
+        }
+
+        <div class="admin-form-grid">
+            <label>
+                Tên tour
+                <input asp-for="TourName" class="form-control" />
+                <span asp-validation-for="TourName" class="text-danger"></span>
+            </label>
+
+            <label>
+                Danh mục
+                <select asp-for="CategoryId" asp-items="Model.Categories" class="form-select">
+                    <option value="">-- Chọn danh mục --</option>
+                </select>
+                <span asp-validation-for="CategoryId" class="text-danger"></span>
+            </label>
+
+            <label>
+                Điểm đi
+                <select asp-for="StartDestinationId" asp-items="Model.Destinations" class="form-select">
+                    <option value="">-- Chọn điểm đi --</option>
+                </select>
+                <span asp-validation-for="StartDestinationId" class="text-danger"></span>
+            </label>
+
+            <label>
+                Điểm đến
+                <select asp-for="EndDestinationId" asp-items="Model.Destinations" class="form-select">
+                    <option value="">-- Chọn điểm đến --</option>
+                </select>
+                <span asp-validation-for="EndDestinationId" class="text-danger"></span>
+            </label>
+
+            <label class="admin-file-field">
+                Hình ảnh tour
+                <input asp-for="UploadedImages" type="file" class="form-control" accept="image/*" multiple />
+                <small class="admin-field-help">Có thể chọn nhiều ảnh cùng lúc. Ảnh đầu tiên sẽ là ảnh đại diện nếu tour chưa có ảnh chính.</small>
+                <span asp-validation-for="UploadedImages" class="text-danger"></span>
+            </label>
+
+            <label>
+                Số ngày
+                <input asp-for="DurationDays" class="form-control" />
+                <span asp-validation-for="DurationDays" class="text-danger"></span>
+            </label>
+
+            <label>
+                Số đêm
+                <input asp-for="DurationNights" class="form-control" />
+                <span asp-validation-for="DurationNights" class="text-danger"></span>
+            </label>
+
+            <label>
+                Quy mô tối thiểu
+                <input asp-for="MinGroupSize" class="form-control" />
+                <span asp-validation-for="MinGroupSize" class="text-danger"></span>
+            </label>
+
+            <label>
+                Quy mô tối đa
+                <input asp-for="MaxGroupSize" class="form-control" />
+                <span asp-validation-for="MaxGroupSize" class="text-danger"></span>
+            </label>
+
+            <label>
+                Tổng số vé
+                <input asp-for="TotalSeats" class="form-control" />
+                <span asp-validation-for="TotalSeats" class="text-danger"></span>
+            </label>
+
+            <label>
+                Vé còn lại
+                <input asp-for="RemainingSeats" class="form-control" />
+                <span asp-validation-for="RemainingSeats" class="text-danger"></span>
+            </label>
+
+            <label>
+                Giá từ
+                <input asp-for="BasePrice" class="form-control" />
+                <small class="admin-field-help">Giá này sẽ tự đồng bộ theo mức thấp nhất trong các lịch khởi hành khi lưu tour.</small>
+                <span asp-validation-for="BasePrice" class="text-danger"></span>
+            </label>
+
+            <label>
+                Phụ thu phòng đơn
+                <input asp-for="SingleSupplement" class="form-control" />
+                <span asp-validation-for="SingleSupplement" class="text-danger"></span>
+            </label>
+
+            <label>
+                Tiền tệ
+                <input asp-for="CurrencyCode" class="form-control" />
+                <span asp-validation-for="CurrencyCode" class="text-danger"></span>
+            </label>
+
+            <label>
+                Điểm khởi hành
+                <input asp-for="DeparturePoint" class="form-control" />
+                <span asp-validation-for="DeparturePoint" class="text-danger"></span>
+            </label>
+
+            <label>
+                Điểm trả khách
+                <input asp-for="ReturnPoint" class="form-control" />
+                <span asp-validation-for="ReturnPoint" class="text-danger"></span>
+            </label>
+
+            <label>
+                Trạng thái duyệt
+                <select asp-for="ApprovalStatus" class="form-select">
+                    <option value="0">Draft</option>
+                    <option value="1">Pending</option>
+                    <option value="2">Approved</option>
+                    <option value="3">Rejected</option>
+                </select>
+                <span asp-validation-for="ApprovalStatus" class="text-danger"></span>
+            </label>
+        </div>
+
+        @if (Model.ExistingImages.Count > 0)
+        {
+            <section class="admin-upload-preview">
+                <div class="admin-panel__header">
+                    <div>
+                        <span class="admin-panel__label">Gallery</span>
+                        <h3>Ảnh hiện có</h3>
+                    </div>
+                </div>
+
+                <div class="admin-gallery-grid">
+                    @foreach (var image in Model.ExistingImages.OrderBy(x => x.DisplayOrder))
+                    {
+                        <article class="admin-gallery-card">
+                            <img src="@image.MediaUrl" alt="@Model.TourName" class="admin-gallery-card__image" />
+                            <div class="admin-gallery-card__meta">
+                                <span>Thứ tự: @image.DisplayOrder</span>
+                                @if (image.IsPrimary)
+                                {
+                                    <strong>Ảnh đại diện</strong>
+                                }
+                            </div>
+                            <label class="auth-checkbox">
+                                <input type="checkbox" name="DeleteImageIds" value="@image.TourMediaId" />
+                                <span>Xóa ảnh này</span>
+                            </label>
+                        </article>
+                    }
+                </div>
+            </section>
+        }
+
+        <section class="admin-upload-preview">
+            <div class="admin-panel__header">
+                <div>
+                    <span class="admin-panel__label">Schedules</span>
+                    <h3>Lịch khởi hành</h3>
+                </div>
+                <button type="button" class="btn btn-outline-primary" data-repeater-add="schedule-list">Thêm lịch khởi hành</button>
+            </div>
+            <span asp-validation-for="Schedules" class="text-danger"></span>
+
+            <div class="admin-stack-list" id="schedule-list" data-next-index="@Model.Schedules.Count">
+                @for (var i = 0; i < Model.Schedules.Count; i++)
+                {
+                    <div class="admin-repeat-card" data-repeat-item>
+                        <input type="hidden" asp-for="Schedules[i].TourScheduleId" />
+                        <input type="hidden" asp-for="Schedules[i].IsDeleted" data-delete-flag />
+
+                        <div class="admin-panel__header">
+                            <div>
+                                <span class="admin-panel__label">Lịch @(i + 1)</span>
+                            </div>
+                            <button type="button" class="btn btn-outline-danger" data-repeater-remove>Xóa lịch</button>
+                        </div>
+
+                        <div class="admin-form-grid">
+                            <label>
+                                Ngày khởi hành
+                                <input asp-for="Schedules[i].DepartureDate" type="date" class="form-control" />
+                                <span asp-validation-for="Schedules[i].DepartureDate" class="text-danger"></span>
+                            </label>
+                            <label>
+                                Giá người lớn
+                                <input asp-for="Schedules[i].AdultPrice" class="form-control" />
+                                <span asp-validation-for="Schedules[i].AdultPrice" class="text-danger"></span>
+                            </label>
+                        </div>
+                        <p class="tour-booking-card__note">Giá người lớn được cấu hình riêng theo từng lịch. Trẻ em tự tính 50%, em bé miễn phí.</p>
+                    </div>
+                }
+            </div>
+        </section>
+
+        <section class="admin-upload-preview">
+            <div class="admin-panel__header">
+                <div>
+                    <span class="admin-panel__label">Itinerary</span>
+                    <h3>Lịch trình tour</h3>
+                </div>
+                <button type="button" class="btn btn-outline-primary" id="openItineraryCreate">Thêm ngày lịch trình</button>
+            </div>
+            <span asp-validation-for="ItineraryDays" class="text-danger"></span>
+
+            <div class="admin-stack-list" id="itinerary-list" data-next-index="@Model.ItineraryDays.Count">
+                @for (var i = 0; i < Model.ItineraryDays.Count; i++)
+                {
+                    var itinerary = Model.ItineraryDays[i];
+                    <article class="admin-repeat-card itinerary-summary-card" data-itinerary-item>
+                        <input type="hidden" asp-for="ItineraryDays[i].ItineraryDayId" />
+                        <input type="hidden" asp-for="ItineraryDays[i].IsDeleted" data-delete-flag />
+                        <input type="hidden" asp-for="ItineraryDays[i].DayNumber" data-field="DayNumber" />
+                        <input type="hidden" asp-for="ItineraryDays[i].Title" data-field="Title" />
+                        <input type="hidden" asp-for="ItineraryDays[i].Summary" data-field="Summary" />
+                        <input type="hidden" asp-for="ItineraryDays[i].Description" data-field="Description" />
+                        <input type="hidden" asp-for="ItineraryDays[i].OvernightStay" data-field="OvernightStay" />
+                        <input type="hidden" asp-for="ItineraryDays[i].BreakfastIncluded" data-field="BreakfastIncluded" />
+                        <input type="hidden" asp-for="ItineraryDays[i].LunchIncluded" data-field="LunchIncluded" />
+                        <input type="hidden" asp-for="ItineraryDays[i].DinnerIncluded" data-field="DinnerIncluded" />
+                        <input type="hidden" asp-for="ItineraryDays[i].HotelName" data-field="HotelName" />
+                        <input type="hidden" asp-for="ItineraryDays[i].TransportationName" data-field="TransportationName" />
+
+                        <div class="admin-panel__header">
+                            <div>
+                                <span class="admin-panel__label">Ngày <span data-summary-day>@itinerary.DayNumber</span></span>
+                                <h4 data-summary-title>@itinerary.Title</h4>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-outline-primary" data-itinerary-edit>Sửa</button>
+                                <button type="button" class="btn btn-outline-danger" data-itinerary-remove>Xóa</button>
+                            </div>
+                        </div>
+
+                        <p class="mb-2" data-summary-text>@(string.IsNullOrWhiteSpace(itinerary.Summary) ? "Chưa có tóm tắt cho ngày này." : itinerary.Summary)</p>
+                        <div class="admin-gallery-card__meta">
+                            <span data-summary-meals>
+                                @{
+                                    var meals = new List<string>();
+                                    if (itinerary.BreakfastIncluded) meals.Add("sáng");
+                                    if (itinerary.LunchIncluded) meals.Add("trưa");
+                                    if (itinerary.DinnerIncluded) meals.Add("chiều");
+                                }
+                                @(meals.Count == 0 ? "Không bao gồm bữa ăn" : $"{meals.Count:00} bữa ăn ({string.Join(", ", meals)})")
+                            </span>
+                            <strong data-summary-overnight>
+                                @(string.IsNullOrWhiteSpace(itinerary.OvernightStay) ? "Chưa khai báo nơi nghỉ đêm" : $"Nghỉ đêm tại: {itinerary.OvernightStay}")
+                            </strong>
+                        </div>
+                    </article>
+                }
+            </div>
+        </section>
+
+        <label>
+            Mô tả ngắn
+            <textarea asp-for="ShortDescription" class="form-control admin-textarea"></textarea>
+            <span asp-validation-for="ShortDescription" class="text-danger"></span>
+        </label>
+
+        <label>
+            Mô tả chi tiết
+            <textarea asp-for="Description" class="form-control admin-textarea admin-textarea--lg"></textarea>
+            <span asp-validation-for="Description" class="text-danger"></span>
+        </label>
+
+        <div class="admin-form-grid">
+            <label>
+                SEO Title
+                <input asp-for="SeoTitle" class="form-control" />
+                <span asp-validation-for="SeoTitle" class="text-danger"></span>
+            </label>
+
+            <label>
+                SEO Description
+                <input asp-for="SeoDescription" class="form-control" />
+                <span asp-validation-for="SeoDescription" class="text-danger"></span>
+            </label>
+        </div>
+
+        <div class="admin-check-grid">
+            <label class="auth-checkbox">
+                <input asp-for="PickupIncluded" />
+                <span>Có đón khách</span>
+            </label>
+            <label class="auth-checkbox">
+                <input asp-for="IsFeatured" />
+                <span>Tour nổi bật</span>
+            </label>
+            <label class="auth-checkbox">
+                <input asp-for="IsPublished" />
+                <span>Xuất bản</span>
+            </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary booking-submit">Lưu tour</button>
+    </form>
+</section>
+
+<template id="schedule-item-template">
+    <div class="admin-repeat-card" data-repeat-item>
+        <input type="hidden" name="Schedules[__index__].TourScheduleId" value="" />
+        <input type="hidden" name="Schedules[__index__].IsDeleted" value="false" data-delete-flag />
+
+        <div class="admin-panel__header">
+            <div>
+                <span class="admin-panel__label">Lịch mới</span>
+            </div>
+            <button type="button" class="btn btn-outline-danger" data-repeater-remove>Xóa lịch</button>
+        </div>
+
+        <div class="admin-form-grid">
+            <label>
+                Ngày khởi hành
+                <input name="Schedules[__index__].DepartureDate" type="date" class="form-control" />
+            </label>
+            <label>
+                Giá người lớn
+                <input name="Schedules[__index__].AdultPrice" class="form-control" value="0" />
+            </label>
+        </div>
+        <p class="tour-booking-card__note">Hệ thống sẽ tự tính ngày kết thúc, số chỗ, giá trẻ em và em bé từ lịch khởi hành này.</p>
+    </div>
+</template>
+
+<template id="itinerary-item-template">
+    <article class="admin-repeat-card itinerary-summary-card" data-itinerary-item>
+        <input type="hidden" name="ItineraryDays[__index__].ItineraryDayId" value="" />
+        <input type="hidden" name="ItineraryDays[__index__].IsDeleted" value="false" data-delete-flag />
+        <input type="hidden" name="ItineraryDays[__index__].DayNumber" value="1" data-field="DayNumber" />
+        <input type="hidden" name="ItineraryDays[__index__].Title" value="Ngày 1" data-field="Title" />
+        <input type="hidden" name="ItineraryDays[__index__].Summary" value="" data-field="Summary" />
+        <input type="hidden" name="ItineraryDays[__index__].Description" value="" data-field="Description" />
+        <input type="hidden" name="ItineraryDays[__index__].OvernightStay" value="" data-field="OvernightStay" />
+        <input type="hidden" name="ItineraryDays[__index__].BreakfastIncluded" value="false" data-field="BreakfastIncluded" />
+        <input type="hidden" name="ItineraryDays[__index__].LunchIncluded" value="false" data-field="LunchIncluded" />
+        <input type="hidden" name="ItineraryDays[__index__].DinnerIncluded" value="false" data-field="DinnerIncluded" />
+        <input type="hidden" name="ItineraryDays[__index__].HotelName" value="" data-field="HotelName" />
+        <input type="hidden" name="ItineraryDays[__index__].TransportationName" value="" data-field="TransportationName" />
+
+        <div class="admin-panel__header">
+            <div>
+                <span class="admin-panel__label">Ngày <span data-summary-day>1</span></span>
+                <h4 data-summary-title>Ngày 1</h4>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-primary" data-itinerary-edit>Sửa</button>
+                <button type="button" class="btn btn-outline-danger" data-itinerary-remove>Xóa</button>
+            </div>
+        </div>
+
+        <p class="mb-2" data-summary-text>Chưa có tóm tắt cho ngày này.</p>
+        <div class="admin-gallery-card__meta">
+            <span data-summary-meals>Không bao gồm bữa ăn</span>
+            <strong data-summary-overnight>Chưa khai báo nơi nghỉ đêm</strong>
+        </div>
+    </article>
+</template>
+
+<div class="modal fade" id="itineraryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Lịch trình tour</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="itineraryEditingIndex" />
+                <div class="admin-form-grid">
+                    <label>
+                        Ngày thứ
+                        <input id="itineraryDayNumber" class="form-control" type="number" min="1" />
+                    </label>
+                    <label>
+                        Tiêu đề
+                        <input id="itineraryTitle" class="form-control" />
+                    </label>
+                    <label>
+                        Nghỉ đêm tại
+                        <input id="itineraryOvernightStay" class="form-control" placeholder="Ví dụ: Tp. Cao Bằng" />
+                    </label>
+                    <label>
+                        Khách sạn
+                        <input id="itineraryHotelName" class="form-control" placeholder="Ví dụ: Mường Thanh Cao Bằng" />
+                    </label>
+                    <label>
+                        Phương tiện
+                        <input id="itineraryTransportationName" class="form-control" placeholder="Ví dụ: Xe du lịch 29 chỗ" />
+                    </label>
+                </div>
+                <label class="mt-3">
+                    Tóm tắt
+                    <textarea id="itinerarySummary" class="form-control admin-textarea"></textarea>
+                </label>
+                <label class="mt-3">
+                    Mô tả chi tiết
+                    <textarea id="itineraryDescription" class="form-control admin-textarea admin-textarea--lg"></textarea>
+                    <small class="admin-field-help">Có thể nhập nhiều đoạn, mốc giờ hoặc gạch đầu dòng. Nội dung sẽ được hiển thị xuống dòng ở trang khách hàng.</small>
+                </label>
+                <div class="admin-check-grid mt-3">
+                    <label class="auth-checkbox">
+                        <input id="itineraryBreakfastIncluded" type="checkbox" />
+                        <span>Có ăn sáng</span>
+                    </label>
+                    <label class="auth-checkbox">
+                        <input id="itineraryLunchIncluded" type="checkbox" />
+                        <span>Có ăn trưa</span>
+                    </label>
+                    <label class="auth-checkbox">
+                        <input id="itineraryDinnerIncluded" type="checkbox" />
+                        <span>Có ăn tối</span>
+                    </label>
+                </div>
+                <div id="itineraryModalError" class="text-danger mt-3 d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-primary" id="saveItineraryButton">Lưu lịch trình</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (() => {
+        const initializeTourFormInteractions = () => {
+        const bindRepeaters = () => {
+            document.querySelectorAll('[data-repeater-add]').forEach(button => {
+                button.addEventListener('click', () => {
+                    const listId = button.getAttribute('data-repeater-add');
+                    if (listId === 'itinerary-list') {
+                        return;
+                    }
+                    const list = document.getElementById(listId);
+                    const template = document.getElementById(`${listId === 'schedule-list' ? 'schedule' : 'itinerary'}-item-template`);
+                    const index = Number(list.dataset.nextIndex || '0');
+                    list.dataset.nextIndex = String(index + 1);
+
+                    const html = template.innerHTML.replaceAll('__index__', index);
+                    list.insertAdjacentHTML('beforeend', html);
+                    bindRemoveButtons(list.lastElementChild);
+                });
+            });
+
+            document.querySelectorAll('[data-repeat-item]').forEach(bindRemoveButtons);
+        };
+
+        const bindRemoveButtons = (scope) => {
+            const removeButton = scope.querySelector('[data-repeater-remove]');
+            if (!removeButton || removeButton.dataset.bound === '1') {
+                return;
+            }
+
+            removeButton.dataset.bound = '1';
+            removeButton.addEventListener('click', () => {
+                const deleteFlag = scope.querySelector('[data-delete-flag]');
+                const idInput = scope.querySelector('input[name$=".TourScheduleId"], input[name$=".ItineraryDayId"]');
+                if (deleteFlag && idInput && idInput.value) {
+                    deleteFlag.value = 'true';
+                    scope.style.display = 'none';
+                    return;
+                }
+
+                scope.remove();
+            });
+        };
+
+        bindRepeaters();
+
+        const itineraryList = document.getElementById('itinerary-list');
+        const itineraryTemplate = document.getElementById('itinerary-item-template');
+        const itineraryModalElement = document.getElementById('itineraryModal');
+        const itineraryModal = itineraryModalElement && window.bootstrap ? new window.bootstrap.Modal(itineraryModalElement) : null;
+        const itineraryError = document.getElementById('itineraryModalError');
+        const itineraryFields = {
+            index: document.getElementById('itineraryEditingIndex'),
+            dayNumber: document.getElementById('itineraryDayNumber'),
+            title: document.getElementById('itineraryTitle'),
+            summary: document.getElementById('itinerarySummary'),
+            description: document.getElementById('itineraryDescription'),
+            overnightStay: document.getElementById('itineraryOvernightStay'),
+            breakfast: document.getElementById('itineraryBreakfastIncluded'),
+            lunch: document.getElementById('itineraryLunchIncluded'),
+            dinner: document.getElementById('itineraryDinnerIncluded'),
+            hotelName: document.getElementById('itineraryHotelName'),
+            transportationName: document.getElementById('itineraryTransportationName')
+        };
+
+        const setItineraryError = (message) => {
+            if (!itineraryError) return;
+            itineraryError.textContent = message || '';
+            itineraryError.classList.toggle('d-none', !message);
+        };
+
+        const getField = (card, field) => card.querySelector(`[data-field="${field}"]`);
+
+        const mealSummary = (card) => {
+            const meals = [];
+            if (getField(card, 'BreakfastIncluded')?.value === 'true') meals.push('sáng');
+            if (getField(card, 'LunchIncluded')?.value === 'true') meals.push('trưa');
+            if (getField(card, 'DinnerIncluded')?.value === 'true') meals.push('chiều');
+            return meals.length === 0
+                ? 'Không bao gồm bữa ăn'
+                : `${String(meals.length).padStart(2, '0')} bữa ăn (${meals.join(', ')})`;
+        };
+
+        const refreshItineraryCard = (card) => {
+            card.querySelector('[data-summary-day]').textContent = getField(card, 'DayNumber')?.value || '';
+            card.querySelector('[data-summary-title]').textContent = getField(card, 'Title')?.value || 'Ngày mới';
+            card.querySelector('[data-summary-text]').textContent = getField(card, 'Summary')?.value || 'Chưa có tóm tắt cho ngày này.';
+            card.querySelector('[data-summary-meals]').textContent = mealSummary(card);
+            card.querySelector('[data-summary-overnight]').textContent = getField(card, 'OvernightStay')?.value
+                ? `Nghỉ đêm tại: ${getField(card, 'OvernightStay').value}`
+                : 'Chưa khai báo nơi nghỉ đêm';
+        };
+
+        const openItineraryModal = (card) => {
+            itineraryFields.index.value = card ? card.dataset.index : '';
+            itineraryFields.dayNumber.value = card ? getField(card, 'DayNumber')?.value || '1' : '1';
+            itineraryFields.title.value = card ? getField(card, 'Title')?.value || '' : '';
+            itineraryFields.summary.value = card ? getField(card, 'Summary')?.value || '' : '';
+            itineraryFields.description.value = card ? getField(card, 'Description')?.value || '' : '';
+            itineraryFields.overnightStay.value = card ? getField(card, 'OvernightStay')?.value || '' : '';
+            itineraryFields.breakfast.checked = card ? getField(card, 'BreakfastIncluded')?.value === 'true' : false;
+            itineraryFields.lunch.checked = card ? getField(card, 'LunchIncluded')?.value === 'true' : false;
+            itineraryFields.dinner.checked = card ? getField(card, 'DinnerIncluded')?.value === 'true' : false;
+            itineraryFields.hotelName.value = card ? getField(card, 'HotelName')?.value || '' : '';
+            itineraryFields.transportationName.value = card ? getField(card, 'TransportationName')?.value || '' : '';
+            setItineraryError('');
+            itineraryModal?.show();
+        };
+
+        const bindItineraryCard = (card) => {
+            if (!card || card.dataset.bound === '1') return;
+            card.dataset.bound = '1';
+            card.dataset.index = card.querySelector('input[name*=".DayNumber"]')?.name.match(/ItineraryDays\[(\d+)\]/)?.[1] || '';
+            refreshItineraryCard(card);
+
+            card.querySelector('[data-itinerary-edit]')?.addEventListener('click', () => openItineraryModal(card));
+            card.querySelector('[data-itinerary-remove]')?.addEventListener('click', () => {
+                const deleteFlag = card.querySelector('[data-delete-flag]');
+                const idInput = card.querySelector('input[name$=".ItineraryDayId"]');
+                if (deleteFlag && idInput && idInput.value) {
+                    deleteFlag.value = 'true';
+                    card.style.display = 'none';
+                    return;
+                }
+
+                card.remove();
+            });
+        };
+
+        document.querySelectorAll('[data-itinerary-item]').forEach(bindItineraryCard);
+
+        document.getElementById('openItineraryCreate')?.addEventListener('click', () => openItineraryModal(null));
+
+        document.getElementById('saveItineraryButton')?.addEventListener('click', () => {
+            const dayNumber = Number(itineraryFields.dayNumber.value || '0');
+            const title = itineraryFields.title.value.trim();
+
+            if (dayNumber < 1) {
+                setItineraryError('Ngày thứ phải lớn hơn 0.');
+                return;
+            }
+
+            if (!title) {
+                setItineraryError('Vui lòng nhập tiêu đề ngày.');
+                return;
+            }
+
+            let card = null;
+            if (itineraryFields.index.value !== '') {
+                card = itineraryList.querySelector(`[data-index="${itineraryFields.index.value}"]`);
+            } else {
+                const index = Number(itineraryList.dataset.nextIndex || '0');
+                itineraryList.dataset.nextIndex = String(index + 1);
+                const html = itineraryTemplate.innerHTML.replaceAll('__index__', index);
+                itineraryList.insertAdjacentHTML('beforeend', html);
+                card = itineraryList.lastElementChild;
+                card.dataset.index = String(index);
+                bindItineraryCard(card);
+            }
+
+            getField(card, 'DayNumber').value = String(dayNumber);
+            getField(card, 'Title').value = title;
+            getField(card, 'Summary').value = itineraryFields.summary.value.trim();
+            getField(card, 'Description').value = itineraryFields.description.value.trim();
+            getField(card, 'OvernightStay').value = itineraryFields.overnightStay.value.trim();
+            getField(card, 'BreakfastIncluded').value = itineraryFields.breakfast.checked ? 'true' : 'false';
+            getField(card, 'LunchIncluded').value = itineraryFields.lunch.checked ? 'true' : 'false';
+            getField(card, 'DinnerIncluded').value = itineraryFields.dinner.checked ? 'true' : 'false';
+            getField(card, 'HotelName').value = itineraryFields.hotelName.value.trim();
+            getField(card, 'TransportationName').value = itineraryFields.transportationName.value.trim();
+            const deleteFlag = card.querySelector('[data-delete-flag]');
+            if (deleteFlag) deleteFlag.value = 'false';
+            card.style.display = '';
+            refreshItineraryCard(card);
+            itineraryModal?.hide();
+        });
+
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeTourFormInteractions, { once: true });
+        } else {
+            initializeTourFormInteractions();
+        }
+    })();
+</script>

@@ -1,0 +1,32 @@
+@model ChillTour.Models.Admin.ArticleFormViewModel
+@{
+    ViewData["Title"] = "Sửa cẩm nang";
+}
+
+<section class="admin-page-stack">
+    <div class="admin-page-head">
+        <div>
+            <span class="admin-panel__label">Guide Management</span>
+            <h2>Cập nhật bài cẩm nang</h2>
+            <p>Chỉnh sửa thông tin bài viết trước khi hiển thị tới khách hàng.</p>
+        </div>
+        <a asp-action="Articles" class="btn btn-outline-primary">Quay lại</a>
+    </div>
+
+    <div class="admin-panel">
+        <form asp-action="EditArticle" asp-route-id="@Model.ArticleId" method="post">
+            @Html.AntiForgeryToken()
+            <input asp-for="ArticleId" type="hidden" />
+            <partial name="_ArticleForm" model="Model" />
+
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                <a asp-action="Articles" class="btn btn-outline-secondary">Hủy</a>
+            </div>
+        </form>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

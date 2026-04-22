@@ -1,0 +1,47 @@
+﻿@using ChillTour.Security
+@model IReadOnlyList<ChillTour.Models.Account.CustomerNotificationItemViewModel>
+@{
+    ViewData["Title"] = "Hộp thư";
+}
+
+<section class="auth-page">
+    <div class="container">
+        <div class="auth-card booking-history-card">
+            <div class="auth-card__intro">
+                <span class="eyebrow eyebrow--warm">Hộp thư</span>
+                <h1>Thông báo của bạn</h1>
+            </div>
+
+            @if (Model.Count == 0)
+            {
+                <div class="auth-alert auth-alert--error">Hộp thư của bạn hiện chưa có thông báo nào.</div>
+            }
+            else
+            {
+                <div class="customer-notification-list">
+                    @foreach (var notification in Model)
+                    {
+                        <article class="customer-notification-card @(notification.IsRead ? string.Empty : "is-unread")">
+                            <div class="customer-notification-card__head">
+                                <h3>@notification.Title</h3>
+                                <span>@notification.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                            </div>
+                            <p>@notification.Message</p>
+                            @if (notification.RelatedEntityType == "Booking" && notification.RelatedEntityId.HasValue)
+                            {
+                                if (User.IsInRole(RoleConstants.Customer))
+                                {
+                                    <a asp-controller="Payments" asp-action="Checkout" asp-route-bookingId="@notification.RelatedEntityId.Value" class="btn btn-outline-primary">Xem đơn liên quan</a>
+                                }
+                                else
+                                {
+                                    <a asp-controller="Admin" asp-action="Orders" class="btn btn-outline-primary">Mở xử lý đơn</a>
+                                }
+                            }
+                        </article>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</section>

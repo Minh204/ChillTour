@@ -1,0 +1,51 @@
+﻿@model ChillTour.Models.Admin.CategoryFormViewModel
+@{
+    ViewData["Title"] = Model.CategoryId.HasValue ? "Thêm danh mục" : "Thêm danh mục";
+}
+
+<section class="admin-page-stack">
+    <div class="admin-page-head">
+        <div>
+            <span class="admin-panel__label">Catalog</span>
+            <h2>Thêm danh mục</h2>
+        </div>
+        <a asp-action="Categories" class="btn btn-outline-primary">Quay lại</a>
+    </div>
+
+    <section class="admin-panel admin-form-panel">
+        <form method="post" class="auth-form">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="admin-form-grid">
+                <label>
+                    Tên danh mục
+                    <input asp-for="CategoryName" class="form-control" />
+                    <span asp-validation-for="CategoryName" class="text-danger"></span>
+                </label>
+
+                <label>
+                    Thứ tự hiển thị
+                    <input asp-for="DisplayOrder" class="form-control" />
+                    <span asp-validation-for="DisplayOrder" class="text-danger"></span>
+                </label>
+            </div>
+
+            <label>
+                Mô tả
+                <textarea asp-for="Description" class="form-control admin-textarea"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </label>
+
+            <label class="auth-checkbox">
+                <input asp-for="IsActive" />
+                <span>Kích hoạt danh mục</span>
+            </label>
+
+            <button type="submit" class="btn btn-primary booking-submit">Lưu danh mục</button>
+        </form>
+    </section>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

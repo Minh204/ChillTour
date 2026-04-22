@@ -1,0 +1,52 @@
+@model ChillTour.Models.Admin.ArticleFormViewModel
+
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+<div class="auth-form">
+    <label>
+        Mã bài viết
+        <input asp-for="ArticleCode" class="form-control" />
+        <span asp-validation-for="ArticleCode" class="text-danger small"></span>
+    </label>
+
+    <label>
+        Tiêu đề
+        <input asp-for="Title" class="form-control" />
+        <span asp-validation-for="Title" class="text-danger small"></span>
+    </label>
+
+    <label>
+        Slug
+        <input asp-for="Slug" class="form-control" />
+        <span asp-validation-for="Slug" class="text-danger small"></span>
+    </label>
+
+    <label>
+        Tóm tắt
+        <textarea asp-for="Summary" class="form-control" rows="4"></textarea>
+        <span asp-validation-for="Summary" class="text-danger small"></span>
+    </label>
+
+    <label>
+        Ảnh thumbnail
+        <input asp-for="ThumbnailUrl" class="form-control" />
+        <span asp-validation-for="ThumbnailUrl" class="text-danger small"></span>
+    </label>
+
+    <label>
+        Thời gian xuất bản
+        <input asp-for="PublishedAt" type="datetime-local" class="form-control" />
+        <span asp-validation-for="PublishedAt" class="text-danger small"></span>
+    </label>
+
+    <label class="auth-checkbox">
+        <input asp-for="IsPublished" class="form-check-input" />
+        <span>Xuất bản ngay sau khi lưu</span>
+    </label>
+
+    <label>
+        Nội dung HTML
+        <textarea asp-for="ContentHtml" class="form-control" rows="16"></textarea>
+        <span asp-validation-for="ContentHtml" class="text-danger small"></span>
+    </label>
+</div>

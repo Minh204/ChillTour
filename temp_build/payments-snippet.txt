@@ -1,0 +1,20 @@
+        }
+
+        var validationError = await ValidatePromotionAsync(booking, promotion, userId.Value, cancellationToken);
+        if (validationError is not null)
+        {
+            TempData["PaymentErrorMessage"] = validationError;
+            return RedirectToAction(nameof(Checkout), new { bookingId });
+        }
+
+        var hasClaimedPromotion = await _dbContext.UserPromotions
+            .AnyAsync(x => x.UserId == userId && x.PromotionId == promotion.PromotionId && x.UsedAt == null, cancellationToken);
+
+        if (!hasClaimedPromotion)
+        {
+            return "Báº¡n chÆ°a nháº­n mÃ£ Æ°u Ä‘Ã£i nÃ y trong kho Æ°u Ä‘Ã£i cÃ¡ nhÃ¢n.";
+        }
+
+        var subtotal = booking.BaseAmount + booking.TaxAmount + booking.ServiceFee;
+        var discountAmount = CalculatePromotionDiscount(subtotal, promotion);
+

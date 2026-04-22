@@ -1,0 +1,82 @@
+@model ChillTour.Models.Admin.PromotionFormViewModel
+@{
+    ViewData["Title"] = "Sửa ưu đãi";
+}
+
+<section class="admin-page-stack">
+    <div class="admin-page-head">
+        <div>
+            <span class="admin-panel__label">Promotion</span>
+            <h2>Sửa ưu đãi</h2>
+        </div>
+        <a asp-action="Promotions" class="btn btn-outline-primary">Quay lại</a>
+    </div>
+
+    <section class="admin-panel admin-form-panel">
+        <form method="post" class="auth-form">
+            <input asp-for="PromotionId" type="hidden" />
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="admin-form-grid">
+                <label>
+                    Mã ưu đãi
+                    <input asp-for="PromotionCode" class="form-control" />
+                    <span asp-validation-for="PromotionCode" class="text-danger"></span>
+                </label>
+
+                <label>
+                    Tên sự kiện
+                    <input asp-for="PromotionName" class="form-control" />
+                    <span asp-validation-for="PromotionName" class="text-danger"></span>
+                </label>
+
+                <label>
+                    % giảm giá
+                    <input asp-for="DiscountPercent" class="form-control" />
+                    <span asp-validation-for="DiscountPercent" class="text-danger"></span>
+                </label>
+
+                <label>
+                    Giảm tối đa
+                    <input asp-for="MaxDiscountAmount" class="form-control" />
+                    <span asp-validation-for="MaxDiscountAmount" class="text-danger"></span>
+                </label>
+
+                <label>
+                    Đơn tối thiểu
+                    <input asp-for="MinOrderValue" class="form-control" />
+                    <span asp-validation-for="MinOrderValue" class="text-danger"></span>
+                </label>
+
+                <label>
+                    Bắt đầu hiệu lực
+                    <input asp-for="StartAt" type="datetime-local" class="form-control" />
+                    <span asp-validation-for="StartAt" class="text-danger"></span>
+                </label>
+
+                <label>
+                    Kết thúc hiệu lực
+                    <input asp-for="EndAt" type="datetime-local" class="form-control" />
+                    <span asp-validation-for="EndAt" class="text-danger"></span>
+                </label>
+            </div>
+
+            <label>
+                Mô tả
+                <textarea asp-for="Description" class="form-control admin-textarea"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </label>
+
+            <label class="auth-checkbox">
+                <input asp-for="IsActive" />
+                <span>Kích hoạt ưu đãi</span>
+            </label>
+
+            <button type="submit" class="btn btn-primary booking-submit">Lưu thay đổi</button>
+        </form>
+    </section>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

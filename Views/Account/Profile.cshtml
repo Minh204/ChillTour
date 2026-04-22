@@ -1,0 +1,83 @@
+@model ChillTour.Models.Account.AccountProfilePageViewModel
+@{
+    ViewData["Title"] = "Tài khoản của tôi";
+}
+
+<section class="auth-page">
+    <div class="container">
+        <div class="profile-shell">
+            <div class="auth-card">
+                <div class="auth-card__intro">
+                    <span class="eyebrow">Tài khoản</span>
+                    <h1>Thông tin cá nhân</h1>
+                    <p>Cập nhật họ tên, số điện thoại và thông tin tài khoản của bạn.</p>
+                </div>
+
+                @if (TempData["ProfileSuccessMessage"] is string successMessage)
+                {
+                    <div class="auth-alert auth-alert--success">@successMessage</div>
+                }
+
+                <form asp-action="UpdateProfile" method="post" class="auth-form">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                    <label>
+                        Họ tên
+                        <input asp-for="Profile.FullName" class="form-control" />
+                        <span asp-validation-for="Profile.FullName" class="text-danger"></span>
+                    </label>
+
+                    <label>
+                        Email
+                        <input asp-for="Profile.Email" class="form-control" readonly />
+                        <span asp-validation-for="Profile.Email" class="text-danger"></span>
+                    </label>
+
+                    <label>
+                        Số điện thoại
+                        <input asp-for="Profile.PhoneNumber" class="form-control" />
+                        <span asp-validation-for="Profile.PhoneNumber" class="text-danger"></span>
+                    </label>
+
+                    <button type="submit" class="btn btn-primary booking-submit">Lưu thông tin</button>
+                </form>
+            </div>
+
+            <div class="auth-card">
+                <div class="auth-card__intro">
+                    <span class="eyebrow eyebrow--warm">Bảo mật</span>
+                    <h1>Đổi mật khẩu</h1>
+                    <p>Chọn mật khẩu mới an toàn để bảo vệ tài khoản ChillTour của bạn.</p>
+                </div>
+
+                <form asp-action="ChangePassword" method="post" class="auth-form">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                    <label>
+                        Mật khẩu hiện tại
+                        <input asp-for="ChangePassword.CurrentPassword" class="form-control" />
+                        <span asp-validation-for="ChangePassword.CurrentPassword" class="text-danger"></span>
+                    </label>
+
+                    <label>
+                        Mật khẩu mới
+                        <input asp-for="ChangePassword.NewPassword" class="form-control" />
+                        <span asp-validation-for="ChangePassword.NewPassword" class="text-danger"></span>
+                    </label>
+
+                    <label>
+                        Xác nhận mật khẩu mới
+                        <input asp-for="ChangePassword.ConfirmNewPassword" class="form-control" />
+                        <span asp-validation-for="ChangePassword.ConfirmNewPassword" class="text-danger"></span>
+                    </label>
+
+                    <button type="submit" class="btn btn-primary booking-submit">Đổi mật khẩu</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

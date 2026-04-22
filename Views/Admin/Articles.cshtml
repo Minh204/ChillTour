@@ -1,0 +1,90 @@
+@model ChillTour.Models.Admin.AdminArticleListViewModel
+@{
+    ViewData["Title"] = "Quản lý cẩm nang";
+}
+
+<section class="admin-page-stack">
+    <div class="admin-page-head">
+        <div>
+            <span class="admin-panel__label">Guide Management</span>
+            <h2>Danh sách bài cẩm nang</h2>
+            <p>Quản lý các bài viết hiển thị ở trang cẩm nang dành cho khách hàng.</p>
+        </div>
+        <a asp-action="CreateArticle" class="btn btn-primary">Thêm bài viết</a>
+    </div>
+
+    @if (TempData["AdminSuccessMessage"] is string successMessage)
+    {
+        <div class="auth-alert auth-alert--success">@successMessage</div>
+    }
+    @if (TempData["AdminErrorMessage"] is string errorMessage)
+    {
+        <div class="auth-alert auth-alert--error">@errorMessage</div>
+    }
+
+    <div class="admin-overview-grid">
+        <article class="admin-stat-card">
+            <span>Tổng bài viết</span>
+            <strong>@Model.TotalArticles</strong>
+            <p>Tổng số bài cẩm nang hiện có.</p>
+        </article>
+        <article class="admin-stat-card admin-stat-card--mint">
+            <span>Đã xuất bản</span>
+            <strong>@Model.PublishedArticles</strong>
+            <p>Các bài đang hiển thị ở trang khách hàng.</p>
+        </article>
+        <article class="admin-stat-card admin-stat-card--orange">
+            <span>Bản nháp</span>
+            <strong>@Model.DraftArticles</strong>
+            <p>Bài đã lưu nhưng chưa public.</p>
+        </article>
+    </div>
+
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Bài viết</th>
+                    <th>Slug</th>
+                    <th>Xuất bản</th>
+                    <th>Tác giả</th>
+                    <th>Trạng thái</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var article in Model.Articles)
+                {
+                    <tr>
+                        <td>
+                            <strong>@article.Title</strong>
+                            <div class="admin-table__sub">@article.ArticleCode</div>
+                            @if (!string.IsNullOrWhiteSpace(article.Summary))
+                            {
+                                <div class="admin-table__sub">@article.Summary</div>
+                            }
+                        </td>
+                        <td>@article.Slug</td>
+                        <td>@(article.PublishedAt?.ToString("dd/MM/yyyy HH:mm") ?? "Chưa đặt")</td>
+                        <td>@(string.IsNullOrWhiteSpace(article.AuthorName) ? "Hệ thống" : article.AuthorName)</td>
+                        <td>
+                            <span class="status-pill @(article.IsPublished ? "status-pill--success" : "status-pill--info")">
+                                @(article.IsPublished ? "Đã xuất bản" : "Bản nháp")
+                            </span>
+                        </td>
+                        <td>
+                            <div class="admin-inline-form">
+                                <a asp-action="EditArticle" asp-route-id="@article.ArticleId" class="btn btn-outline-primary btn-sm">Sửa</a>
+                                <form asp-action="DeleteArticle" method="post" onsubmit="return confirm('Xóa bài cẩm nang này?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@article.ArticleId" />
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">Xóa</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>

@@ -1,0 +1,80 @@
+﻿@model ChillTour.Models.Admin.DestinationFormViewModel
+@{
+    ViewData["Title"] = "Thêm điểm đến";
+}
+
+<section class="admin-page-stack">
+    <div class="admin-page-head">
+        <div>
+            <span class="admin-panel__label">Catalog</span>
+            <h2>Thêm điểm đến</h2>
+        </div>
+        <a asp-action="Destinations" class="btn btn-outline-primary">Quay lại</a>
+    </div>
+
+    <section class="admin-panel admin-form-panel">
+        <form method="post" class="auth-form">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="admin-form-grid">
+                <label>
+                    Tên điểm đến
+                    <input asp-for="DestinationName" class="form-control" />
+                    <span asp-validation-for="DestinationName" class="text-danger"></span>
+                </label>
+
+                <label>
+                    Loại điểm đến
+                    <select asp-for="DestinationType" class="form-select">
+                        <option value="1">Thành phố</option>
+                        <option value="2">Điểm tham quan</option>
+                        <option value="3">Quốc gia</option>
+                        <option value="4">Khác</option>
+                    </select>
+                    <span asp-validation-for="DestinationType" class="text-danger"></span>
+                </label>
+
+                <label>
+                    Mã quốc gia
+                    <input asp-for="CountryCode" class="form-control" />
+                    <span asp-validation-for="CountryCode" class="text-danger"></span>
+                </label>
+
+                <label>
+                    Tỉnh/Thành
+                    <input asp-for="ProvinceName" class="form-control" />
+                    <span asp-validation-for="ProvinceName" class="text-danger"></span>
+                </label>
+            </div>
+
+            <label>
+                Tóm tắt
+                <textarea asp-for="Summary" class="form-control admin-textarea"></textarea>
+                <span asp-validation-for="Summary" class="text-danger"></span>
+            </label>
+
+            <label>
+                Mô tả
+                <textarea asp-for="Description" class="form-control admin-textarea admin-textarea--lg"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </label>
+
+            <div class="admin-check-grid">
+                <label class="auth-checkbox">
+                    <input asp-for="IsFeatured" />
+                    <span>Điểm đến nổi bật</span>
+                </label>
+                <label class="auth-checkbox">
+                    <input asp-for="IsActive" />
+                    <span>Kích hoạt</span>
+                </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary booking-submit">Lưu điểm đến</button>
+        </form>
+    </section>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

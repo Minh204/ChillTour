@@ -1,0 +1,127 @@
+@model ChillTour.Models.Promotions.PromotionPageViewModel
+@{
+    ViewData["Title"] = "Ưu đãi";
+
+    string DiscountLabel(ChillTour.Models.Promotions.PromotionListItemViewModel promotion)
+    {
+        if (promotion.DiscountPercent.HasValue)
+        {
+            return $"Giảm {promotion.DiscountPercent.Value:N0}%";
+        }
+
+        if (promotion.DiscountAmount.HasValue)
+        {
+            return $"Giảm {promotion.DiscountAmount.Value:N0} đ";
+        }
+
+        return "Ưu đãi đặc biệt";
+    }
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/pages/promotions/promotions.css" asp-append-version="true" />
+}
+
+<section class="promotion-page">
+    <div class="container">
+        <div class="promotion-hero">
+            <span class="eyebrow eyebrow--warm">ChillTour Deals</span>
+            <h1>Mã ưu đãi đang hoạt động</h1>
+            <p>Chọn mã phù hợp với giá trị đơn hàng, áp dụng ngay ở bước thanh toán.</p>
+        </div>
+
+        @if (TempData["PromotionSuccessMessage"] is string successMessage)
+        {
+            <div class="auth-alert auth-alert--success">@successMessage</div>
+        }
+        @if (TempData["PromotionErrorMessage"] is string errorMessage)
+        {
+            <div class="auth-alert auth-alert--error">@errorMessage</div>
+        }
+
+        @if (Model.IsCustomer && Model.MyPromotions.Count > 0)
+        {
+            <section class="promotion-page__section">
+                <div class="travel-home__section-head">
+                    <div>
+                        <span class="eyebrow">Ưu đãi của tôi</span>
+                        <h2>Các mã bạn đã nhận</h2>
+                    </div>
+                </div>
+
+                <div class="promotion-grid">
+                    @foreach (var promotion in Model.MyPromotions)
+                    {
+                        <article class="promotion-card">
+                            <div class="promotion-card__head">
+                                <span class="promotion-card__code">@promotion.PromotionCode</span>
+                                <span class="status-pill status-pill--success">Đã lưu</span>
+                            </div>
+                            <h2>@promotion.PromotionName</h2>
+                            <p>@(string.IsNullOrWhiteSpace(promotion.Description) ? "Dùng mã này ở bước thanh toán." : promotion.Description)</p>
+                            <div class="promotion-card__value">@DiscountLabel(promotion)</div>
+                            <div class="promotion-card__meta">
+                                <span>Đơn tối thiểu: @(promotion.MinOrderValue.HasValue ? $"{promotion.MinOrderValue.Value:N0} đ" : "Không yêu cầu")</span>
+                                <span>Hết hạn: @promotion.EndAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </section>
+        }
+
+        <section class="promotion-page__section">
+            @if (Model.ActivePromotions.Count == 0)
+            {
+                <div class="auth-card">
+                    <p class="m-0">Hiện chưa có ưu đãi nào đang hoạt động.</p>
+                </div>
+            }
+            else
+            {
+                <div class="promotion-grid">
+                    @foreach (var promotion in Model.ActivePromotions)
+                    {
+                        <article class="promotion-card">
+                            <div class="promotion-card__head">
+                                <span class="promotion-card__code">@promotion.PromotionCode</span>
+                                @if (promotion.IsAutoApply)
+                                {
+                                    <span class="status-pill status-pill--success">Tự áp dụng</span>
+                                }
+                            </div>
+                            <h2>@promotion.PromotionName</h2>
+                            <p>@(string.IsNullOrWhiteSpace(promotion.Description) ? "Áp dụng tại bước thanh toán cho đơn đủ điều kiện." : promotion.Description)</p>
+
+                            <div class="promotion-card__value">@DiscountLabel(promotion)</div>
+
+                            <div class="promotion-card__meta">
+                                <span>Đơn tối thiểu: @(promotion.MinOrderValue.HasValue ? $"{promotion.MinOrderValue.Value:N0} đ" : "Không yêu cầu")</span>
+                                <span>Giảm tối đa: @(promotion.MaxDiscountAmount.HasValue ? $"{promotion.MaxDiscountAmount.Value:N0} đ" : "Theo giá trị mã")</span>
+                                <span>Hết hạn: @promotion.EndAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                            </div>
+
+                            @if (Model.IsCustomer)
+                            {
+                                <div class="promotion-card__actions">
+                                    @if (promotion.IsClaimed)
+                                    {
+                                        <span class="btn btn-outline-secondary disabled">Đã nhận</span>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="Claim" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="promotionId" value="@promotion.PromotionId" />
+                                            <button type="submit" class="btn btn-primary">Nhận ngay</button>
+                                        </form>
+                                    }
+                                </div>
+                            }
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+    </div>
+</section>

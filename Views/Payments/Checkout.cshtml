@@ -1,0 +1,221 @@
+@model ChillTour.Models.Payments.PaymentCheckoutViewModel
+@{
+    ViewData["Title"] = "Thanh toán tour";
+    var dueDateText = Model.BalanceDueAt?.ToString("dd/MM/yyyy") ?? Model.DepartureDate.AddDays(-5).ToString("dd/MM/yyyy");
+    var paymentStatusText = Model.IsFullyPaid
+        ? "Đã thanh toán toàn bộ"
+        : Model.PaymentStatus == 1
+            ? "Chờ Accountant xác nhận thanh toán"
+            : Model.PaidAmount > 0
+                ? "Đã cọc, chờ thanh toán phần còn lại"
+                : "Chờ thanh toán";
+    var primaryAmount = Model.CanPayFull && Model.MustPayFull
+        ? Model.FullPaymentAmount
+        : Model.CanPayDeposit
+            ? Model.DepositAmount
+            : Model.RemainingAmount;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/pages/payments/payments.css" asp-append-version="true" />
+}
+
+<section class="auth-page payment-page">
+    <div class="container">
+        <div class="auth-card payment-checkout-card payment-checkout-card--wide">
+            @if (TempData["PaymentInfoMessage"] is string infoMessage)
+            {
+                <div class="auth-alert auth-alert--success">@infoMessage</div>
+            }
+            @if (TempData["PaymentErrorMessage"] is string errorMessage)
+            {
+                <div class="auth-alert auth-alert--error">@errorMessage</div>
+            }
+
+            <div class="auth-card__intro payment-checkout-hero">
+                <div>
+                    <span class="eyebrow">VNPay</span>
+                    <h1>Thanh toán tour qua cổng VNPay</h1>
+                    <p>Tour thường có thể thanh toán cọc 30% hoặc thanh toán toàn bộ. Phần còn lại cần hoàn tất trước @dueDateText. Tour giờ chót bắt buộc thanh toán toàn bộ ngay khi đặt.</p>
+                </div>
+                <div class="payment-checkout-hero__highlight">
+                    <span>Cần thanh toán</span>
+                    <strong>@primaryAmount.ToString("N0") đ</strong>
+                    <p>@(Model.MustPayFull ? "Đơn này đang ở chế độ thanh toán toàn bộ." : "Bạn có thể chọn cọc trước hoặc thanh toán đủ ngay.")</p>
+                </div>
+            </div>
+
+            @if (Model.MustPayFull && Model.CanPayFull)
+            {
+                <div class="auth-alert auth-alert--warning">
+                    @(Model.IsLastMinuteDeal
+                        ? "Đây là tour giờ chót: hệ thống đã áp dụng ưu đãi lớn và yêu cầu thanh toán toàn bộ để giữ chỗ."
+                        : "Đơn đã đến hạn thanh toán phần còn lại. Vui lòng thanh toán đầy đủ trước ngày khởi hành.")
+                </div>
+            }
+
+            <div class="payment-checkout-layout">
+                <div class="payment-checkout-main">
+                    <div class="payment-summary-grid">
+                        <div class="payment-summary-card">
+                            <span>Mã đơn</span>
+                            <strong>@Model.BookingCode</strong>
+                            <p>@Model.TourName</p>
+                        </div>
+                        <div class="payment-summary-card">
+                            <span>Khởi hành</span>
+                            <strong>@Model.DepartureDate.ToString("dd/MM/yyyy")</strong>
+                            <p>@Model.Travelers khách • @Model.ContactName</p>
+                        </div>
+                        <div class="payment-summary-card">
+                            <span>Đã thanh toán</span>
+                            <strong>@Model.PaidAmount.ToString("N0") đ</strong>
+                            <p>@paymentStatusText</p>
+                        </div>
+                        <div class="payment-summary-card payment-summary-card--accent">
+                            <span>Còn phải thanh toán</span>
+                            <strong>@Model.RemainingAmount.ToString("N0") đ</strong>
+                            <p>Hạn thanh toán đủ: @dueDateText</p>
+                        </div>
+                    </div>
+
+                    <section class="payment-promo-card">
+                        <div class="payment-promo-card__head">
+                            <div>
+                                <span class="eyebrow eyebrow--warm">Mã ưu đãi</span>
+                                <h2>Áp dụng trước khi chuyển khoản</h2>
+                            </div>
+                            <a asp-controller="Promotions" asp-action="Index" class="btn btn-outline-primary">Xem ưu đãi hiện có</a>
+                        </div>
+
+                        <form asp-action="ApplyPromotion" method="post" class="payment-promo-form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="bookingId" value="@Model.BookingId" />
+                            <input type="text"
+                                   name="promotionCode"
+                                   value="@Model.AppliedPromotionCode"
+                                   class="form-control"
+                                   placeholder="Nhập mã ưu đãi, ví dụ: CHILL10"
+                                   @(Model.PaidAmount <= 0m && Model.CanPay ? null : "disabled") />
+                            <button type="submit" class="btn btn-primary" @(Model.PaidAmount <= 0m && Model.CanPay ? null : "disabled")>Áp dụng</button>
+                            @if (!string.IsNullOrWhiteSpace(Model.AppliedPromotionCode) && Model.PaidAmount <= 0m && Model.CanPay)
+                            {
+                                <button type="submit" name="promotionCode" value="" class="btn btn-outline-secondary">Bỏ mã</button>
+                            }
+                        </form>
+
+                        @if (Model.AvailablePromotions.Count > 0)
+                        {
+                            <div class="tour-list-filter-summary">
+                                @foreach (var promotion in Model.AvailablePromotions)
+                                {
+                                    <span>@promotion.PromotionCode - @promotion.PromotionName</span>
+                                }
+                            </div>
+                        }
+
+                        <div class="payment-promo-summary">
+                            <div>
+                                <span>Tiền vé</span>
+                                <strong>@Model.BaseAmount.ToString("N0") đ</strong>
+                            </div>
+                            <div>
+                                <span>Phụ thu phòng đơn</span>
+                                <strong>@Model.SingleRoomSupplementAmount.ToString("N0") đ</strong>
+                                <p>@(Model.SingleRoomCount > 0 ? $"{Model.SingleRoomCount} phòng đơn" : "Không chọn phòng đơn")</p>
+                            </div>
+                            <div>
+                                <span>Giảm giờ chót</span>
+                                <strong>@Model.LastMinuteDiscountAmount.ToString("N0") đ</strong>
+                                <p>@(Model.IsLastMinuteDeal ? "Tự động giảm 15% vì tour khởi hành trong 5 ngày tới." : "Không áp dụng ưu đãi giờ chót")</p>
+                            </div>
+                            <div>
+                                <span>Mã ưu đãi</span>
+                                <strong>@Model.DiscountAmount.ToString("N0") đ</strong>
+                            </div>
+                            <div class="payment-promo-summary__total">
+                                <span>Tổng thanh toán</span>
+                                <strong>@Model.TotalAmount.ToString("N0") đ</strong>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(Model.AppliedPromotionCode))
+                        {
+                            <p class="payment-promo-card__applied">Đang áp dụng: <strong>@Model.AppliedPromotionCode</strong>@(string.IsNullOrWhiteSpace(Model.AppliedPromotionName) ? string.Empty : $" - {Model.AppliedPromotionName}")</p>
+                        }
+                    </section>
+
+                    <section class="payment-status-box">
+                        <div>
+                            <span>Cổng thanh toán</span>
+                            <strong>VNPay Sandbox</strong>
+                        </div>
+                        <div>
+                            <span>Mã thanh toán</span>
+                            <strong>@Model.PaymentCode</strong>
+                        </div>
+                        <div>
+                            <span>Tiền cọc 30%</span>
+                            <strong>@Model.DepositAmount.ToString("N0") đ</strong>
+                        </div>
+                        <div>
+                            <span>Trạng thái</span>
+                            <strong>@paymentStatusText</strong>
+                        </div>
+                    </section>
+                </div>
+
+                <aside class="payment-qr-card">
+                    <div class="payment-qr-card__image payment-qr-card__image--placeholder">
+                        <strong>VNPay</strong>
+                        <span>Thanh toán an toàn qua cổng thanh toán sandbox</span>
+                    </div>
+
+                    <div class="payment-qr-card__summary">
+                        <div>
+                            <span>Số tiền cần xử lý</span>
+                            <strong>@primaryAmount.ToString("N0") đ</strong>
+                        </div>
+                        <div>
+                            <span>Phương thức</span>
+                            <strong>@(Model.MustPayFull ? "Thanh toán toàn bộ" : "Cọc hoặc toàn bộ")</strong>
+                        </div>
+                    </div>
+
+                    <p class="payment-qr-card__note">Nhấn nút bên dưới để chuyển sang trang thanh toán VNPay. Sau khi giao dịch hoàn tất, VNPay sẽ chuyển bạn về lại ChillTour.</p>
+
+                    <div class="payment-qr-card__actions">
+                        @if (Model.CanPayDeposit)
+                        {
+                            <form asp-action="StartVnPay" method="post" class="auth-form auth-form--compact">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="bookingId" value="@Model.BookingId" />
+                                <input type="hidden" name="paymentMode" value="deposit" />
+                                <button type="submit" class="btn btn-outline-primary booking-submit payment-cta payment-cta--secondary">Thanh toán cọc 30% - @Model.DepositAmount.ToString("N0") đ</button>
+                            </form>
+                        }
+
+                        @if (Model.CanPayFull)
+                        {
+                            <form asp-action="StartVnPay" method="post" class="auth-form auth-form--compact">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="bookingId" value="@Model.BookingId" />
+                                <input type="hidden" name="paymentMode" value="full" />
+                                <button type="submit" class="btn btn-primary booking-submit payment-cta">Thanh toán toàn bộ - @Model.FullPaymentAmount.ToString("N0") đ</button>
+                            </form>
+
+                            @if (!Model.MustPayFull && Model.PaidAmount <= 0m)
+                            {
+                                <p class="payment-qr-card__subnote">Nếu thanh toán toàn bộ ngay, bạn không cần quay lại thanh toán phần còn lại trước @dueDateText.</p>
+                            }
+                        }
+                        else
+                        {
+                            <div class="auth-alert auth-alert--success">Đơn này đã được thanh toán đầy đủ, chờ xác nhận.</div>
+                        }
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </div>
+</section>
