@@ -28,6 +28,7 @@ public class PaymentCheckoutViewModel
     public byte BookingStatus { get; set; }
     public byte PaymentStatus { get; set; }
     public bool CanPay { get; set; }
+    public bool CanCancelPendingBooking { get; set; }
     public string PaymentCode { get; set; } = string.Empty;
     public string TransferContent { get; set; } = string.Empty;
     public string BankName { get; set; } = string.Empty;

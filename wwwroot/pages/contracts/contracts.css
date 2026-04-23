@@ -1,0 +1,123 @@
+.contract-page {
+  padding: 3rem 0;
+}
+
+.contract-shell {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 2rem;
+  border: 1px solid var(--line);
+  border-radius: 32px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(18, 48, 87, 0.1);
+}
+
+.contract-hero,
+.contract-layout,
+.contract-grid,
+.contract-signatures {
+  display: grid;
+  gap: 1rem;
+}
+
+.contract-hero {
+  grid-template-columns: minmax(0, 1fr) 260px;
+  align-items: stretch;
+  margin-bottom: 1.5rem;
+}
+
+.contract-hero h1 {
+  margin: 0.75rem 0 0.45rem;
+  font-size: clamp(2rem, 4vw, 3.3rem);
+  font-weight: 800;
+}
+
+.contract-status,
+.contract-grid > div,
+.contract-signature-box {
+  padding: 1rem;
+  border: 1px solid rgba(11, 116, 255, 0.1);
+  border-radius: 20px;
+  background: #f8fbff;
+}
+
+.contract-status span,
+.contract-grid span,
+.contract-signature-box span {
+  display: block;
+  color: var(--muted);
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.contract-status strong,
+.contract-grid strong,
+.contract-signature-box strong {
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.contract-layout {
+  grid-template-columns: minmax(0, 1fr) 380px;
+  align-items: start;
+}
+
+.contract-document,
+.contract-panel {
+  padding: 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: #fff;
+}
+
+.contract-document p,
+.contract-panel p {
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.contract-grid,
+.contract-signatures {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 1rem 0;
+}
+
+.contract-panel {
+  position: sticky;
+  top: 6.5rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.signature-canvas {
+  width: 100%;
+  height: 180px;
+  border: 1px dashed #94a3b8;
+  border-radius: 18px;
+  background: #f8fafc;
+  touch-action: none;
+}
+
+.contract-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.contract-sign-form {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (max-width: 991.98px) {
+  .contract-hero,
+  .contract-layout,
+  .contract-grid,
+  .contract-signatures {
+    grid-template-columns: 1fr;
+  }
+
+  .contract-panel {
+    position: static;
+  }
+}

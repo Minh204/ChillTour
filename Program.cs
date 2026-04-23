@@ -5,6 +5,7 @@ using ChillTour.Services.Auth;
 using ChillTour.Services.Mail;
 using ChillTour.Security;
 using ChillTour.Services.Reports;
+using ChillTour.Services.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using QuestPDF.Infrastructure;
@@ -37,6 +38,7 @@ namespace ChillTour
             builder.Services.AddScoped<INotificationService, NotificationService>();
             builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
             builder.Services.AddScoped<IReportService, ReportService>();
+            builder.Services.AddScoped<IContractService, ContractService>();
             builder.Services.AddHostedService<BookingBalanceReminderService>();
             var authenticationBuilder = builder.Services.AddAuthentication(AuthSchemeConstants.Application)
                 .AddCookie(options =>

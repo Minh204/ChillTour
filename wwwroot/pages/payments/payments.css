@@ -264,6 +264,19 @@
   box-shadow: none;
 }
 
+.payment-cancel-cta {
+  color: #b42318;
+  border-color: rgba(180, 35, 24, 0.35);
+  background: #fff;
+  box-shadow: none;
+}
+
+.payment-cancel-cta:hover {
+  color: #fff;
+  border-color: #b42318;
+  background: #b42318;
+}
+
 .payment-result-card .payment-summary-grid {
   margin-top: 1.5rem;
   grid-template-columns: repeat(3, minmax(0, 1fr));

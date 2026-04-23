@@ -2,14 +2,19 @@
 @{
     ViewData["Title"] = "Thanh toán tour";
     var dueDateText = Model.BalanceDueAt?.ToString("dd/MM/yyyy") ?? Model.DepartureDate.AddDays(-5).ToString("dd/MM/yyyy");
-    var paymentStatusText = Model.IsFullyPaid
+    var isCancelled = Model.BookingStatus == 4;
+    var paymentStatusText = isCancelled
+        ? "Đơn đã hủy"
+        : Model.IsFullyPaid
         ? "Đã thanh toán toàn bộ"
         : Model.PaymentStatus == 1
             ? "Chờ Accountant xác nhận thanh toán"
             : Model.PaidAmount > 0
                 ? "Đã cọc, chờ thanh toán phần còn lại"
                 : "Chờ thanh toán";
-    var primaryAmount = Model.CanPayFull && Model.MustPayFull
+    var primaryAmount = isCancelled
+        ? 0m
+        : Model.CanPayFull && Model.MustPayFull
         ? Model.FullPaymentAmount
         : Model.CanPayDeposit
             ? Model.DepositAmount
@@ -185,7 +190,21 @@
                     <p class="payment-qr-card__note">Nhấn nút bên dưới để chuyển sang trang thanh toán VNPay. Sau khi giao dịch hoàn tất, VNPay sẽ chuyển bạn về lại ChillTour.</p>
 
                     <div class="payment-qr-card__actions">
-                        @if (Model.CanPayDeposit)
+                        @if (isCancelled)
+                        {
+                            <div class="auth-alert auth-alert--error">Đơn này đã hủy, không thể tiếp tục thanh toán.</div>
+                        }
+                        else if (Model.CanCancelPendingBooking)
+                        {
+                            <form asp-action="CancelPendingBooking" method="post" class="auth-form auth-form--compact"
+                                  onsubmit="return confirm('Hủy đơn nháp này? Đơn chưa thanh toán sẽ không được tính là đã đặt tour.');">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="bookingId" value="@Model.BookingId" />
+                                <button type="submit" class="btn btn-outline-secondary booking-submit payment-cta payment-cancel-cta">Hủy đơn nháp</button>
+                            </form>
+                        }
+
+                        @if (!isCancelled && Model.CanPayDeposit)
                         {
                             <form asp-action="StartVnPay" method="post" class="auth-form auth-form--compact">
                                 @Html.AntiForgeryToken()
@@ -195,7 +214,7 @@
                             </form>
                         }
 
-                        @if (Model.CanPayFull)
+                        @if (!isCancelled && Model.CanPayFull)
                         {
                             <form asp-action="StartVnPay" method="post" class="auth-form auth-form--compact">
                                 @Html.AntiForgeryToken()
@@ -209,7 +228,7 @@
                                 <p class="payment-qr-card__subnote">Nếu thanh toán toàn bộ ngay, bạn không cần quay lại thanh toán phần còn lại trước @dueDateText.</p>
                             }
                         }
-                        else
+                        else if (!isCancelled)
                         {
                             <div class="auth-alert auth-alert--success">Đơn này đã được thanh toán đầy đủ, chờ xác nhận.</div>
                         }

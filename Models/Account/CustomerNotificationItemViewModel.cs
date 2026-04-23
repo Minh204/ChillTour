@@ -9,4 +9,6 @@ public class CustomerNotificationItemViewModel
     public DateTime CreatedAt { get; set; }
     public string? RelatedEntityType { get; set; }
     public long? RelatedEntityId { get; set; }
+    public byte? RelatedBookingStatus { get; set; }
+    public bool IsRelatedBookingCancelled => RelatedEntityType == "Booking" && RelatedBookingStatus == 4;
 }

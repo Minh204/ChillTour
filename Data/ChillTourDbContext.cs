@@ -26,6 +26,7 @@ public class ChillTourDbContext : DbContext
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<BookingStatusHistory> BookingStatusHistories => Set<BookingStatusHistory>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<ElectronicContract> ElectronicContracts => Set<ElectronicContract>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<ReviewMedia> ReviewMedia => Set<ReviewMedia>();
@@ -285,6 +286,25 @@ public class ChillTourDbContext : DbContext
             entity.Property(x => x.FailureReason).HasMaxLength(500);
             entity.Property(x => x.Amount).HasPrecision(18, 2);
             entity.HasOne(x => x.Booking).WithMany(x => x.Payments).HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ElectronicContract>(entity =>
+        {
+            entity.ToTable("ElectronicContracts", "booking");
+            entity.HasKey(x => x.ElectronicContractId);
+            entity.HasIndex(x => x.ContractCode).IsUnique();
+            entity.HasIndex(x => x.BookingId);
+            entity.Property(x => x.ContractCode).HasMaxLength(50);
+            entity.Property(x => x.DraftPdfPath).HasMaxLength(500);
+            entity.Property(x => x.FinalPdfPath).HasMaxLength(500);
+            entity.Property(x => x.CustomerSignedIp).HasMaxLength(100);
+            entity.Property(x => x.CustomerSignedUserAgent).HasMaxLength(500);
+            entity.Property(x => x.CustomerOtpHash).HasMaxLength(200);
+            entity.Property(x => x.DirectorSignedIp).HasMaxLength(100);
+            entity.Property(x => x.DirectorSignedUserAgent).HasMaxLength(500);
+            entity.Property(x => x.DirectorOtpHash).HasMaxLength(200);
+            entity.Property(x => x.CancellationReason).HasMaxLength(500);
+            entity.HasOne(x => x.Booking).WithMany(x => x.ElectronicContracts).HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Notification>(entity =>

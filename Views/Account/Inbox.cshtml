@@ -4,15 +4,20 @@
     ViewData["Title"] = "Hộp thư";
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/pages/tours/tours.css" asp-append-version="true" />
+}
+
 <section class="auth-page">
     <div class="container">
-        <div class="auth-card booking-history-card">
-            <div class="auth-card__intro">
+        <div class="auth-card booking-history-card booking-history-card--wide">
+            <div class="auth-card__intro booking-history-hero">
                 <span class="eyebrow eyebrow--warm">Hộp thư</span>
                 <h1>Thông báo của bạn</h1>
+                <p>Theo dõi các cập nhật quan trọng về đơn đặt tour, thanh toán, hoàn tiền và nhắc việc vận hành.</p>
             </div>
 
-            <form method="get" class="admin-form-grid mb-4">
+            <form method="get" class="booking-history-filter notification-filter">
                 <label>
                     Từ khóa
                     <input type="text" name="searchTerm" value="@Model.SearchTerm" class="form-control" placeholder="Tiêu đề hoặc nội dung..." />
@@ -32,7 +37,7 @@
                         <option value="true" selected="@(Model.IsRead == true)">Đã đọc</option>
                     </select>
                 </label>
-                <div class="hero-actions align-items-end">
+                <div class="booking-history-filter__actions">
                     <button type="submit" class="btn btn-primary">Lọc thông báo</button>
                     <a asp-action="Inbox" class="btn btn-outline-secondary">Xóa lọc</a>
                 </div>
@@ -44,26 +49,44 @@
             }
             else
             {
-                <div class="customer-notification-list">
+                <div class="customer-notification-list customer-notification-list--spacious">
                     @foreach (var notification in Model.Notifications)
                     {
-                        <article class="customer-notification-card @(notification.IsRead ? string.Empty : "is-unread")">
-                            <div class="customer-notification-card__head">
-                                <h3>@notification.Title</h3>
-                                <span>@notification.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                        <article class="customer-notification-card customer-notification-card--wide @(notification.IsRead ? string.Empty : "is-unread")">
+                            <div class="customer-notification-card__main">
+                                <div class="customer-notification-card__head">
+                                    <div>
+                                        <span class="notification-dot @(notification.IsRead ? string.Empty : "is-unread")"></span>
+                                        <h3>@notification.Title</h3>
+                                    </div>
+                                    <span>@notification.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                                </div>
+                                <p>@notification.Message</p>
                             </div>
-                            <p>@notification.Message</p>
-                            @if (notification.RelatedEntityType == "Booking" && notification.RelatedEntityId.HasValue)
-                            {
-                                if (User.IsInRole(RoleConstants.Customer))
+
+                            <div class="customer-notification-card__actions">
+                                @if (notification.RelatedEntityType == "Booking" && notification.RelatedEntityId.HasValue)
                                 {
-                                    <a asp-controller="Payments" asp-action="Checkout" asp-route-bookingId="@notification.RelatedEntityId.Value" class="btn btn-outline-primary">Xem đơn liên quan</a>
+                                    if (User.IsInRole(RoleConstants.Customer))
+                                    {
+                                        <a asp-controller="Payments" asp-action="Checkout" asp-route-bookingId="@notification.RelatedEntityId.Value" class="btn @(notification.IsRelatedBookingCancelled ? "btn-outline-danger" : "btn-outline-primary")">
+                                            @(notification.IsRelatedBookingCancelled ? "Đơn đã hủy" : "Xem đơn liên quan")
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <a asp-controller="Admin" asp-action="Orders" class="btn btn-outline-primary">Mở xử lý đơn</a>
+                                    }
+                                }
+                                else if (notification.RelatedEntityType == "Contract" && notification.RelatedEntityId.HasValue)
+                                {
+                                    <a asp-controller="Contracts" asp-action="Details" asp-route-id="@notification.RelatedEntityId.Value" class="btn btn-outline-primary">Xem hợp đồng</a>
                                 }
                                 else
                                 {
-                                    <a asp-controller="Admin" asp-action="Orders" class="btn btn-outline-primary">Mở xử lý đơn</a>
+                                    <span class="status-pill status-pill--info">Thông báo hệ thống</span>
                                 }
-                            }
+                            </div>
                         </article>
                     }
                 </div>

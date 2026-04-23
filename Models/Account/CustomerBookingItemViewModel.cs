@@ -9,11 +9,12 @@ public class CustomerBookingItemViewModel
     public DateOnly DepartureDate { get; set; }
     public int Travelers { get; set; }
     public decimal TotalAmount { get; set; }
+    public decimal RemainingAmount { get; set; }
     public byte BookingStatus { get; set; }
     public byte PaymentStatus { get; set; }
     public decimal PaidAmount { get; set; }
     public string? CancellationReason { get; set; }
     public DateTime CreatedAt { get; set; }
-    public bool CanCancel => BookingStatus is not 4 and not 5 and not 9 and not 10;
-    public bool RequiresRefundRequest => PaidAmount > 0m;
+    public bool CanCancel { get; set; }
+    public bool RequiresRefundRequest { get; set; }
 }

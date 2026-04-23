@@ -6,6 +6,7 @@ using ChillTour.Security;
 using ChillTour.Services.Auth;
 using ChillTour.Services.Notifications;
 using ChillTour.Services.Reports;
+using ChillTour.Services.Contracts;
 using ChillTour.Models.Tours;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
@@ -44,14 +45,16 @@ public class AdminController : Controller
     private readonly IWebHostEnvironment _environment;
     private readonly INotificationService _notificationService;
     private readonly IReportService _reportService;
+    private readonly IContractService _contractService;
 
-    public AdminController(ChillTourDbContext dbContext, IPasswordHasher passwordHasher, IWebHostEnvironment environment, INotificationService notificationService, IReportService reportService)
+    public AdminController(ChillTourDbContext dbContext, IPasswordHasher passwordHasher, IWebHostEnvironment environment, INotificationService notificationService, IReportService reportService, IContractService contractService)
     {
         _dbContext = dbContext;
         _passwordHasher = passwordHasher;
         _environment = environment;
         _notificationService = notificationService;
         _reportService = reportService;
+        _contractService = contractService;
     }
 
     [Authorize(Policy = PermissionConstants.AccessAdmin)]
@@ -1419,6 +1422,7 @@ public class AdminController : Controller
     public async Task<IActionResult> Tours(int page = 1, [FromQuery] AdminToursFilterViewModel? filter = null, CancellationToken cancellationToken = default)
     {
         filter ??= new AdminToursFilterViewModel();
+        var today = DateOnly.FromDateTime(DateTime.Today);
 
         if (page < 1)
         {
@@ -1458,6 +1462,16 @@ public class AdminController : Controller
             query = query.Where(x => x.IsFeatured == filter.IsFeatured.Value);
         }
 
+        filter.ScheduleState = filter.ScheduleState?.Trim().ToLowerInvariant();
+        if (filter.ScheduleState == "expired")
+        {
+            query = query.Where(x => x.Schedules.Any() && x.Schedules.All(s => s.DepartureDate < today));
+        }
+        else if (filter.ScheduleState == "upcoming")
+        {
+            query = query.Where(x => x.Schedules.Any(s => s.DepartureDate >= today));
+        }
+
         var totalItems = await query.CountAsync(cancellationToken);
         var totalPages = totalItems == 0 ? 1 : (int)Math.Ceiling(totalItems / (double)TourPageSize);
 
@@ -1481,6 +1495,12 @@ public class AdminController : Controller
                 BasePrice = x.BasePrice,
                 IsPublished = x.IsPublished,
                 IsFeatured = x.IsFeatured,
+                NextDepartureDate = x.Schedules
+                    .Where(s => s.DepartureDate >= today)
+                    .OrderBy(s => s.DepartureDate)
+                    .Select(s => (DateOnly?)s.DepartureDate)
+                    .FirstOrDefault(),
+                HasOnlyExpiredSchedules = x.Schedules.Any() && x.Schedules.All(s => s.DepartureDate < today),
                 CreatedAt = x.CreatedAt
             })
             .ToListAsync(cancellationToken);
@@ -2099,13 +2119,15 @@ public class AdminController : Controller
 
         if (model.BookingStatus == BookingConfirmed)
         {
+            await _contractService.EnsureContractForBookingAsync(booking.BookingId, cancellationToken);
+
             await _notificationService.CreateAsync(
                 booking.UserId,
                 notificationType: 3,
                 title: "Đặt vé thành công",
                 message: booking.PaymentStatus == PaymentFullyPaid
-                    ? $"Đơn {booking.BookingCode} đã được Staff xác nhận. Bạn đã thanh toán đủ tiền, ChillTour sẽ chuẩn bị dịch vụ cho chuyến đi."
-                    : $"Đơn {booking.BookingCode} đã được Staff xác nhận sau khi cọc. Vé của bạn đã được giữ chỗ, vui lòng thanh toán phần còn lại trước hạn.",
+                    ? $"Đơn {booking.BookingCode} đã được Staff xác nhận. Hợp đồng điện tử đã được tạo, vui lòng ký để hoàn tất hồ sơ."
+                    : $"Đơn {booking.BookingCode} đã được Staff xác nhận sau khi cọc. Hợp đồng điện tử đã được tạo, vui lòng ký và thanh toán phần còn lại trước hạn.",
                 relatedEntityType: "Booking",
                 relatedEntityId: booking.BookingId,
                 cancellationToken: cancellationToken);

@@ -29,7 +29,7 @@ public class ToursController : Controller
     }
 
     [HttpGet("/tours")]
-    public async Task<IActionResult> Index(int page = 1, string? searchTerm = null, int? destinationId = null, int? categoryId = null, DateOnly? departureDate = null, string? budgetRange = null, string? sortBy = null, bool lastMinuteOnly = false, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Index(int page = 1, string? searchTerm = null, int? destinationId = null, int? categoryId = null, DateOnly? departureDate = null, string? budgetRange = null, string? sortBy = null, bool lastMinuteOnly = false, string? urgencyFilter = null, CancellationToken cancellationToken = default)
     {
         if (page < 1)
         {
@@ -42,6 +42,7 @@ public class ToursController : Controller
         var query = _dbContext.Tours
             .AsNoTracking()
             .Where(x => x.IsPublished)
+            .Where(x => x.Schedules.Any(s => s.Status == 1 && s.DepartureDate >= today))
             .Include(x => x.Category)
             .Include(x => x.StartDestination)
             .Include(x => x.EndDestination)
@@ -73,24 +74,30 @@ public class ToursController : Controller
 
         if (departureDate.HasValue)
         {
-            query = query.Where(x => x.Schedules.Any(s => s.Status == 1 && s.DepartureDate == departureDate.Value));
+            query = query.Where(x => x.Schedules.Any(s => s.Status == 1 && s.DepartureDate >= today && s.DepartureDate == departureDate.Value));
         }
 
-        if (lastMinuteOnly)
+        urgencyFilter = NormalizeUrgencyFilter(urgencyFilter, lastMinuteOnly);
+
+        if (urgencyFilter == "last-minute")
         {
             query = query.Where(x => x.Schedules.Any(s => s.Status == 1 && s.DepartureDate >= today && s.DepartureDate <= lastMinuteLimit));
+        }
+        else if (urgencyFilter == "regular")
+        {
+            query = query.Where(x => !x.Schedules.Any(s => s.Status == 1 && s.DepartureDate >= today && s.DepartureDate <= lastMinuteLimit));
         }
 
         if (!string.IsNullOrWhiteSpace(budgetRange))
         {
             query = budgetRange.Trim().ToLowerInvariant() switch
             {
-                "under-5" => query.Where(x => (x.Schedules.Where(s => s.Status == 1).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice) < 5000000m),
-                "5-10" => query.Where(x => (x.Schedules.Where(s => s.Status == 1).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice) >= 5000000m
-                    && (x.Schedules.Where(s => s.Status == 1).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice) <= 10000000m),
-                "10-20" => query.Where(x => (x.Schedules.Where(s => s.Status == 1).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice) > 10000000m
-                    && (x.Schedules.Where(s => s.Status == 1).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice) <= 20000000m),
-                "over-20" => query.Where(x => (x.Schedules.Where(s => s.Status == 1).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice) > 20000000m),
+                "under-5" => query.Where(x => (x.Schedules.Where(s => s.Status == 1 && s.DepartureDate >= today).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice) < 5000000m),
+                "5-10" => query.Where(x => (x.Schedules.Where(s => s.Status == 1 && s.DepartureDate >= today).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice) >= 5000000m
+                    && (x.Schedules.Where(s => s.Status == 1 && s.DepartureDate >= today).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice) <= 10000000m),
+                "10-20" => query.Where(x => (x.Schedules.Where(s => s.Status == 1 && s.DepartureDate >= today).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice) > 10000000m
+                    && (x.Schedules.Where(s => s.Status == 1 && s.DepartureDate >= today).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice) <= 20000000m),
+                "over-20" => query.Where(x => (x.Schedules.Where(s => s.Status == 1 && s.DepartureDate >= today).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice) > 20000000m),
                 _ => query
             };
         }
@@ -105,9 +112,9 @@ public class ToursController : Controller
 
         query = (sortBy ?? string.Empty).Trim().ToLowerInvariant() switch
         {
-            "price-asc" => query.OrderBy(x => x.Schedules.Where(s => s.Status == 1).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice)
+            "price-asc" => query.OrderBy(x => x.Schedules.Where(s => s.Status == 1 && s.DepartureDate >= today).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice)
                 .ThenByDescending(x => x.IsFeatured),
-            "price-desc" => query.OrderByDescending(x => x.Schedules.Where(s => s.Status == 1).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice)
+            "price-desc" => query.OrderByDescending(x => x.Schedules.Where(s => s.Status == 1 && s.DepartureDate >= today).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice)
                 .ThenByDescending(x => x.IsFeatured),
             "rating-desc" => query.OrderByDescending(x => x.Reviews.Count == 0 ? 0 : x.Reviews.Average(r => r.Rating))
                 .ThenByDescending(x => x.Reviews.Count)
@@ -129,14 +136,14 @@ public class ToursController : Controller
                 RouteName = x.StartDestination.DestinationName + " -> " + x.EndDestination.DestinationName,
                 DurationDays = x.DurationDays,
                 DurationNights = x.DurationNights,
-                BasePrice = x.Schedules.Where(s => s.Status == 1).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice,
+                BasePrice = x.Schedules.Where(s => s.Status == 1 && s.DepartureDate >= today).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice,
                 ShortDescription = x.ShortDescription,
                 IsFeatured = x.IsFeatured,
-                DepartureDate = x.Schedules.Where(s => s.Status == 1).OrderBy(s => s.DepartureDate).Select(s => (DateOnly?)s.DepartureDate).FirstOrDefault(),
+                DepartureDate = x.Schedules.Where(s => s.Status == 1 && s.DepartureDate >= today).OrderBy(s => s.DepartureDate).Select(s => (DateOnly?)s.DepartureDate).FirstOrDefault(),
                 AverageRating = x.Reviews.Count == 0 ? 0 : x.Reviews.Average(r => r.Rating),
                 ReviewCount = x.Reviews.Count,
                 IsLastMinute = x.Schedules.Any(s => s.Status == 1 && s.DepartureDate >= today && s.DepartureDate <= lastMinuteLimit),
-                RemainingSeats = x.Schedules.Where(s => s.Status == 1).OrderBy(s => s.DepartureDate).Select(s => (int?)s.AvailableSeats).FirstOrDefault() ?? x.RemainingSeats,
+                RemainingSeats = x.Schedules.Where(s => s.Status == 1 && s.DepartureDate >= today).OrderBy(s => s.DepartureDate).Select(s => (int?)s.AvailableSeats).FirstOrDefault() ?? x.RemainingSeats,
                 ImageUrl = x.MediaItems
                     .OrderByDescending(m => m.IsPrimary)
                     .ThenBy(m => m.DisplayOrder)
@@ -180,11 +187,27 @@ public class ToursController : Controller
             SelectedDepartureDate = departureDate,
             SelectedBudgetRange = budgetRange,
             SelectedSortBy = sortBy,
-            LastMinuteOnly = lastMinuteOnly,
+            LastMinuteOnly = urgencyFilter == "last-minute",
+            SelectedUrgencyFilter = urgencyFilter,
             DestinationOptions = destinationOptions,
             CategoryOptions = categoryOptions,
             Tours = tours
         });
+    }
+
+    private static string? NormalizeUrgencyFilter(string? urgencyFilter, bool lastMinuteOnly)
+    {
+        if (lastMinuteOnly)
+        {
+            return "last-minute";
+        }
+
+        return urgencyFilter?.Trim().ToLowerInvariant() switch
+        {
+            "last-minute" => "last-minute",
+            "regular" => "regular",
+            _ => null
+        };
     }
 
     [HttpGet("/tours/{slug}")]
@@ -213,8 +236,10 @@ public class ToursController : Controller
             return NotFound();
         }
 
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var lastMinuteLimit = today.AddDays(5);
         var selectedSchedule = tour.Schedules
-            .Where(s => s.Status == 1 && s.AvailableSeats > 0)
+            .Where(s => s.Status == 1 && s.DepartureDate >= today && s.AvailableSeats > 0)
             .OrderBy(s => s.DepartureDate)
             .FirstOrDefault();
 
@@ -238,8 +263,8 @@ public class ToursController : Controller
             ChildPrice = decimal.Round((selectedSchedule?.AdultPrice ?? tour.BasePrice) * 0.5m, 0, MidpointRounding.AwayFromZero),
             SingleSupplement = selectedSchedule?.SingleSupplement ?? tour.SingleSupplement,
             IsLastMinuteDeal = selectedSchedule is not null
-                && selectedSchedule.DepartureDate >= DateOnly.FromDateTime(DateTime.Today)
-                && selectedSchedule.DepartureDate <= DateOnly.FromDateTime(DateTime.Today.AddDays(5)),
+                && selectedSchedule.DepartureDate >= today
+                && selectedSchedule.DepartureDate <= lastMinuteLimit,
             DeparturePoint = tour.DeparturePoint,
             ReturnPoint = tour.ReturnPoint,
             PickupIncluded = tour.PickupIncluded,
@@ -251,6 +276,7 @@ public class ToursController : Controller
                 .Select(m => m.MediaUrl)
                 .ToList(),
             Schedules = tour.Schedules
+                .Where(s => s.DepartureDate >= today)
                 .OrderBy(s => s.DepartureDate)
                 .Select(s => new TourDetailScheduleViewModel
                 {
@@ -466,7 +492,8 @@ public class ToursController : Controller
             x => x.UserId == userId
                  && x.TourId == form.TourId
                  && x.BookingStatus != 4
-                 && x.BookingStatus != 5,
+                 && x.BookingStatus != 5
+                 && (x.PaymentStatus == 1 || x.PaymentStatus == 2 || x.PaymentStatus == 3),
             cancellationToken);
 
         if (duplicatedBookingExists)
@@ -490,6 +517,13 @@ public class ToursController : Controller
         if (schedule is null)
         {
             TempData["TourErrorMessage"] = "Tour này hiện chưa có lịch khởi hành khả dụng.";
+            return RedirectToAction(nameof(Details), new { slug = tour.Slug });
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        if (schedule.DepartureDate < today)
+        {
+            TempData["TourErrorMessage"] = "Ngày khởi hành này đã qua, vui lòng chọn lịch khởi hành mới hơn.";
             return RedirectToAction(nameof(Details), new { slug = tour.Slug });
         }
 
@@ -520,8 +554,8 @@ public class ToursController : Controller
         var singleSupplement = schedule.SingleSupplement ?? tour.SingleSupplement ?? 0m;
         var singleRoomSupplementAmount = singleSupplement * form.SingleRoomCount;
         var subtotal = fareAmount + singleRoomSupplementAmount;
-        var isLastMinuteDeal = schedule.DepartureDate >= DateOnly.FromDateTime(DateTime.Today)
-                               && schedule.DepartureDate <= DateOnly.FromDateTime(DateTime.Today.AddDays(5));
+        var isLastMinuteDeal = schedule.DepartureDate >= today
+                               && schedule.DepartureDate <= today.AddDays(5);
         var lastMinuteDiscountAmount = isLastMinuteDeal
             ? decimal.Round(subtotal * LastMinuteDiscountRate, 0, MidpointRounding.AwayFromZero)
             : 0m;

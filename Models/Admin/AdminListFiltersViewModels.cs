@@ -50,4 +50,5 @@ public class AdminToursFilterViewModel
     public int? CategoryId { get; set; }
     public bool? IsPublished { get; set; }
     public bool? IsFeatured { get; set; }
+    public string? ScheduleState { get; set; }
 }

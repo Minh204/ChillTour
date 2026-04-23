@@ -68,18 +68,22 @@
                         </select>
                     </label>
 
-                    <label class="tour-list-toolbar__checkbox">
-                        <input type="checkbox" name="lastMinuteOnly" value="true" checked="@Model.LastMinuteOnly" />
-                        <span>Chỉ xem tour giờ chót</span>
+                    <label>
+                        <span>Trạng thái lịch gần</span>
+                        <select name="urgencyFilter" class="form-select">
+                            <option value="" selected="@string.IsNullOrWhiteSpace(Model.SelectedUrgencyFilter)">Tất cả</option>
+                            <option value="last-minute" selected="@(Model.SelectedUrgencyFilter == "last-minute")">Chỉ tour giờ chót</option>
+                            <option value="regular" selected="@(Model.SelectedUrgencyFilter == "regular")">Không phải giờ chót</option>
+                        </select>
                     </label>
 
-                    <div class="hero-actions">
+                    <div class="hero-actions tour-list-toolbar__actions">
                         <button type="submit" class="btn btn-primary">Lọc kết quả</button>
                         <a asp-action="Index" class="btn btn-outline-secondary">Xóa lọc</a>
                     </div>
                 </form>
 
-                @if (!string.IsNullOrWhiteSpace(Model.SearchTerm) || Model.SelectedDestinationId.HasValue || Model.SelectedCategoryId.HasValue || Model.SelectedDepartureDate.HasValue || !string.IsNullOrWhiteSpace(Model.SelectedBudgetRange) || !string.IsNullOrWhiteSpace(Model.SelectedSortBy) || Model.LastMinuteOnly)
+                @if (!string.IsNullOrWhiteSpace(Model.SearchTerm) || Model.SelectedDestinationId.HasValue || Model.SelectedCategoryId.HasValue || Model.SelectedDepartureDate.HasValue || !string.IsNullOrWhiteSpace(Model.SelectedBudgetRange) || !string.IsNullOrWhiteSpace(Model.SelectedSortBy) || !string.IsNullOrWhiteSpace(Model.SelectedUrgencyFilter))
                 {
                     <div class="tour-list-filter-summary">
                         @if (!string.IsNullOrWhiteSpace(Model.SearchTerm))
@@ -106,9 +110,9 @@
                         {
                             <span>Sắp xếp: @SortLabel(Model.SelectedSortBy)</span>
                         }
-                        @if (Model.LastMinuteOnly)
+                        @if (!string.IsNullOrWhiteSpace(Model.SelectedUrgencyFilter))
                         {
-                            <span>Tour giờ chót</span>
+                            <span>Trạng thái: @UrgencyLabel(Model.SelectedUrgencyFilter)</span>
                         }
                     </div>
                 }
@@ -188,7 +192,7 @@
                 <div class="tour-list-pagination">
                     @if (Model.CurrentPage > 1)
                     {
-                        <a asp-action="Index" asp-route-page="@(Model.CurrentPage - 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-destinationId="@Model.SelectedDestinationId" asp-route-categoryId="@Model.SelectedCategoryId" asp-route-departureDate="@(Model.SelectedDepartureDate?.ToString("yyyy-MM-dd"))" asp-route-budgetRange="@Model.SelectedBudgetRange" asp-route-sortBy="@Model.SelectedSortBy" asp-route-lastMinuteOnly="@Model.LastMinuteOnly" class="tour-list-pagination__link">Trước</a>
+                        <a asp-action="Index" asp-route-page="@(Model.CurrentPage - 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-destinationId="@Model.SelectedDestinationId" asp-route-categoryId="@Model.SelectedCategoryId" asp-route-departureDate="@(Model.SelectedDepartureDate?.ToString("yyyy-MM-dd"))" asp-route-budgetRange="@Model.SelectedBudgetRange" asp-route-sortBy="@Model.SelectedSortBy" asp-route-urgencyFilter="@Model.SelectedUrgencyFilter" class="tour-list-pagination__link">Trước</a>
                     }
                     else
                     {
@@ -197,12 +201,12 @@
 
                     @for (var pageNumber = 1; pageNumber <= Model.TotalPages; pageNumber++)
                     {
-                        <a asp-action="Index" asp-route-page="@pageNumber" asp-route-searchTerm="@Model.SearchTerm" asp-route-destinationId="@Model.SelectedDestinationId" asp-route-categoryId="@Model.SelectedCategoryId" asp-route-departureDate="@(Model.SelectedDepartureDate?.ToString("yyyy-MM-dd"))" asp-route-budgetRange="@Model.SelectedBudgetRange" asp-route-sortBy="@Model.SelectedSortBy" asp-route-lastMinuteOnly="@Model.LastMinuteOnly" class="tour-list-pagination__link @(pageNumber == Model.CurrentPage ? "is-active" : "")">@pageNumber</a>
+                        <a asp-action="Index" asp-route-page="@pageNumber" asp-route-searchTerm="@Model.SearchTerm" asp-route-destinationId="@Model.SelectedDestinationId" asp-route-categoryId="@Model.SelectedCategoryId" asp-route-departureDate="@(Model.SelectedDepartureDate?.ToString("yyyy-MM-dd"))" asp-route-budgetRange="@Model.SelectedBudgetRange" asp-route-sortBy="@Model.SelectedSortBy" asp-route-urgencyFilter="@Model.SelectedUrgencyFilter" class="tour-list-pagination__link @(pageNumber == Model.CurrentPage ? "is-active" : "")">@pageNumber</a>
                     }
 
                     @if (Model.CurrentPage < Model.TotalPages)
                     {
-                        <a asp-action="Index" asp-route-page="@(Model.CurrentPage + 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-destinationId="@Model.SelectedDestinationId" asp-route-categoryId="@Model.SelectedCategoryId" asp-route-departureDate="@(Model.SelectedDepartureDate?.ToString("yyyy-MM-dd"))" asp-route-budgetRange="@Model.SelectedBudgetRange" asp-route-sortBy="@Model.SelectedSortBy" asp-route-lastMinuteOnly="@Model.LastMinuteOnly" class="tour-list-pagination__link">Sau</a>
+                        <a asp-action="Index" asp-route-page="@(Model.CurrentPage + 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-destinationId="@Model.SelectedDestinationId" asp-route-categoryId="@Model.SelectedCategoryId" asp-route-departureDate="@(Model.SelectedDepartureDate?.ToString("yyyy-MM-dd"))" asp-route-budgetRange="@Model.SelectedBudgetRange" asp-route-sortBy="@Model.SelectedSortBy" asp-route-urgencyFilter="@Model.SelectedUrgencyFilter" class="tour-list-pagination__link">Sau</a>
                     }
                     else
                     {
@@ -230,5 +234,12 @@
         "price-desc" => "Giá giảm dần",
         "rating-desc" => "Sao cao nhất",
         _ => "Mặc định"
+    };
+
+    private static string UrgencyLabel(string? urgencyFilter) => urgencyFilter?.Trim().ToLowerInvariant() switch
+    {
+        "last-minute" => "Tour giờ chót",
+        "regular" => "Không phải giờ chót",
+        _ => "Tất cả"
     };
 }

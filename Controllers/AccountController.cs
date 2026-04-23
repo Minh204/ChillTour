@@ -15,6 +15,16 @@ namespace ChillTour.Controllers;
 
 public class AccountController : Controller
 {
+    private const byte BookingCancelled = 4;
+    private const byte BookingRefunded = 5;
+    private const byte BookingPendingFullPaymentVerification = 7;
+    private const byte BookingFullyPaid = 8;
+    private const byte BookingRefundRequested = 9;
+    private const byte BookingPendingRefund = 10;
+    private const byte PaymentDepositPaid = 2;
+    private const byte PaymentFullyPaid = 3;
+    private const int BalanceAutoCancelDaysBeforeDeparture = 3;
+
     private readonly IAuthService _authService;
     private readonly ChillTourDbContext _dbContext;
     private readonly IPasswordHasher _passwordHasher;
@@ -310,6 +320,9 @@ public class AccountController : Controller
             return RedirectToAction(nameof(Login));
         }
 
+        await AutoCancelOverdueDepositBookingsAsync(userId.Value, cancellationToken);
+        var today = DateOnly.FromDateTime(DateTime.Today);
+
         var query = _dbContext.Bookings
             .AsNoTracking()
             .Include(x => x.Tour)
@@ -354,11 +367,20 @@ public class AccountController : Controller
                 DepartureDate = x.TourSchedule.DepartureDate,
                 Travelers = x.AdultCount + x.ChildCount + x.InfantCount,
                 TotalAmount = x.TotalAmount,
+                RemainingAmount = Math.Max(x.TotalAmount - x.PaidAmount, 0m),
                 BookingStatus = x.BookingStatus,
                 PaymentStatus = x.PaymentStatus,
                 PaidAmount = x.PaidAmount,
                 CancellationReason = x.CancellationReason,
-                CreatedAt = x.CreatedAt
+                CreatedAt = x.CreatedAt,
+                CanCancel = x.BookingStatus != BookingCancelled
+                    && x.BookingStatus != BookingRefunded
+                    && x.BookingStatus != BookingRefundRequested
+                    && x.BookingStatus != BookingPendingRefund
+                    && (x.PaidAmount <= 0m || (x.PaymentStatus == PaymentFullyPaid && x.TourSchedule.DepartureDate > today)),
+                RequiresRefundRequest = x.PaidAmount > 0m
+                    && x.PaymentStatus == PaymentFullyPaid
+                    && x.TourSchedule.DepartureDate > today
             })
             .ToListAsync(cancellationToken);
 
@@ -384,6 +406,8 @@ public class AccountController : Controller
             return RedirectToAction(nameof(Login));
         }
 
+        await AutoCancelOverdueDepositBookingsAsync(userId.Value, cancellationToken);
+
         if (!ModelState.IsValid)
         {
             TempData["BookingErrorMessage"] = "Vui lÃ²ng nháº­p lÃ½ do há»§y Ä‘Æ¡n.";
@@ -401,9 +425,15 @@ public class AccountController : Controller
             return RedirectToAction(nameof(Bookings));
         }
 
-        if (booking.BookingStatus is 4 or 5 or 9 or 10)
+        if (booking.BookingStatus is BookingCancelled or BookingRefunded or BookingRefundRequested or BookingPendingRefund)
         {
             TempData["BookingErrorMessage"] = "Đơn này đã đóng hoặc đang trong luồng hoàn tiền.";
+            return RedirectToAction(nameof(Bookings));
+        }
+
+        if (booking.PaidAmount > 0m && (booking.PaymentStatus != PaymentFullyPaid || booking.TourSchedule.DepartureDate <= DateOnly.FromDateTime(DateTime.Today)))
+        {
+            TempData["BookingErrorMessage"] = "Đơn đã cọc nhưng không đủ điều kiện hoàn tiền. Đơn quá hạn thanh toán phần còn lại sẽ tự động bị hủy theo chính sách.";
             return RedirectToAction(nameof(Bookings));
         }
 
@@ -464,6 +494,61 @@ public class AccountController : Controller
         return RedirectToAction(nameof(Bookings));
     }
 
+    private async Task AutoCancelOverdueDepositBookingsAsync(long userId, CancellationToken cancellationToken)
+    {
+        var cutoffDate = DateOnly.FromDateTime(DateTime.Today.AddDays(BalanceAutoCancelDaysBeforeDeparture));
+        var now = DateTime.UtcNow;
+        const string cancellationReason = "Hệ thống tự động hủy do đã cọc nhưng chưa thanh toán đủ trước 3 ngày khởi hành.";
+
+        var bookings = await _dbContext.Bookings
+            .Include(x => x.Tour)
+            .Include(x => x.TourSchedule)
+            .Where(x => x.UserId == userId
+                        && x.PaymentStatus == PaymentDepositPaid
+                        && x.PaidAmount > 0m
+                        && x.PaidAmount < x.TotalAmount
+                        && x.TourSchedule.DepartureDate <= cutoffDate
+                        && x.BookingStatus != BookingCancelled
+                        && x.BookingStatus != BookingRefunded
+                        && x.BookingStatus != BookingPendingFullPaymentVerification
+                        && x.BookingStatus != BookingFullyPaid
+                        && x.BookingStatus != BookingRefundRequested
+                        && x.BookingStatus != BookingPendingRefund)
+            .ToListAsync(cancellationToken);
+
+        foreach (var booking in bookings)
+        {
+            var oldStatus = booking.BookingStatus;
+            var bookedSeats = booking.AdultCount + booking.ChildCount;
+
+            booking.BookingStatus = BookingCancelled;
+            booking.CancelledAt = now;
+            booking.CancellationReason = cancellationReason;
+            booking.UpdatedAt = now;
+
+            booking.Tour.RemainingSeats += bookedSeats;
+            booking.Tour.UpdatedAt = now;
+            booking.TourSchedule.AvailableSeats += bookedSeats;
+            booking.TourSchedule.ReservedSeats = Math.Max(booking.TourSchedule.ReservedSeats - bookedSeats, 0);
+            booking.TourSchedule.UpdatedAt = now;
+
+            _dbContext.BookingStatusHistories.Add(new Data.Entities.BookingStatusHistory
+            {
+                BookingId = booking.BookingId,
+                OldStatus = oldStatus,
+                NewStatus = BookingCancelled,
+                ChangedByUserId = null,
+                Notes = cancellationReason,
+                ChangedAt = now
+            });
+        }
+
+        if (bookings.Count > 0)
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
+
     [Authorize]
     [HttpGet]
     public async Task<IActionResult> Inbox(string? searchTerm = null, string? relatedEntityType = null, bool? isRead = null, CancellationToken cancellationToken = default)
@@ -494,19 +579,43 @@ public class AccountController : Controller
             query = query.Where(x => x.IsRead == isRead.Value);
         }
 
-        var notifications = await query
-            .OrderByDescending(x => x.CreatedAt)
-            .Select(x => new CustomerNotificationItemViewModel
+          var notifications = await query
+              .OrderByDescending(x => x.CreatedAt)
+              .Select(x => new CustomerNotificationItemViewModel
             {
                 NotificationId = x.NotificationId,
                 Title = x.Title,
                 Message = x.Message,
                 IsRead = x.IsRead,
                 CreatedAt = x.CreatedAt,
-                RelatedEntityType = x.RelatedEntityType,
-                RelatedEntityId = x.RelatedEntityId
-            })
-            .ToListAsync(cancellationToken);
+                  RelatedEntityType = x.RelatedEntityType,
+                  RelatedEntityId = x.RelatedEntityId
+              })
+              .ToListAsync(cancellationToken);
+
+          var relatedBookingIds = notifications
+              .Where(x => x.RelatedEntityType == "Booking" && x.RelatedEntityId.HasValue)
+              .Select(x => x.RelatedEntityId!.Value)
+              .Distinct()
+              .ToList();
+
+          if (relatedBookingIds.Count > 0)
+          {
+              var bookingStatusById = await _dbContext.Bookings
+                  .AsNoTracking()
+                  .Where(x => relatedBookingIds.Contains(x.BookingId))
+                  .Select(x => new { x.BookingId, x.BookingStatus })
+                  .ToDictionaryAsync(x => x.BookingId, x => (byte?)x.BookingStatus, cancellationToken);
+
+              foreach (var notification in notifications)
+              {
+                  if (notification.RelatedEntityId.HasValue
+                      && bookingStatusById.TryGetValue(notification.RelatedEntityId.Value, out var relatedBookingStatus))
+                  {
+                      notification.RelatedBookingStatus = relatedBookingStatus;
+                  }
+              }
+          }
 
         var unreadIds = await _dbContext.Notifications
             .Where(x => x.UserId == userId.Value && !x.IsRead)

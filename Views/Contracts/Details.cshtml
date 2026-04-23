@@ -1,0 +1,147 @@
+@model ChillTour.Models.Contracts.ContractSignViewModel
+@{
+    ViewData["Title"] = $"Hợp đồng {Model.ContractCode}";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/pages/contracts/contracts.css" asp-append-version="true" />
+}
+
+<section class="contract-page">
+    <div class="container">
+        <div class="contract-shell">
+            @if (TempData["ContractInfoMessage"] is string info)
+            {
+                <div class="auth-alert auth-alert--success">@info</div>
+            }
+            @if (TempData["ContractErrorMessage"] is string error)
+            {
+                <div class="auth-alert auth-alert--error">@error</div>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.DevOtp))
+            {
+                <div class="auth-alert auth-alert--warning">Môi trường dev: OTP là <strong>@Model.DevOtp</strong>.</div>
+            }
+
+            <div class="contract-hero">
+                <div>
+                    <span class="eyebrow">E-Contract</span>
+                    <h1>Hợp đồng @Model.ContractCode</h1>
+                    <p>@Model.BookingCode • @Model.TourName • Khởi hành @Model.DepartureDate.ToString("dd/MM/yyyy")</p>
+                </div>
+                <div class="contract-status">
+                    <span>Trạng thái</span>
+                    <strong>@Model.StatusText</strong>
+                </div>
+            </div>
+
+            <div class="contract-layout">
+                <article class="contract-document">
+                    <h2>Hợp đồng dịch vụ du lịch</h2>
+                    <div class="contract-grid">
+                        <div><span>Khách hàng</span><strong>@Model.CustomerName</strong></div>
+                        <div><span>Tổng giá trị</span><strong>@Model.TotalAmount.ToString("N0") đ</strong></div>
+                        <div><span>Đã thanh toán</span><strong>@Model.PaidAmount.ToString("N0") đ</strong></div>
+                        <div><span>Tour</span><strong>@Model.TourName</strong></div>
+                    </div>
+                    <p>@Model.ContractHtml</p>
+                    <p>Điều khoản: khách hàng xác nhận thông tin đặt tour chính xác, thanh toán đúng hạn và tuân thủ lịch trình. ChillTour cung cấp dịch vụ theo thông tin tour đã công bố và hỗ trợ trong quá trình sử dụng dịch vụ.</p>
+                    <p>Xác thực điện tử: hợp đồng được ký bằng chữ ký vẽ kết hợp OTP qua email. Hệ thống lưu thời gian ký, IP và thiết bị sử dụng.</p>
+
+                    <div class="contract-signatures">
+                        <div class="contract-signature-box">
+                            <span>Khách hàng</span>
+                            <strong>@(Model.CustomerSigned ? "Đã ký" : "Chưa ký")</strong>
+                            <p>@(Model.CustomerSignedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Đang chờ ký")</p>
+                        </div>
+                        <div class="contract-signature-box">
+                            <span>Director</span>
+                            <strong>@(Model.DirectorSigned ? "Đã ký" : "Chưa ký")</strong>
+                            <p>@(Model.DirectorSignedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Đang chờ ký")</p>
+                        </div>
+                    </div>
+                </article>
+
+                <aside class="contract-panel">
+                    <h2>@(Model.CanSign ? "Ký hợp đồng" : "Thông tin hợp đồng")</h2>
+                    <p>@(Model.CanSign ? "Vẽ chữ ký, gửi OTP và nhập OTP để hoàn tất ký." : "Bạn có thể tải hợp đồng PDF theo trạng thái hiện tại.")</p>
+
+                    @if (Model.CanSign)
+                    {
+                        <canvas id="signatureCanvas" width="520" height="180" class="signature-canvas"></canvas>
+                        <div class="contract-actions">
+                            <button type="button" class="btn btn-outline-secondary" id="clearSignature">Xóa chữ ký</button>
+                            <form asp-action="SendOtp" asp-route-id="@Model.ContractId" method="post">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-outline-primary">Gửi OTP</button>
+                            </form>
+                        </div>
+                        <form asp-action="Sign" asp-route-id="@Model.ContractId" method="post" class="contract-sign-form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="signatureDataUrl" id="signatureDataUrl" />
+                            <label>
+                                OTP
+                                <input type="text" name="otp" class="form-control" maxlength="6" placeholder="Nhập OTP 6 số" required />
+                            </label>
+                            <button type="submit" class="btn btn-primary booking-submit">Xác nhận ký @(Model.IsDirectorSigning ? "Director" : "khách hàng")</button>
+                        </form>
+                    }
+
+                    <a asp-action="Download" asp-route-id="@Model.ContractId" class="btn btn-outline-primary">Tải PDF</a>
+                </aside>
+            </div>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        (() => {
+            const canvas = document.getElementById('signatureCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            let drawing = false;
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#0f172a';
+
+            const point = event => {
+                const rect = canvas.getBoundingClientRect();
+                const touch = event.touches?.[0];
+                return {
+                    x: (touch ? touch.clientX : event.clientX) - rect.left,
+                    y: (touch ? touch.clientY : event.clientY) - rect.top
+                };
+            };
+
+            const start = event => {
+                drawing = true;
+                const p = point(event);
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                event.preventDefault();
+            };
+
+            const move = event => {
+                if (!drawing) return;
+                const p = point(event);
+                ctx.lineTo(p.x, p.y);
+                ctx.stroke();
+                event.preventDefault();
+            };
+
+            const stop = () => drawing = false;
+            canvas.addEventListener('mousedown', start);
+            canvas.addEventListener('mousemove', move);
+            window.addEventListener('mouseup', stop);
+            canvas.addEventListener('touchstart', start, { passive: false });
+            canvas.addEventListener('touchmove', move, { passive: false });
+            window.addEventListener('touchend', stop);
+
+            document.getElementById('clearSignature')?.addEventListener('click', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
+            document.querySelector('.contract-sign-form')?.addEventListener('submit', event => {
+                document.getElementById('signatureDataUrl').value = canvas.toDataURL('image/png');
+            });
+        })();
+    </script>
+}

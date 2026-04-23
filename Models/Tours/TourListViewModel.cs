@@ -13,6 +13,7 @@ public class TourListViewModel
     public string? SelectedSortBy { get; set; }
     public string? SearchTerm { get; set; }
     public bool LastMinuteOnly { get; set; }
+    public string? SelectedUrgencyFilter { get; set; }
     public List<TourFilterOptionViewModel> DestinationOptions { get; set; } = [];
     public List<TourFilterOptionViewModel> CategoryOptions { get; set; } = [];
     public List<TourListItemViewModel> Tours { get; set; } = [];

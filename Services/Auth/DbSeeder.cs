@@ -27,6 +27,7 @@ public partial class DbSeeder
         await EnsureTourItineraryTableAsync(cancellationToken);
         await EnsureTourItineraryColumnsAsync(cancellationToken);
         await EnsureNotificationsTableAsync(cancellationToken);
+        await EnsureElectronicContractsTableAsync(cancellationToken);
         await EnsureUserPromotionsTableAsync(cancellationToken);
         await EnsureReviewMediaTableAsync(cancellationToken);
         await EnsureArticlesTableAsync(cancellationToken);
@@ -140,6 +141,54 @@ public partial class DbSeeder
         await _dbContext.Database.ExecuteSqlRawAsync(createTableSql, cancellationToken);
         await _dbContext.Database.ExecuteSqlRawAsync(createTokenIndexSql, cancellationToken);
         await _dbContext.Database.ExecuteSqlRawAsync(createLookupIndexSql, cancellationToken);
+    }
+
+    private async Task EnsureElectronicContractsTableAsync(CancellationToken cancellationToken)
+    {
+        const string sql = """
+                           IF OBJECT_ID('booking.ElectronicContracts', 'U') IS NULL
+                           BEGIN
+                               CREATE TABLE booking.ElectronicContracts
+                               (
+                                   ElectronicContractId BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                                   BookingId BIGINT NOT NULL,
+                                   ContractCode NVARCHAR(50) NOT NULL,
+                                   ContractStatus TINYINT NOT NULL CONSTRAINT DF_EContracts_Status DEFAULT (1),
+                                   ContractHtml NVARCHAR(MAX) NOT NULL,
+                                   DraftPdfPath NVARCHAR(500) NULL,
+                                   FinalPdfPath NVARCHAR(500) NULL,
+                                   CustomerSignatureDataUrl NVARCHAR(MAX) NULL,
+                                   CustomerSignedAt DATETIME2(0) NULL,
+                                   CustomerSignedIp NVARCHAR(100) NULL,
+                                   CustomerSignedUserAgent NVARCHAR(500) NULL,
+                                   CustomerOtpHash NVARCHAR(200) NULL,
+                                   CustomerOtpExpiresAt DATETIME2(0) NULL,
+                                   DirectorSignatureDataUrl NVARCHAR(MAX) NULL,
+                                   DirectorSignedAt DATETIME2(0) NULL,
+                                   DirectorSignedIp NVARCHAR(100) NULL,
+                                   DirectorSignedUserAgent NVARCHAR(500) NULL,
+                                   DirectorOtpHash NVARCHAR(200) NULL,
+                                   DirectorOtpExpiresAt DATETIME2(0) NULL,
+                                   CreatedAt DATETIME2(0) NOT NULL CONSTRAINT DF_EContracts_CreatedAt DEFAULT (SYSUTCDATETIME()),
+                                   UpdatedAt DATETIME2(0) NULL,
+                                   CancelledAt DATETIME2(0) NULL,
+                                   CancellationReason NVARCHAR(500) NULL,
+                                   CONSTRAINT UQ_EContracts_ContractCode UNIQUE (ContractCode),
+                                   CONSTRAINT FK_EContracts_Booking FOREIGN KEY (BookingId) REFERENCES booking.Bookings(BookingId) ON DELETE CASCADE
+                               );
+                           END;
+
+                           IF NOT EXISTS (
+                               SELECT 1 FROM sys.indexes
+                               WHERE name = 'IX_ElectronicContracts_BookingId'
+                                 AND object_id = OBJECT_ID('booking.ElectronicContracts')
+                           )
+                           BEGIN
+                               CREATE INDEX IX_ElectronicContracts_BookingId ON booking.ElectronicContracts(BookingId);
+                           END;
+                           """;
+
+        await _dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
     }
 
     private async Task EnsureExternalLoginColumnsAsync(CancellationToken cancellationToken)

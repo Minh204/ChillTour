@@ -42,4 +42,5 @@ public class Booking
     public Promotion? Promotion { get; set; }
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();
     public ICollection<BookingStatusHistory> StatusHistory { get; set; } = new List<BookingStatusHistory>();
+    public ICollection<ElectronicContract> ElectronicContracts { get; set; } = new List<ElectronicContract>();
 }

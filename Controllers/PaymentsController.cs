@@ -80,6 +80,7 @@ public class PaymentsController : Controller
         var latestPayment = booking.Payments
             .OrderByDescending(x => x.CreatedAt)
             .FirstOrDefault();
+        var canCancelPendingBooking = CanCancelPendingBooking(booking);
 
         var model = new PaymentCheckoutViewModel
         {
@@ -109,6 +110,7 @@ public class PaymentsController : Controller
             BookingStatus = booking.BookingStatus,
             PaymentStatus = booking.PaymentStatus,
             CanPay = canPay,
+            CanCancelPendingBooking = canCancelPendingBooking,
             PaymentCode = latestPayment?.PaymentCode ?? string.Empty,
             AppliedPromotionCode = booking.Promotion?.PromotionCode,
             AppliedPromotionName = booking.Promotion?.PromotionName,
@@ -129,6 +131,88 @@ public class PaymentsController : Controller
         };
 
         return View(model);
+    }
+
+    [Authorize(Roles = RoleConstants.Customer)]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CancelPendingBooking(long bookingId, CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue)
+        {
+            return Challenge();
+        }
+
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        var booking = await _dbContext.Bookings
+            .Include(x => x.Tour)
+            .Include(x => x.TourSchedule)
+            .Include(x => x.Payments)
+            .SingleOrDefaultAsync(x => x.BookingId == bookingId && x.UserId == userId.Value, cancellationToken);
+
+        if (booking is null)
+        {
+            return NotFound();
+        }
+
+        if (!CanCancelPendingBooking(booking))
+        {
+            TempData["PaymentErrorMessage"] = "Đơn đã ghi nhận thanh toán hoặc đang chờ xác nhận, không thể hủy tại bước checkout.";
+            return RedirectToAction(nameof(Checkout), new { bookingId });
+        }
+
+        var oldStatus = booking.BookingStatus;
+        var bookedSeats = booking.AdultCount + booking.ChildCount;
+        var now = DateTime.UtcNow;
+        const string cancellationReason = "Khách hủy đơn nháp trước khi thanh toán.";
+
+        booking.BookingStatus = BookingCancelled;
+        booking.PaymentStatus = PaymentFailed;
+        booking.CancelledAt = now;
+        booking.CancellationReason = cancellationReason;
+        booking.UpdatedAt = now;
+
+        booking.Tour.RemainingSeats += bookedSeats;
+        booking.Tour.UpdatedAt = now;
+        booking.TourSchedule.AvailableSeats += bookedSeats;
+        booking.TourSchedule.ReservedSeats = Math.Max(booking.TourSchedule.ReservedSeats - bookedSeats, 0);
+        booking.TourSchedule.UpdatedAt = now;
+
+        foreach (var payment in booking.Payments.Where(x => x.PaymentStatus == PaymentPending && string.IsNullOrWhiteSpace(x.TransactionReference)))
+        {
+            payment.PaymentStatus = PaymentFailed;
+            payment.PaidAt = null;
+            payment.FailureReason = cancellationReason;
+            payment.UpdatedAt = now;
+        }
+
+        _dbContext.BookingStatusHistories.Add(new BookingStatusHistory
+        {
+            BookingId = booking.BookingId,
+            OldStatus = oldStatus,
+            NewStatus = booking.BookingStatus,
+            ChangedByUserId = userId.Value,
+            Notes = cancellationReason,
+            ChangedAt = now
+        });
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        TempData["TourSuccessMessage"] = $"Đã hủy đơn nháp {booking.BookingCode}. Bạn có thể đặt lại tour khi cần.";
+
+        await _notificationService.CreateAsync(
+            booking.UserId,
+            notificationType: 4,
+            title: "Đơn nháp đã hủy",
+            message: $"Đơn {booking.BookingCode} đã được hủy trước khi thanh toán. Đơn không còn giữ chỗ và không được tính là đã đặt tour.",
+            relatedEntityType: "Booking",
+            relatedEntityId: booking.BookingId,
+            cancellationToken: cancellationToken);
+
+        return RedirectToAction("Details", "Tours", new { slug = booking.Tour.Slug });
     }
 
     [Authorize(Roles = RoleConstants.Customer)]
@@ -608,6 +692,23 @@ public class PaymentsController : Controller
         booking.PaidAmount = booking.Payments
             .Where(x => x.PaymentStatus is PaymentDepositPaid or PaymentFullyPaid)
             .Sum(x => x.Amount);
+    }
+
+    private static bool CanCancelPendingBooking(Booking booking)
+    {
+        if (booking.BookingStatus is BookingCancelled or 5 || booking.PaidAmount > 0m)
+        {
+            return false;
+        }
+
+        if (booking.PaymentStatus is PaymentPendingVerification or PaymentDepositPaid or PaymentFullyPaid)
+        {
+            return false;
+        }
+
+        return !booking.Payments.Any(x =>
+            x.PaymentStatus is PaymentDepositPaid or PaymentFullyPaid
+            || (x.PaymentStatus == PaymentPending && !string.IsNullOrWhiteSpace(x.TransactionReference)));
     }
 
     private async Task EnsureFirstOrderPromotionAsync(long userId, CancellationToken cancellationToken)

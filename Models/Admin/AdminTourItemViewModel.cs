@@ -11,5 +11,7 @@ public class AdminTourItemViewModel
     public decimal BasePrice { get; set; }
     public bool IsPublished { get; set; }
     public bool IsFeatured { get; set; }
+    public DateOnly? NextDepartureDate { get; set; }
+    public bool HasOnlyExpiredSchedules { get; set; }
     public DateTime CreatedAt { get; set; }
 }
