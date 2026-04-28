@@ -35,9 +35,23 @@
                 </div>
             </div>
 
+            <section class="contract-preview">
+                <div class="contract-preview__header">
+                    <div>
+                        <span class="eyebrow">PDF Preview</span>
+                        <h2>Xem trước nội dung hợp đồng</h2>
+                        <p>Kiểm tra nội dung PDF trước khi gửi OTP và ký. File preview luôn phản ánh chữ ký hiện tại của hai bên.</p>
+                    </div>
+                    <a asp-action="Download" asp-route-id="@Model.ContractId" class="btn btn-outline-primary">Tải PDF</a>
+                </div>
+                <iframe src="@Url.Action("Preview", "Contracts", new { id = Model.ContractId })"
+                        title="Xem trước hợp đồng @Model.ContractCode"
+                        class="contract-pdf-frame"></iframe>
+            </section>
+
             <div class="contract-layout">
                 <article class="contract-document">
-                    <h2>Hợp đồng dịch vụ du lịch</h2>
+                    <h2>Thông tin hợp đồng</h2>
                     <div class="contract-grid">
                         <div><span>Khách hàng</span><strong>@Model.CustomerName</strong></div>
                         <div><span>Tổng giá trị</span><strong>@Model.TotalAmount.ToString("N0") đ</strong></div>
@@ -45,26 +59,29 @@
                         <div><span>Tour</span><strong>@Model.TourName</strong></div>
                     </div>
                     <p>@Model.ContractHtml</p>
-                    <p>Điều khoản: khách hàng xác nhận thông tin đặt tour chính xác, thanh toán đúng hạn và tuân thủ lịch trình. ChillTour cung cấp dịch vụ theo thông tin tour đã công bố và hỗ trợ trong quá trình sử dụng dịch vụ.</p>
-                    <p>Xác thực điện tử: hợp đồng được ký bằng chữ ký vẽ kết hợp OTP qua email. Hệ thống lưu thời gian ký, IP và thiết bị sử dụng.</p>
+                    <p>Quy trình ký hiện tại: Giám đốc ký trước để xác nhận cam kết cung cấp dịch vụ, sau đó khách hàng xem lại PDF và ký xác nhận bằng chữ ký vẽ kèm OTP.</p>
 
                     <div class="contract-signatures">
                         <div class="contract-signature-box">
-                            <span>Khách hàng</span>
-                            <strong>@(Model.CustomerSigned ? "Đã ký" : "Chưa ký")</strong>
-                            <p>@(Model.CustomerSignedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Đang chờ ký")</p>
+                            <span>Đại diện bên A</span>
+                            <strong>@(Model.DirectorSigned ? "Giám đốc đã ký" : "Chờ Giám đốc ký")</strong>
+                            <p>@(Model.DirectorSignedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Chưa ký")</p>
                         </div>
                         <div class="contract-signature-box">
-                            <span>Director</span>
-                            <strong>@(Model.DirectorSigned ? "Đã ký" : "Chưa ký")</strong>
-                            <p>@(Model.DirectorSignedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Đang chờ ký")</p>
+                            <span>Đại diện bên B</span>
+                            <strong>@(Model.CustomerSigned ? "Khách hàng đã ký" : "Chờ khách hàng ký")</strong>
+                            <p>@(Model.CustomerSignedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Chưa ký")</p>
                         </div>
                     </div>
                 </article>
 
                 <aside class="contract-panel">
-                    <h2>@(Model.CanSign ? "Ký hợp đồng" : "Thông tin hợp đồng")</h2>
-                    <p>@(Model.CanSign ? "Vẽ chữ ký, gửi OTP và nhập OTP để hoàn tất ký." : "Bạn có thể tải hợp đồng PDF theo trạng thái hiện tại.")</p>
+                    <h2>@(Model.CanSign ? "Ký hợp đồng" : "Thông tin ký")</h2>
+                    <p>
+                        @(Model.CanSign
+                            ? $"Bạn đang ký với vai trò {(Model.IsDirectorSigning ? "Giám đốc" : "khách hàng")}. Hãy xem PDF preview trước, sau đó vẽ chữ ký và xác thực OTP."
+                            : "Bạn chưa thể ký ở bước hiện tại hoặc hợp đồng đã hoàn tất.")
+                    </p>
 
                     @if (Model.CanSign)
                     {
@@ -83,7 +100,7 @@
                                 OTP
                                 <input type="text" name="otp" class="form-control" maxlength="6" placeholder="Nhập OTP 6 số" required />
                             </label>
-                            <button type="submit" class="btn btn-primary booking-submit">Xác nhận ký @(Model.IsDirectorSigning ? "Director" : "khách hàng")</button>
+                            <button type="submit" class="btn btn-primary booking-submit">Xác nhận ký @(Model.IsDirectorSigning ? "Giám đốc" : "khách hàng")</button>
                         </form>
                     }
 
@@ -139,7 +156,7 @@
             window.addEventListener('touchend', stop);
 
             document.getElementById('clearSignature')?.addEventListener('click', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
-            document.querySelector('.contract-sign-form')?.addEventListener('submit', event => {
+            document.querySelector('.contract-sign-form')?.addEventListener('submit', () => {
                 document.getElementById('signatureDataUrl').value = canvas.toDataURL('image/png');
             });
         })();
