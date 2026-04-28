@@ -73,6 +73,39 @@
                     <button type="submit" class="btn btn-primary btn-lg">Tìm tour</button>
                 </form>
             </div>
+
+            @if (Model.PromotionBanners.Count > 0)
+            {
+                <div class="travel-home__banner-shell" data-reveal>
+                    <div class="travel-home__banner-head">
+                        <span class="eyebrow eyebrow--warm">Ưu đãi nổi bật</span>
+                        <div class="travel-home__section-actions">
+                            <button type="button" class="travel-home__rail-button" data-scroll-left aria-label="Cuộn banner sang trái">
+                                <span aria-hidden="true">←</span>
+                            </button>
+                            <button type="button" class="travel-home__rail-button" data-scroll-right aria-label="Cuộn banner sang phải">
+                                <span aria-hidden="true">→</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="travel-home__banner-rail" data-scroll-rail aria-label="Banner ưu đãi">
+                        <div class="travel-home__banner-track travel-home__rail-track">
+                            @foreach (var banner in Model.PromotionBanners)
+                            {
+                                var targetUrl = string.IsNullOrWhiteSpace(banner.BannerLinkUrl)
+                                    ? Url.Action("Index", "Promotions")
+                                    : banner.BannerLinkUrl;
+
+                                <a class="travel-home__promo-banner-image" href="@targetUrl" aria-label="@banner.PromotionName">
+                                    <img src="@banner.BannerImageUrl" alt="@(string.IsNullOrWhiteSpace(banner.BannerAltText) ? banner.PromotionName : banner.BannerAltText)" />
+                                    <span class="travel-home__promo-banner-code">@banner.PromotionCode</span>
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
         </div>
     </section>
 

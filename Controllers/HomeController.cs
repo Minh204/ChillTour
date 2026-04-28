@@ -32,6 +32,28 @@ namespace ChillTour.Controllers
                 UpcomingDepartureCount = await _dbContext.TourSchedules.AsNoTracking().CountAsync(x => x.Status == 1 && x.DepartureDate >= today, cancellationToken),
                 PaidBookingCount = await _dbContext.Bookings.AsNoTracking().CountAsync(x => x.PaymentStatus == 2 || x.PaymentStatus == 3, cancellationToken),
                 HeroImageUrl = heroBannerUrl,
+                PromotionBanners = await _dbContext.Promotions
+                    .AsNoTracking()
+                    .Where(x => x.IsActive
+                        && x.ShowOnHomeBanner
+                        && x.StartAt <= DateTime.UtcNow
+                        && x.EndAt >= DateTime.UtcNow
+                        && x.BannerImageUrl != null
+                        && x.BannerImageUrl != string.Empty)
+                    .OrderBy(x => x.BannerDisplayOrder)
+                    .ThenBy(x => x.EndAt)
+                    .Select(x => new HomePromotionBannerViewModel
+                    {
+                        PromotionId = x.PromotionId,
+                        PromotionCode = x.PromotionCode,
+                        PromotionName = x.PromotionName,
+                        Description = x.Description,
+                        BannerImageUrl = x.BannerImageUrl!,
+                        BannerAltText = x.BannerAltText,
+                        BannerLinkUrl = x.BannerLinkUrl
+                    })
+                    .Take(6)
+                    .ToListAsync(cancellationToken),
                 Destinations = await _dbContext.Destinations
                     .AsNoTracking()
                     .Where(x => x.IsActive)

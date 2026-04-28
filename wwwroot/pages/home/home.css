@@ -101,6 +101,78 @@
     padding: 1rem;
 }
 
+.travel-home__banner-shell {
+    width: min(1120px, calc(100% - 2rem));
+    margin: 1.35rem auto 0;
+}
+
+.travel-home__banner-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.travel-home__banner-rail {
+    position: relative;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+    scroll-behavior: smooth;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.travel-home__banner-rail::-webkit-scrollbar {
+    display: none;
+}
+
+.travel-home__banner-track {
+    display: flex;
+    gap: 1rem;
+    align-items: stretch;
+    padding: 0.15rem 0 0.55rem;
+}
+
+.travel-home__promo-banner-image {
+    position: relative;
+    flex: 0 0 min(560px, 76vw);
+    display: block;
+    overflow: hidden;
+    border-radius: 18px;
+    background: #eaf3ff;
+    border: 1px solid rgba(22, 50, 79, 0.08);
+    box-shadow: 0 16px 32px rgba(20, 51, 84, 0.1);
+    scroll-snap-align: start;
+}
+
+.travel-home__promo-banner-image img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    max-height: 315px;
+    object-fit: cover;
+    transition: transform 0.25s ease;
+}
+
+.travel-home__promo-banner-image:hover img {
+    transform: scale(1.015);
+}
+
+.travel-home__promo-banner-code {
+    position: absolute;
+    right: 1rem;
+    bottom: 1rem;
+    padding: 0.45rem 0.8rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    color: #0f4fbd;
+    font-weight: 800;
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.16);
+}
+
 .travel-home__search-inline {
     display: grid;
     grid-template-columns: minmax(0, 1.5fr) minmax(220px, 0.9fr) minmax(220px, 0.9fr) 180px;
@@ -699,5 +771,42 @@
     margin-bottom: 0.75rem;
     font-size: 1.2rem;
     font-weight: 800;
+}
+
+@media (max-width: 992px) {
+    .travel-home__search-inline {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .travel-home__banner-shell {
+        width: calc(100% - 1rem);
+        margin-top: 1rem;
+    }
+
+    .travel-home__banner-head {
+        align-items: flex-start;
+    }
+
+    .travel-home__banner-head .travel-home__rail-button {
+        width: 2.55rem;
+        height: 2.55rem;
+    }
+
+    .travel-home__promo-banner-image {
+        flex-basis: 82vw;
+        border-radius: 14px;
+    }
+
+    .travel-home__promo-banner-code {
+        right: 0.75rem;
+        bottom: 0.75rem;
+        font-size: 0.82rem;
+    }
+
+    .travel-home__search-inline {
+        grid-template-columns: 1fr;
+    }
 }
 

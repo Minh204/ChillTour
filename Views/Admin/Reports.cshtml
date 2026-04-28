@@ -3,7 +3,15 @@
 @using System.Text
 
 @functions {
-    private string BuildLinePath(IReadOnlyList<decimal> values, double width, double height, double padding)
+    private static readonly CultureInfo Vi = new("vi-VN");
+
+    private string Money(decimal amount) => string.Format(Vi, "{0:N0} đ", amount);
+    private string Number(decimal value) => value.ToString("N1", Vi);
+    private string Invariant(decimal value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    private int Bar(decimal value, decimal max) => max <= 0 ? 8 : Math.Max(8, (int)Math.Round(value * 100m / max));
+
+    private string LinePath(IReadOnlyList<decimal> values, double width = 760, double height = 230, double pad = 26)
     {
         if (values.Count == 0)
         {
@@ -11,88 +19,78 @@
         }
 
         var max = values.Max();
-        var innerWidth = Math.Max(width - (padding * 2), 1);
-        var innerHeight = Math.Max(height - (padding * 2), 1);
-        var stepX = values.Count == 1 ? 0 : innerWidth / (values.Count - 1);
-        var builder = new StringBuilder();
+        var innerWidth = Math.Max(width - (pad * 2), 1);
+        var innerHeight = Math.Max(height - (pad * 2), 1);
+        var step = values.Count == 1 ? 0 : innerWidth / (values.Count - 1);
+        var path = new StringBuilder();
 
-        for (var index = 0; index < values.Count; index++)
+        for (var i = 0; i < values.Count; i++)
         {
-            var normalized = max <= 0 ? 0 : (double)(values[index] / max);
-            var x = padding + (stepX * index);
-            var y = height - padding - (innerHeight * normalized);
-            builder.Append(index == 0 ? "M " : " L ");
-            builder.Append(x.ToString("0.##", CultureInfo.InvariantCulture));
-            builder.Append(' ');
-            builder.Append(y.ToString("0.##", CultureInfo.InvariantCulture));
+            var ratio = max <= 0 ? 0 : (double)(values[i] / max);
+            var x = pad + (step * i);
+            var y = height - pad - (innerHeight * ratio);
+            path.Append(i == 0 ? "M " : " L ");
+            path.Append(x.ToString("0.##", CultureInfo.InvariantCulture));
+            path.Append(' ');
+            path.Append(y.ToString("0.##", CultureInfo.InvariantCulture));
         }
 
-        return builder.ToString();
+        return path.ToString();
     }
 
-    private string BuildAreaPath(IReadOnlyList<decimal> values, double width, double height, double padding)
+    private string AreaPath(IReadOnlyList<decimal> values, double width = 760, double height = 230, double pad = 26)
     {
         if (values.Count == 0)
         {
             return string.Empty;
         }
 
-        var linePath = BuildLinePath(values, width, height, padding);
-        var innerWidth = Math.Max(width - (padding * 2), 1);
-        var stepX = values.Count == 1 ? 0 : innerWidth / (values.Count - 1);
-        var startX = padding;
-        var endX = padding + (stepX * (values.Count - 1));
-        var baseline = height - padding;
-
-        return $"{linePath} L {endX.ToString("0.##", CultureInfo.InvariantCulture)} {baseline.ToString("0.##", CultureInfo.InvariantCulture)} L {startX.ToString("0.##", CultureInfo.InvariantCulture)} {baseline.ToString("0.##", CultureInfo.InvariantCulture)} Z";
+        var innerWidth = Math.Max(width - (pad * 2), 1);
+        var step = values.Count == 1 ? 0 : innerWidth / (values.Count - 1);
+        var startX = pad;
+        var endX = pad + (step * (values.Count - 1));
+        var baseY = height - pad;
+        return $"{LinePath(values, width, height, pad)} L {endX.ToString("0.##", CultureInfo.InvariantCulture)} {baseY.ToString("0.##", CultureInfo.InvariantCulture)} L {startX.ToString("0.##", CultureInfo.InvariantCulture)} {baseY.ToString("0.##", CultureInfo.InvariantCulture)} Z";
     }
-
-    private IReadOnlyList<(double X, double Y)> BuildPoints(IReadOnlyList<decimal> values, double width, double height, double padding)
-    {
-        if (values.Count == 0)
-        {
-            return Array.Empty<(double X, double Y)>();
-        }
-
-        var max = values.Max();
-        var innerWidth = Math.Max(width - (padding * 2), 1);
-        var innerHeight = Math.Max(height - (padding * 2), 1);
-        var stepX = values.Count == 1 ? 0 : innerWidth / (values.Count - 1);
-
-        return Enumerable.Range(0, values.Count)
-            .Select(index =>
-            {
-                var normalized = max <= 0 ? 0 : (double)(values[index] / max);
-                var x = padding + (stepX * index);
-                var y = height - padding - (innerHeight * normalized);
-                return (x, y);
-            })
-            .ToList();
-    }
-
-    private string FormatCurrency(decimal amount) => string.Format(new CultureInfo("vi-VN"), "{0:N0} đ", amount);
 }
 
 @{
-    ViewData["Title"] = "Báo cáo";
+    ViewData["Title"] = "Báo cáo & thống kê";
 
-    const double chartWidth = 920;
-    const double chartHeight = 320;
-    const double chartPadding = 34;
+    var canAdminAll = string.Equals(Model.RoleLabel, "Admin", StringComparison.OrdinalIgnoreCase);
+    var canRevenue = Model.CanSeeBusiness || Model.CanSeeFinance;
+    var canBooking = Model.CanSeeBusiness || Model.CanSeeOperations || Model.CanSeeStaff;
+    var canCustomer = Model.CanSeeCustomer;
+    var canTour = Model.CanSeeBusiness || Model.CanSeeOperations || Model.CanSeeStaff;
+    var canContract = Model.CanSeeBusiness;
+    var canPayment = Model.CanSeeFinance || Model.CanSeeBusiness;
+    var canPromotion = canAdminAll;
+    var canStaffOps = Model.CanSeeOperations || Model.CanSeeStaff;
+
     var revenueValues = Model.Summary.RevenueSeries.Select(x => x.Revenue).ToList();
-    var revenuePath = BuildLinePath(revenueValues, chartWidth, chartHeight, chartPadding);
-    var revenueAreaPath = BuildAreaPath(revenueValues, chartWidth, chartHeight, chartPadding);
-    var revenuePoints = BuildPoints(revenueValues, chartWidth, chartHeight, chartPadding);
+    var bookingValues = Model.Summary.RevenueSeries.Select(x => (decimal)x.BookingCount).ToList();
+    var customerValues = Model.Summary.RevenueSeries.Select((_, index) => index == Model.Summary.RevenueSeries.Count - 1 ? (decimal)Model.Summary.NewCustomers : Math.Max(0, Model.Summary.NewCustomers - (Model.Summary.RevenueSeries.Count - index - 1))).ToList();
+    var maxTourRevenue = Model.Summary.TopTours.Count == 0 ? 0m : Model.Summary.TopTours.Max(x => x.Revenue);
+    var maxDestinationRevenue = Model.Summary.RevenueByDestination.Count == 0 ? 0m : Model.Summary.RevenueByDestination.Max(x => x.Amount);
+    var maxPromoRevenue = Model.Summary.PromotionBreakdown.Count == 0 ? 0m : Model.Summary.PromotionBreakdown.Max(x => x.Amount);
+    var maxStaffActions = Model.Summary.StaffPerformance.Count == 0 ? 0m : Model.Summary.StaffPerformance.Max(x => (decimal)x.HandledActions);
+    var paidPct = Model.Summary.TotalBookings == 0 ? 0m : Math.Round(Model.Summary.PaidBookings * 100m / Model.Summary.TotalBookings, 1);
+    var cancelPct = Model.Summary.TotalBookings == 0 ? 0m : Math.Round(Model.Summary.CancelledBookings * 100m / Model.Summary.TotalBookings, 1);
+    var pendingPct = Math.Max(0, 100 - paidPct - cancelPct);
+    var returningPct = Model.Summary.TotalCustomers == 0 ? 0m : Math.Round(Model.Summary.ReturningCustomers * 100m / Model.Summary.TotalCustomers, 1);
+    var contractPct = Math.Clamp(Model.Summary.ContractSignSuccessRate, 0, 100);
+    var paymentSuccessPct = Model.Summary.SuccessfulPayments + Model.Summary.FailedPayments == 0 ? 0m : Math.Round(Model.Summary.SuccessfulPayments * 100m / (Model.Summary.SuccessfulPayments + Model.Summary.FailedPayments), 1);
+    var currentPeriod = string.IsNullOrWhiteSpace(Model.Filter.Period) ? "month" : Model.Filter.Period;
 }
 
-<section class="admin-dashboard admin-report-page">
-    <section class="admin-panel admin-report-hero">
-        <div class="admin-report-hero__copy">
-            <span class="admin-panel__label">Business Intelligence</span>
-            <h2>Báo cáo vận hành và doanh thu ChillTour</h2>
+<section class="admin-analytics-shell admin-report-compact">
+    <div class="admin-analytics-head">
+        <div>
+            <span class="admin-chip">@Model.RoleLabel</span>
+            <h1>Báo cáo & thống kê</h1>
+            <p>@Model.Summary.FromDate.ToString("dd/MM/yyyy") - @Model.Summary.ToDate.ToString("dd/MM/yyyy")</p>
         </div>
-
-        <div class="admin-report-hero__actions">
+        <div class="admin-analytics-actions">
             <a asp-action="ExportReportsExcel"
                asp-route-period="@Model.Filter.Period"
                asp-route-fromDate="@Model.Filter.FromDate"
@@ -101,7 +99,8 @@
                asp-route-bookingStatus="@Model.Filter.BookingStatus"
                asp-route-paymentStatus="@Model.Filter.PaymentStatus"
                asp-route-paymentMethod="@Model.Filter.PaymentMethod"
-               class="btn btn-primary">Export Excel</a>
+               asp-route-customerSearch="@Model.Filter.CustomerSearch"
+               class="btn btn-outline-primary">Excel</a>
             <a asp-action="ExportReportsPdf"
                asp-route-period="@Model.Filter.Period"
                asp-route-fromDate="@Model.Filter.FromDate"
@@ -110,323 +109,412 @@
                asp-route-bookingStatus="@Model.Filter.BookingStatus"
                asp-route-paymentStatus="@Model.Filter.PaymentStatus"
                asp-route-paymentMethod="@Model.Filter.PaymentMethod"
-               class="btn btn-light">Export PDF</a>
+               asp-route-customerSearch="@Model.Filter.CustomerSearch"
+               class="btn btn-primary">PDF</a>
         </div>
-    </section>
-
-    <section class="admin-panel admin-report-filter-panel">
-        <div class="admin-panel__header">
-            <div>
-                <span class="admin-panel__label">Bộ lọc</span>
-            </div>
-            <div class="admin-report-range">
-                <strong>Kỳ báo cáo:</strong>
-                <span>@Model.Summary.FromDate.ToString("dd/MM/yyyy") - @Model.Summary.ToDate.ToString("dd/MM/yyyy")</span>
-            </div>
-        </div>
-
-        <form asp-action="Reports" method="get" class="admin-report-filter">
-            <label>
-                Chu kỳ
-                <select asp-for="Filter.Period" asp-items="Model.PeriodOptions" class="form-select"></select>
-            </label>
-            <label>
-                Từ ngày
-                <input asp-for="Filter.FromDate" class="form-control" type="date" />
-            </label>
-            <label>
-                Đến ngày
-                <input asp-for="Filter.ToDate" class="form-control" type="date" />
-            </label>
-            <label>
-                Tour
-                <select asp-for="Filter.TourId" asp-items="Model.TourOptions" class="form-select"></select>
-            </label>
-            <label>
-                Trạng thái đơn
-                <select asp-for="Filter.BookingStatus" asp-items="Model.BookingStatusOptions" class="form-select"></select>
-            </label>
-            <label>
-                Trạng thái thanh toán
-                <select asp-for="Filter.PaymentStatus" asp-items="Model.PaymentStatusOptions" class="form-select"></select>
-            </label>
-            <label>
-                Phương thức thanh toán
-                <select asp-for="Filter.PaymentMethod" asp-items="Model.PaymentMethodOptions" class="form-select"></select>
-            </label>
-            <div class="admin-report-filter__actions">
-                <button type="submit" class="btn btn-primary">Áp dụng bộ lọc</button>
-                <a asp-action="Reports" class="btn btn-light">Đặt lại</a>
-            </div>
-        </form>
-    </section>
-
-    <div class="admin-overview-grid admin-overview-grid--reports">
-        <article class="admin-stat-card admin-stat-card--blue">
-            <span>Tổng booking</span>
-            <strong>@Model.Summary.TotalBookings</strong>
-            <p>@Model.Summary.PaidBookings đơn đã ghi nhận thanh toán.</p>
-        </article>
-        <article class="admin-stat-card">
-            <span>Doanh thu đã thu</span>
-            <strong>@FormatCurrency(Model.Summary.CollectedRevenue)</strong>
-            <p>Dựa trên các giao dịch đã được xác nhận.</p>
-        </article>
-        <article class="admin-stat-card admin-stat-card--mint">
-            <span>Doanh thu còn phải thu</span>
-            <strong>@FormatCurrency(Model.Summary.PendingRevenue)</strong>
-            <p>Phần công nợ còn lại của các đơn đang mở.</p>
-        </article>
-        <article class="admin-stat-card admin-stat-card--orange">
-            <span>Tỷ lệ hủy đơn</span>
-            <strong>@Model.Summary.CancellationRate.ToString("N1")%</strong>
-            <p>@Model.Summary.CancelledBookings đơn đã hủy hoặc hoàn tiền.</p>
-        </article>
     </div>
 
-    <div class="admin-dashboard-grid admin-dashboard-grid--reports">
-        <section class="admin-panel admin-panel--hero admin-report-chart-panel">
-            <div class="admin-panel__header">
-                <div>
-                    <span class="admin-panel__label">Revenue Line</span>
-                    <h2>Biểu đồ doanh thu</h2>
-                </div>
-                <div class="admin-chart-legend">
-                    <span><i class="admin-dot admin-dot--blue"></i> Doanh thu</span>
-                    <span><i class="admin-dot admin-dot--green"></i> Số booking</span>
-                </div>
-            </div>
+    <form asp-action="Reports" method="get" class="admin-filter-strip">
+        <select name="Period" class="form-select">
+            <option value="week" selected="@(currentPeriod == "week")">Theo tuần</option>
+            <option value="month" selected="@(currentPeriod == "month")">Theo tháng</option>
+            <option value="year" selected="@(currentPeriod == "year")">Theo năm</option>
+        </select>
+        <input name="FromDate" value="@Model.Filter.FromDate?.ToString("yyyy-MM-dd")" class="form-control" type="date" />
+        <input name="ToDate" value="@Model.Filter.ToDate?.ToString("yyyy-MM-dd")" class="form-control" type="date" />
+        <select name="TourId" asp-items="Model.TourOptions" class="form-select"></select>
+        <select name="BookingStatus" asp-items="Model.BookingStatusOptions" class="form-select"></select>
+        <select name="PaymentStatus" asp-items="Model.PaymentStatusOptions" class="form-select"></select>
+        <input name="CustomerSearch" value="@Model.Filter.CustomerSearch" class="form-control" placeholder="Khách hàng..." />
+        <button type="submit" class="btn btn-primary">Lọc</button>
+        <a asp-action="Reports" class="btn btn-outline-secondary">Xóa</a>
+    </form>
 
-            <div class="admin-line-chart" data-line-chart>
-                <svg viewBox="0 0 @chartWidth @chartHeight" preserveAspectRatio="none" role="img" aria-label="Biểu đồ đường doanh thu">
-                    <defs>
-                        <linearGradient id="reportRevenueFill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stop-color="rgba(11,116,255,0.35)" />
-                            <stop offset="100%" stop-color="rgba(11,116,255,0.04)" />
-                        </linearGradient>
-                    </defs>
+    <section class="admin-kpi-grid admin-kpi-grid--six">
+        @if (canRevenue)
+        {
+            <article class="admin-kpi-card"><span>Doanh thu</span><strong>@Money(Model.Summary.TotalRevenue)</strong><small>Đã thu @Money(Model.Summary.CollectedRevenue)</small></article>
+        }
+        @if (canBooking)
+        {
+            <article class="admin-kpi-card"><span>Booking</span><strong>@Model.Summary.TotalBookings</strong><small>@Model.Summary.NewBookings đơn mới</small></article>
+        }
+        @if (canCustomer)
+        {
+            <article class="admin-kpi-card"><span>Khách hàng</span><strong>@Model.Summary.TotalCustomers</strong><small>@Model.Summary.ReturningCustomers khách quay lại</small></article>
+        }
+        @if (canTour)
+        {
+            <article class="admin-kpi-card"><span>Tour / lịch</span><strong>@Model.Summary.ActiveTours</strong><small>@Model.Summary.LowSeatSchedules lịch sắp hết chỗ</small></article>
+        }
+        @if (canPayment)
+        {
+            <article class="admin-kpi-card"><span>Còn phải thu</span><strong>@Money(Model.Summary.PendingRevenue)</strong><small>Hoàn/lỗi @Money(Model.Summary.RefundedAmount)</small></article>
+        }
+        @if (canContract)
+        {
+            <article class="admin-kpi-card"><span>Hợp đồng</span><strong>@Model.Summary.ContractsSigned</strong><small>@Model.Summary.ContractsPending chờ ký</small></article>
+        }
+        @if (canStaffOps)
+        {
+            <article class="admin-kpi-card"><span>Cần xử lý</span><strong>@Model.Summary.PendingStaffTasks</strong><small>Booking / vận hành liên quan</small></article>
+        }
+    </section>
 
+    @if (Model.Summary.Alerts.Count > 0 && (canAdminAll || Model.CanSeeOperations))
+    {
+        <section class="admin-alert-strip">
+            @foreach (var alert in Model.Summary.Alerts.Take(4))
+            {
+                <article class="admin-alert-pill admin-alert-pill--@alert.Severity">
+                    <strong>@alert.Title</strong>
+                    <span>@alert.Message</span>
+                </article>
+            }
+        </section>
+    }
+
+    @if (canRevenue || canBooking)
+    {
+        <section class="admin-chart-grid">
+            @if (canRevenue)
+            {
+                <article class="admin-chart-card admin-chart-card--wide">
+                    <header class="admin-chart-head">
+                        <div>
+                            <span>Revenue</span>
+                            <h2>Doanh thu theo thời gian</h2>
+                        </div>
+                        <form asp-action="Reports" method="get" class="admin-chart-period-form">
+                            <select name="Period" class="admin-chart-select" onchange="this.form.submit()">
+                                <option value="week" selected="@(currentPeriod == "week")">Tuần</option>
+                                <option value="month" selected="@(currentPeriod == "month")">Tháng</option>
+                                <option value="year" selected="@(currentPeriod == "year")">Năm</option>
+                            </select>
+                        </form>
+                    </header>
+                    <svg class="admin-svg-chart" viewBox="0 0 760 230" preserveAspectRatio="none" role="img" aria-label="Biểu đồ doanh thu">
+                        <defs>
+                            <linearGradient id="reportRevenueArea" x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="0%" stop-color="#2f80ed" stop-opacity=".34" />
+                                <stop offset="100%" stop-color="#2f80ed" stop-opacity=".04" />
+                            </linearGradient>
+                        </defs>
+                        @for (var row = 0; row < 5; row++)
+                        {
+                            var y = 26 + (178d / 4 * row);
+                            <line x1="26" y1="@y.ToString("0.##", CultureInfo.InvariantCulture)" x2="734" y2="@y.ToString("0.##", CultureInfo.InvariantCulture)" />
+                        }
+                        <path d="@AreaPath(revenueValues)" class="admin-svg-area"></path>
+                        <path d="@LinePath(revenueValues)" class="admin-svg-line admin-svg-line--blue"></path>
+                    </svg>
+                    <div class="admin-chart-labels">
+                        @foreach (var item in Model.Summary.RevenueSeries)
+                        {
+                            <span>@item.Label</span>
+                        }
+                    </div>
+                </article>
+            }
+
+            @if (canBooking)
+            {
+                <article class="admin-chart-card">
+                    <header class="admin-chart-head">
+                        <div>
+                            <span>Booking</span>
+                            <h2>Trạng thái đơn</h2>
+                        </div>
+                    </header>
+                    <div class="admin-donut-row">
+                        <div class="admin-donut" style="background:conic-gradient(#20c997 0 @Invariant(paidPct)%, #ffcf4a @Invariant(paidPct)% @Invariant(paidPct + pendingPct)%, #ff6b6b 0);">
+                            <strong>@Number(100 - cancelPct)%</strong>
+                            <span>hiệu lực</span>
+                        </div>
+                        <div class="admin-legend-list">
+                            @foreach (var item in Model.Summary.BookingStatusBreakdown.Take(5))
+                            {
+                                <span><i></i>@item.Label: @item.Count</span>
+                            }
+                        </div>
+                    </div>
+                </article>
+            }
+        </section>
+    }
+
+    <section class="admin-chart-grid admin-chart-grid--thirds">
+        @if (canBooking)
+        {
+            <article class="admin-chart-card">
+                <header class="admin-chart-head">
+                    <div>
+                        <span>Booking rate</span>
+                        <h2>Booking theo kỳ</h2>
+                    </div>
+                    <form asp-action="Reports" method="get" class="admin-chart-period-form">
+                        <select name="Period" class="admin-chart-select" onchange="this.form.submit()">
+                            <option value="week" selected="@(currentPeriod == "week")">Tuần</option>
+                            <option value="month" selected="@(currentPeriod == "month")">Tháng</option>
+                            <option value="year" selected="@(currentPeriod == "year")">Năm</option>
+                        </select>
+                    </form>
+                </header>
+                <svg class="admin-svg-chart admin-svg-chart--compact" viewBox="0 0 760 230" preserveAspectRatio="none" role="img" aria-label="Biểu đồ booking">
                     @for (var row = 0; row < 5; row++)
                     {
-                        var y = chartPadding + ((chartHeight - (chartPadding * 2)) / 4 * row);
-                        <line x1="@chartPadding" y1="@y.ToString("0.##", CultureInfo.InvariantCulture)" x2="@(chartWidth - chartPadding)" y2="@y.ToString("0.##", CultureInfo.InvariantCulture)" class="admin-line-chart__grid" />
+                        var y = 26 + (178d / 4 * row);
+                        <line x1="26" y1="@y.ToString("0.##", CultureInfo.InvariantCulture)" x2="734" y2="@y.ToString("0.##", CultureInfo.InvariantCulture)" />
                     }
-
-                    @if (revenueValues.Count > 0)
-                    {
-                        <path d="@revenueAreaPath" class="admin-line-chart__area"></path>
-                        <path d="@revenuePath" class="admin-line-chart__line"></path>
-
-                        @for (var index = 0; index < revenuePoints.Count; index++)
-                        {
-                            var point = revenuePoints[index];
-                            <circle cx="@point.X.ToString("0.##", CultureInfo.InvariantCulture)"
-                                    cy="@point.Y.ToString("0.##", CultureInfo.InvariantCulture)"
-                                    r="5.4"
-                                    class="admin-line-chart__point">
-                                <title>@Model.Summary.RevenueSeries.ElementAt(index).Label - @FormatCurrency(Model.Summary.RevenueSeries.ElementAt(index).Revenue)</title>
-                            </circle>
-                        }
-                    }
+                    <path d="@LinePath(bookingValues)" class="admin-svg-line admin-svg-line--green"></path>
                 </svg>
+            </article>
+        }
 
-                <div class="admin-line-chart__labels">
-                    @foreach (var point in Model.Summary.RevenueSeries)
+        @if (canCustomer)
+        {
+            <article class="admin-chart-card">
+                <header class="admin-chart-head">
+                    <div>
+                        <span>Customers</span>
+                        <h2>Khách hàng</h2>
+                    </div>
+                    <form asp-action="Reports" method="get" class="admin-chart-period-form">
+                        <select name="Period" class="admin-chart-select" onchange="this.form.submit()">
+                            <option value="week" selected="@(currentPeriod == "week")">Tuần</option>
+                            <option value="month" selected="@(currentPeriod == "month")">Tháng</option>
+                            <option value="year" selected="@(currentPeriod == "year")">Năm</option>
+                        </select>
+                    </form>
+                </header>
+                <svg class="admin-svg-chart admin-svg-chart--compact" viewBox="0 0 760 230" preserveAspectRatio="none" role="img" aria-label="Biểu đồ khách hàng">
+                    @for (var row = 0; row < 5; row++)
                     {
-                        <div>
-                            <strong>@point.Label</strong>
-                            <span>@point.BookingCount booking</span>
+                        var y = 26 + (178d / 4 * row);
+                        <line x1="26" y1="@y.ToString("0.##", CultureInfo.InvariantCulture)" x2="734" y2="@y.ToString("0.##", CultureInfo.InvariantCulture)" />
+                    }
+                    <path d="@LinePath(customerValues)" class="admin-svg-line admin-svg-line--orange"></path>
+                </svg>
+                <div class="admin-mini-stats">
+                    <div><b>@Model.Summary.NewCustomers</b><span>Khách mới</span></div>
+                    <div><b>@Number(returningPct)%</b><span>Quay lại</span></div>
+                </div>
+            </article>
+        }
+
+        @if (canPayment)
+        {
+            <article class="admin-chart-card">
+                <header class="admin-chart-head">
+                    <div>
+                        <span>Payments</span>
+                        <h2>Thanh toán</h2>
+                    </div>
+                </header>
+                <div class="admin-donut-row">
+                    <div class="admin-donut admin-donut--small" style="background:conic-gradient(#2f80ed 0 @Invariant(paymentSuccessPct)%, #ff6b6b 0);">
+                        <strong>@Number(paymentSuccessPct)%</strong>
+                        <span>thành công</span>
+                    </div>
+                    <div class="admin-legend-list">
+                        @foreach (var item in Model.Summary.PaymentMethodBreakdown.Take(4))
+                        {
+                            <span><i></i>@item.Label: @Money(item.Amount)</span>
+                        }
+                    </div>
+                </div>
+            </article>
+        }
+
+        @if (canContract)
+        {
+            <article class="admin-chart-card">
+                <header class="admin-chart-head">
+                    <div>
+                        <span>Contracts</span>
+                        <h2>Hợp đồng</h2>
+                    </div>
+                </header>
+                <div class="admin-gauge admin-gauge--compact" style="--value:@Invariant(contractPct)">
+                    <strong>@Number(contractPct)%</strong>
+                    <span>ký thành công</span>
+                </div>
+                <div class="admin-mini-stats">
+                    <div><b>@Model.Summary.ContractsSigned</b><span>Đã ký</span></div>
+                    <div><b>@Model.Summary.ContractsPending</b><span>Chờ ký</span></div>
+                </div>
+            </article>
+        }
+    </section>
+
+    @if (canTour)
+    {
+        <section class="admin-chart-grid">
+            <article class="admin-chart-card">
+                <header class="admin-chart-head">
+                    <div>
+                        <span>Top tours</span>
+                        <h2>Hiệu suất tour</h2>
+                    </div>
+                </header>
+                <div class="admin-bar-list">
+                    @foreach (var tour in Model.Summary.TopTours.Take(7))
+                    {
+                        <div class="admin-bar-row">
+                            <span>@tour.TourName</span>
+                            <b>@tour.BookingCount booking</b>
+                            <i style="width:@Bar(tour.Revenue, maxTourRevenue)%"></i>
                         </div>
                     }
                 </div>
-            </div>
-        </section>
+            </article>
 
-        <section class="admin-side-stats admin-report-kpis">
-            <article class="admin-mini-card">
-                <span>Khách mới</span>
-                <strong>@Model.Summary.NewCustomers</strong>
-                <p>Số khách đăng ký mới trong kỳ đang xem.</p>
-            </article>
-            <article class="admin-mini-card admin-mini-card--green">
-                <span>Khách quay lại</span>
-                <strong>@Model.Summary.ReturningCustomers</strong>
-                <p>Khách có từ 2 booking trở lên trong cùng kỳ.</p>
-            </article>
-            <article class="admin-mini-card admin-mini-card--orange">
-                <span>Đánh giá trung bình</span>
-                <strong>@Model.Summary.AverageRating.ToString("N1")/5</strong>
-                <p>@Model.Summary.ReviewCount đánh giá đã được duyệt.</p>
-            </article>
-            <article class="admin-mini-card">
-                <span>Việc cần xử lý</span>
-                <strong>@Model.Summary.PendingStaffTasks</strong>
-                <p>Tổng số tác vụ chờ finance hoặc staff xử lý.</p>
-            </article>
-        </section>
-    </div>
-
-    <div class="admin-lower-grid admin-lower-grid--reports">
-        <section class="admin-panel">
-            <div class="admin-panel__header">
-                <div>
-                    <span class="admin-panel__label">Breakdown</span>
-                    <h2>Trạng thái booking</h2>
-                </div>
-            </div>
-
-            <div class="admin-report-breakdown">
-                @if (Model.Summary.BookingStatusBreakdown.Count == 0)
-                {
-                    <p class="admin-empty-state">Không có dữ liệu booking trong kỳ đã lọc.</p>
-                }
-                else
-                {
-                    @foreach (var item in Model.Summary.BookingStatusBreakdown)
+            <article class="admin-chart-card">
+                <header class="admin-chart-head">
+                    <div>
+                        <span>Schedules</span>
+                        <h2>Tour còn chỗ / hết chỗ</h2>
+                    </div>
+                </header>
+                <div class="admin-compact-table">
+                    @foreach (var item in Model.Summary.ScheduleSnapshot.Take(6))
                     {
-                        <article class="admin-report-breakdown__item">
-                            <div class="admin-report-breakdown__copy">
-                                <strong>@item.Label</strong>
-                                <p>@item.Count đơn • @FormatCurrency(item.Amount)</p>
-                            </div>
-                            <div class="admin-report-breakdown__meter">
-                                <span style="width:@item.Percent%"></span>
-                            </div>
-                        </article>
+                        <div>
+                            <strong>@item.TourName</strong>
+                            <span>@item.DepartureDate.ToString("dd/MM/yyyy")</span>
+                            <b>@item.AvailableSeats/@item.TotalSeats chỗ</b>
+                        </div>
                     }
-                }
-            </div>
-        </section>
-
-        <section class="admin-panel">
-            <div class="admin-panel__header">
-                <div>
-                    <span class="admin-panel__label">Finance</span>
-                    <h2>Thanh toán và phương thức</h2>
                 </div>
-            </div>
+            </article>
+        </section>
+    }
 
-            <div class="admin-report-breakdown">
-                @if (Model.Summary.PaymentStatusBreakdown.Count == 0)
-                {
-                    <p class="admin-empty-state">Không có giao dịch phù hợp với bộ lọc hiện tại.</p>
-                }
-                else
-                {
-                    @foreach (var item in Model.Summary.PaymentStatusBreakdown)
+    <section class="admin-chart-grid admin-chart-grid--thirds">
+        @if (canRevenue && canAdminAll)
+        {
+            <article class="admin-chart-card">
+                <header class="admin-chart-head">
+                    <div>
+                        <span>Destinations</span>
+                        <h2>Doanh thu điểm đến</h2>
+                    </div>
+                </header>
+                <div class="admin-bar-list">
+                    @foreach (var item in Model.Summary.RevenueByDestination.Take(7))
                     {
-                        <article class="admin-report-breakdown__item">
-                            <div class="admin-report-breakdown__copy">
-                                <strong>@item.Label</strong>
-                                <p>@item.Count giao dịch • @FormatCurrency(item.Amount)</p>
-                            </div>
-                            <div class="admin-report-breakdown__meter">
-                                <span class="is-green" style="width:@item.Percent%"></span>
-                            </div>
-                        </article>
+                        <div class="admin-bar-row">
+                            <span>@item.Label</span>
+                            <b>@Money(item.Amount)</b>
+                            <i style="width:@Bar(item.Amount, maxDestinationRevenue)%"></i>
+                        </div>
                     }
-                }
-            </div>
-
-            <div class="admin-report-tags">
-                @foreach (var item in Model.Summary.PaymentMethodBreakdown)
-                {
-                    <span class="admin-status-pill admin-status-pill--info">@item.Label: @FormatCurrency(item.Amount)</span>
-                }
-            </div>
-        </section>
-    </div>
-
-    <div class="admin-lower-grid admin-lower-grid--reports">
-        <section class="admin-panel">
-            <div class="admin-panel__header">
-                <div>
-                    <span class="admin-panel__label">Top tours</span>
-                    <h2>Tour nổi bật theo hiệu quả kinh doanh</h2>
                 </div>
-            </div>
+            </article>
+        }
 
-            <div class="admin-rank-list">
-                @if (Model.Summary.TopTours.Count == 0)
-                {
-                    <p class="admin-empty-state">Chưa có tour phát sinh dữ liệu trong kỳ lọc.</p>
-                }
-                else
-                {
-                    @for (var index = 0; index < Model.Summary.TopTours.Count; index++)
+        @if (canPromotion)
+        {
+            <article class="admin-chart-card">
+                <header class="admin-chart-head">
+                    <div>
+                        <span>Promotions</span>
+                        <h2>Khuyến mãi</h2>
+                    </div>
+                </header>
+                <div class="admin-bar-list">
+                    @foreach (var item in Model.Summary.PromotionBreakdown.Take(5))
                     {
-                        var item = Model.Summary.TopTours.ElementAt(index);
-                        <article class="admin-rank-item">
-                            <span>@(index + 1)</span>
+                        <div class="admin-bar-row">
+                            <span>@item.Label</span>
+                            <b>@item.Count lượt</b>
+                            <i style="width:@Bar(item.Amount, maxPromoRevenue)%"></i>
+                        </div>
+                    }
+                </div>
+            </article>
+        }
+
+        @if (canCustomer)
+        {
+            <article class="admin-chart-card">
+                <header class="admin-chart-head">
+                    <div>
+                        <span>Customers</span>
+                        <h2>@(Model.RoleLabel == "Employee" ? "Khách phụ trách" : "Top khách hàng")</h2>
+                    </div>
+                </header>
+                <div class="admin-compact-table">
+                    @foreach (var customer in Model.Summary.TopCustomers.Take(5))
+                    {
+                        <div>
+                            <strong>@customer.CustomerName</strong>
+                            <span>@customer.BookingCount booking</span>
+                            <b>@Money(customer.TotalSpent)</b>
+                        </div>
+                    }
+                </div>
+            </article>
+        }
+
+        @if (canStaffOps)
+        {
+            <article class="admin-chart-card">
+                <header class="admin-chart-head">
+                    <div>
+                        <span>Operations</span>
+                        <h2>@(Model.RoleLabel == "Employee" ? "Việc của tôi" : "Hiệu suất nhân viên")</h2>
+                    </div>
+                </header>
+                @if (Model.RoleLabel == "Employee")
+                {
+                    <div class="admin-compact-table">
+                        @foreach (var task in Model.Summary.StaffTasks.Take(5))
+                        {
                             <div>
-                                <strong>@item.TourName</strong>
-                                <p>@item.TourCode • @item.BookingCount booking • @FormatCurrency(item.Revenue)</p>
+                                <strong>@task.Label</strong>
+                                <span>@task.Hint</span>
+                                <b>@task.Count</b>
                             </div>
-                            <small>★ @item.Rating.ToString("N1") • Hủy @item.CancelledBookings</small>
-                        </article>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="admin-bar-list">
+                        @foreach (var staff in Model.Summary.StaffPerformance.Take(6))
+                        {
+                            <div class="admin-bar-row">
+                                <span>@staff.StaffName</span>
+                                <b>@staff.HandledActions lượt</b>
+                                <i style="width:@Bar(staff.HandledActions, maxStaffActions)%"></i>
+                            </div>
+                        }
+                    </div>
+                }
+            </article>
+        }
+
+        @if (canPayment)
+        {
+            <article class="admin-chart-card">
+                <header class="admin-chart-head">
+                    <div>
+                        <span>Finance</span>
+                        <h2>Giao dịch gần đây</h2>
+                    </div>
+                </header>
+                <div class="admin-compact-table">
+                    @foreach (var item in Model.Summary.RecentTransactions.Take(6))
+                    {
+                        <div>
+                            <strong>@item.BookingCode</strong>
+                            <span>@item.PaymentStatusLabel</span>
+                            <b>@Money(item.Amount)</b>
+                        </div>
                     }
-                }
-            </div>
-        </section>
-
-        <section class="admin-panel">
-            <div class="admin-panel__header">
-                <div>
-                    <span class="admin-panel__label">Task board</span>
-                    <h2>Các việc nội bộ cần xử lý</h2>
                 </div>
-            </div>
-
-            <div class="admin-report-task-grid">
-                @foreach (var task in Model.Summary.StaffTasks)
-                {
-                    <article class="admin-mini-card">
-                        <span>@task.Label</span>
-                        <strong>@task.Count</strong>
-                        <p>@task.Hint</p>
-                    </article>
-                }
-            </div>
-        </section>
-    </div>
-
-    <section class="admin-panel">
-        <div class="admin-panel__header">
-            <div>
-                <span class="admin-panel__label">Recent payments</span>
-                <h2>Giao dịch gần đây</h2>
-            </div>
-        </div>
-
-        <div class="admin-dashboard-table">
-            @if (Model.Summary.RecentTransactions.Count == 0)
-            {
-                <p class="admin-empty-state">Không có giao dịch trong kỳ báo cáo này.</p>
-            }
-            else
-            {
-                @foreach (var item in Model.Summary.RecentTransactions)
-                {
-                    <article class="admin-dashboard-row">
-                        <div>
-                            <strong>@item.PaymentCode</strong>
-                            <p>@item.BookingCode • @item.CustomerName</p>
-                        </div>
-                        <div>
-                            <span>@FormatCurrency(item.Amount)</span>
-                            <p>@item.PaymentMethodLabel</p>
-                        </div>
-                        <div class="admin-dashboard-row__status">
-                            <span class="admin-status-pill admin-status-pill--info">@item.PaymentStatusLabel</span>
-                            <small>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</small>
-                        </div>
-                    </article>
-                }
-            }
-        </div>
+            </article>
+        }
     </section>
 </section>
-
-@section Scripts {
-    <script src="~/pages/admin/charts.js" asp-append-version="true"></script>
-}

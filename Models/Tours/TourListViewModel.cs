@@ -6,6 +6,10 @@ public class TourListViewModel
     public int TotalPages { get; set; }
     public int TotalItems { get; set; }
     public int PageSize { get; set; }
+    public int FeaturedCount { get; set; }
+    public int LastMinuteCount { get; set; }
+    public decimal? LowestPrice { get; set; }
+    public DateOnly? EarliestDepartureDate { get; set; }
     public int? SelectedDestinationId { get; set; }
     public int? SelectedCategoryId { get; set; }
     public DateOnly? SelectedDepartureDate { get; set; }

@@ -28,6 +28,7 @@ public partial class DbSeeder
         await EnsureTourItineraryColumnsAsync(cancellationToken);
         await EnsureNotificationsTableAsync(cancellationToken);
         await EnsureElectronicContractsTableAsync(cancellationToken);
+        await EnsurePromotionBannerColumnsAsync(cancellationToken);
         await EnsureUserPromotionsTableAsync(cancellationToken);
         await EnsureReviewMediaTableAsync(cancellationToken);
         await EnsureArticlesTableAsync(cancellationToken);
@@ -185,6 +186,42 @@ public partial class DbSeeder
                            )
                            BEGIN
                                CREATE INDEX IX_ElectronicContracts_BookingId ON booking.ElectronicContracts(BookingId);
+                           END;
+                           """;
+
+        await _dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+    }
+
+    private async Task EnsurePromotionBannerColumnsAsync(CancellationToken cancellationToken)
+    {
+        const string sql = """
+                           IF COL_LENGTH('booking.Promotions', 'BannerImageUrl') IS NULL
+                           BEGIN
+                               ALTER TABLE booking.Promotions ADD BannerImageUrl NVARCHAR(500) NULL;
+                           END;
+
+                           IF COL_LENGTH('booking.Promotions', 'BannerAltText') IS NULL
+                           BEGIN
+                               ALTER TABLE booking.Promotions ADD BannerAltText NVARCHAR(200) NULL;
+                           END;
+
+                           IF COL_LENGTH('booking.Promotions', 'BannerLinkUrl') IS NULL
+                           BEGIN
+                               ALTER TABLE booking.Promotions ADD BannerLinkUrl NVARCHAR(500) NULL;
+                           END;
+
+                           IF COL_LENGTH('booking.Promotions', 'ShowOnHomeBanner') IS NULL
+                           BEGIN
+                               ALTER TABLE booking.Promotions
+                               ADD ShowOnHomeBanner BIT NOT NULL
+                                   CONSTRAINT DF_Promotions_ShowOnHomeBanner DEFAULT (0) WITH VALUES;
+                           END;
+
+                           IF COL_LENGTH('booking.Promotions', 'BannerDisplayOrder') IS NULL
+                           BEGIN
+                               ALTER TABLE booking.Promotions
+                               ADD BannerDisplayOrder INT NOT NULL
+                                   CONSTRAINT DF_Promotions_BannerDisplayOrder DEFAULT (0) WITH VALUES;
                            END;
                            """;
 
@@ -794,6 +831,29 @@ public partial class DbSeeder
                 EndAt = now.AddMonths(2),
                 IsAutoApply = false,
                 IsActive = true,
+                BannerAltText = "ChillTour deal hot du lịch thả ga giảm đến 30%",
+                CreatedAt = now
+            },
+            new Promotion
+            {
+                PromotionCode = "CHILL30",
+                PromotionName = "Deal hot du lịch thả ga",
+                PromotionType = 1,
+                Description = "Giảm đến 30% cho các tour đang mở bán, áp dụng theo chương trình banner trang chủ.",
+                DiscountPercent = 30,
+                MaxDiscountAmount = 3_000_000m,
+                MinOrderValue = 0m,
+                MaxUsageCount = 1000,
+                MaxUsagePerUser = 1,
+                StartAt = now.AddDays(-7),
+                EndAt = now.AddYears(1),
+                IsAutoApply = false,
+                IsActive = true,
+                BannerImageUrl = "/uploads/banners/chilltour-deal-hot-sample.svg",
+                BannerAltText = "ChillTour deal hot du lịch thả ga giảm đến 30%",
+                BannerLinkUrl = "/Promotions",
+                ShowOnHomeBanner = true,
+                BannerDisplayOrder = 1,
                 CreatedAt = now
             },
             new Promotion
@@ -832,6 +892,11 @@ public partial class DbSeeder
 
         foreach (var promotion in promotions)
         {
+            if (promotion.PromotionCode is "FAMILY500" or "DEAL2TR")
+            {
+                continue;
+            }
+
             var exists = await _dbContext.Promotions.AnyAsync(x => x.PromotionCode == promotion.PromotionCode, cancellationToken);
             if (!exists)
             {
@@ -840,6 +905,18 @@ public partial class DbSeeder
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+
+        var sampleBanner = await _dbContext.Promotions.SingleOrDefaultAsync(x => x.PromotionCode == "CHILL30", cancellationToken);
+        if (sampleBanner is not null && string.IsNullOrWhiteSpace(sampleBanner.BannerImageUrl))
+        {
+            sampleBanner.BannerImageUrl = "/uploads/banners/chilltour-deal-hot-sample.svg";
+            sampleBanner.BannerAltText = "ChillTour deal hot du lịch thả ga giảm đến 30%";
+            sampleBanner.BannerLinkUrl = "/Promotions";
+            sampleBanner.ShowOnHomeBanner = true;
+            sampleBanner.BannerDisplayOrder = 1;
+            sampleBanner.UpdatedAt = DateTime.UtcNow;
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
     }
 
     private static string BuildSlug(string value)

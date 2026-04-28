@@ -17,6 +17,11 @@ public class Promotion
     public DateTime EndAt { get; set; }
     public bool IsAutoApply { get; set; }
     public bool IsActive { get; set; }
+    public string? BannerImageUrl { get; set; }
+    public string? BannerAltText { get; set; }
+    public string? BannerLinkUrl { get; set; }
+    public bool ShowOnHomeBanner { get; set; }
+    public int BannerDisplayOrder { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 

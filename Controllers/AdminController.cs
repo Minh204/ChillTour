@@ -39,6 +39,7 @@ public class AdminController : Controller
     private const byte PaymentFullyPaid = 3;
     private const byte PaymentFailed = 4;
     private static readonly string[] AllowedImageExtensions = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
+    private static readonly string[] AllowedBannerImageExtensions = [".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"];
 
     private readonly ChillTourDbContext _dbContext;
     private readonly IPasswordHasher _passwordHasher;
@@ -59,13 +60,18 @@ public class AdminController : Controller
 
     [Authorize(Policy = PermissionConstants.AccessAdmin)]
     [HttpGet]
-    public async Task<IActionResult> Index(CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(string? period, CancellationToken cancellationToken)
     {
         var today = DateTime.Today;
         var startOfWeek = today.AddDays(-6);
         var tomorrow = today.AddDays(1);
         var todayOnly = DateOnly.FromDateTime(today);
         var next30Days = todayOnly.AddDays(30);
+        var dashboardPeriod = string.IsNullOrWhiteSpace(period) ? "week" : period.Trim().ToLowerInvariant();
+        if (dashboardPeriod is not ("week" or "month" or "year"))
+        {
+            dashboardPeriod = "week";
+        }
 
         var totalUsers = await _dbContext.Users.AsNoTracking().CountAsync(cancellationToken);
         var newUsersThisWeek = await _dbContext.Users.AsNoTracking().CountAsync(x => x.CreatedAt >= startOfWeek, cancellationToken);
@@ -82,52 +88,84 @@ public class AdminController : Controller
         var averageRating = await _dbContext.Reviews.AsNoTracking().Where(x => x.ModerationStatus == 1).AverageAsync(x => (decimal?)x.Rating, cancellationToken) ?? 0m;
         var reviewCount = await _dbContext.Reviews.AsNoTracking().CountAsync(x => x.ModerationStatus == 1, cancellationToken);
 
-        var bookingMetrics = await _dbContext.Bookings
-            .AsNoTracking()
-            .Where(x => x.CreatedAt >= startOfWeek && x.CreatedAt < tomorrow)
-            .GroupBy(x => x.CreatedAt.Date)
-            .Select(x => new
-            {
-                Date = x.Key,
-                BookingCount = x.Count()
-            })
-            .ToListAsync(cancellationToken);
+        List<AdminDashboardDailyMetricViewModel> dailyMetrics;
+        if (dashboardPeriod == "year")
+        {
+            var startOfYear = new DateTime(today.Year, 1, 1);
+            var bookingMetrics = await _dbContext.Bookings
+                .AsNoTracking()
+                .Where(x => x.CreatedAt >= startOfYear && x.CreatedAt < tomorrow)
+                .GroupBy(x => new { x.CreatedAt.Year, x.CreatedAt.Month })
+                .Select(x => new { x.Key.Year, x.Key.Month, BookingCount = x.Count() })
+                .ToListAsync(cancellationToken);
 
-        var userMetrics = await _dbContext.Users
-            .AsNoTracking()
-            .Where(x => x.CreatedAt >= startOfWeek && x.CreatedAt < tomorrow)
-            .GroupBy(x => x.CreatedAt.Date)
-            .Select(x => new
-            {
-                Date = x.Key,
-                UserCount = x.Count()
-            })
-            .ToListAsync(cancellationToken);
+            var userMetrics = await _dbContext.Users
+                .AsNoTracking()
+                .Where(x => x.CreatedAt >= startOfYear && x.CreatedAt < tomorrow)
+                .GroupBy(x => new { x.CreatedAt.Year, x.CreatedAt.Month })
+                .Select(x => new { x.Key.Year, x.Key.Month, UserCount = x.Count() })
+                .ToListAsync(cancellationToken);
 
-        var revenueMetrics = await _dbContext.Payments
-            .AsNoTracking()
-            .Where(x => x.CreatedAt >= startOfWeek && x.CreatedAt < tomorrow && (x.PaymentStatus == PaymentDepositPaid || x.PaymentStatus == PaymentFullyPaid))
-            .GroupBy(x => x.CreatedAt.Date)
-            .Select(x => new
-            {
-                Date = x.Key,
-                DepositRevenue = x.Sum(y => y.Amount)
-            })
-            .ToListAsync(cancellationToken);
+            var revenueMetrics = await _dbContext.Payments
+                .AsNoTracking()
+                .Where(x => x.CreatedAt >= startOfYear && x.CreatedAt < tomorrow && (x.PaymentStatus == PaymentDepositPaid || x.PaymentStatus == PaymentFullyPaid))
+                .GroupBy(x => new { x.CreatedAt.Year, x.CreatedAt.Month })
+                .Select(x => new { x.Key.Year, x.Key.Month, DepositRevenue = x.Sum(y => y.Amount) })
+                .ToListAsync(cancellationToken);
 
-        var dailyMetrics = Enumerable.Range(0, 7)
-            .Select(offset =>
-            {
-                var date = startOfWeek.AddDays(offset).Date;
-                return new AdminDashboardDailyMetricViewModel
+            dailyMetrics = Enumerable.Range(1, today.Month)
+                .Select(month =>
                 {
-                    Date = DateOnly.FromDateTime(date),
-                    BookingCount = bookingMetrics.FirstOrDefault(x => x.Date == date)?.BookingCount ?? 0,
-                    UserCount = userMetrics.FirstOrDefault(x => x.Date == date)?.UserCount ?? 0,
-                    DepositRevenue = revenueMetrics.FirstOrDefault(x => x.Date == date)?.DepositRevenue ?? 0m
-                };
-            })
-            .ToList();
+                    var date = new DateTime(today.Year, month, 1);
+                    return new AdminDashboardDailyMetricViewModel
+                    {
+                        Date = DateOnly.FromDateTime(date),
+                        BookingCount = bookingMetrics.FirstOrDefault(x => x.Year == date.Year && x.Month == date.Month)?.BookingCount ?? 0,
+                        UserCount = userMetrics.FirstOrDefault(x => x.Year == date.Year && x.Month == date.Month)?.UserCount ?? 0,
+                        DepositRevenue = revenueMetrics.FirstOrDefault(x => x.Year == date.Year && x.Month == date.Month)?.DepositRevenue ?? 0m
+                    };
+                })
+                .ToList();
+        }
+        else
+        {
+            var metricStart = dashboardPeriod == "month" ? new DateTime(today.Year, today.Month, 1) : startOfWeek;
+            var totalDays = (today.Date - metricStart.Date).Days + 1;
+            var bookingMetrics = await _dbContext.Bookings
+                .AsNoTracking()
+                .Where(x => x.CreatedAt >= metricStart && x.CreatedAt < tomorrow)
+                .GroupBy(x => x.CreatedAt.Date)
+                .Select(x => new { Date = x.Key, BookingCount = x.Count() })
+                .ToListAsync(cancellationToken);
+
+            var userMetrics = await _dbContext.Users
+                .AsNoTracking()
+                .Where(x => x.CreatedAt >= metricStart && x.CreatedAt < tomorrow)
+                .GroupBy(x => x.CreatedAt.Date)
+                .Select(x => new { Date = x.Key, UserCount = x.Count() })
+                .ToListAsync(cancellationToken);
+
+            var revenueMetrics = await _dbContext.Payments
+                .AsNoTracking()
+                .Where(x => x.CreatedAt >= metricStart && x.CreatedAt < tomorrow && (x.PaymentStatus == PaymentDepositPaid || x.PaymentStatus == PaymentFullyPaid))
+                .GroupBy(x => x.CreatedAt.Date)
+                .Select(x => new { Date = x.Key, DepositRevenue = x.Sum(y => y.Amount) })
+                .ToListAsync(cancellationToken);
+
+            dailyMetrics = Enumerable.Range(0, totalDays)
+                .Select(offset =>
+                {
+                    var date = metricStart.AddDays(offset).Date;
+                    return new AdminDashboardDailyMetricViewModel
+                    {
+                        Date = DateOnly.FromDateTime(date),
+                        BookingCount = bookingMetrics.FirstOrDefault(x => x.Date == date)?.BookingCount ?? 0,
+                        UserCount = userMetrics.FirstOrDefault(x => x.Date == date)?.UserCount ?? 0,
+                        DepositRevenue = revenueMetrics.FirstOrDefault(x => x.Date == date)?.DepositRevenue ?? 0m
+                    };
+                })
+                .ToList();
+        }
 
         var maxBookings = Math.Max(dailyMetrics.Max(x => x.BookingCount), 1);
         var maxUsers = Math.Max(dailyMetrics.Max(x => x.UserCount), 1);
@@ -190,6 +228,8 @@ public class AdminController : Controller
             .ToListAsync(cancellationToken);
 
         var operationalBookings = confirmedBookings + cancelledBookings;
+
+        ViewBag.DashboardPeriod = dashboardPeriod;
 
         return View(new AdminDashboardViewModel
         {
@@ -335,12 +375,13 @@ public class AdminController : Controller
                 isEmployee ? "Employee" : "BackOffice",
             CanSeeBusiness = isAdmin || isDirector,
             CanSeeOperations = isAdmin || isDirector || isManager,
-            CanSeeFinance = isAdmin || isAccountant,
-            CanSeeCustomer = isAdmin || isDirector,
+            CanSeeFinance = isAdmin || isDirector || isAccountant,
+            CanSeeCustomer = isAdmin || isDirector || isEmployee,
             CanSeeStaff = isAdmin || isManager || isEmployee,
             PeriodOptions =
             [
                 new SelectListItem("Theo ngày", "day", string.Equals(filter.Period, "day", StringComparison.OrdinalIgnoreCase)),
+                new SelectListItem("Theo tuần", "week", string.Equals(filter.Period, "week", StringComparison.OrdinalIgnoreCase)),
                 new SelectListItem("Theo tháng", "month", string.IsNullOrWhiteSpace(filter.Period) || string.Equals(filter.Period, "month", StringComparison.OrdinalIgnoreCase)),
                 new SelectListItem("Theo năm", "year", string.Equals(filter.Period, "year", StringComparison.OrdinalIgnoreCase)),
                 new SelectListItem("Tùy chọn", "custom", string.Equals(filter.Period, "custom", StringComparison.OrdinalIgnoreCase))
@@ -689,6 +730,9 @@ public class AdminController : Controller
                 DiscountAmount = x.DiscountAmount,
                 EndAt = x.EndAt,
                 IsActive = x.IsActive,
+                BannerImageUrl = x.BannerImageUrl,
+                ShowOnHomeBanner = x.ShowOnHomeBanner,
+                BannerDisplayOrder = x.BannerDisplayOrder,
                 ClaimedCount = x.UserPromotions.Count,
                 UsedCount = x.Bookings.Count
             })
@@ -928,6 +972,7 @@ public class AdminController : Controller
     public async Task<IActionResult> CreatePromotion(PromotionFormViewModel model, CancellationToken cancellationToken)
     {
         ValidatePromotionForm(model);
+        ValidatePromotionBannerImage(model);
         if (!ModelState.IsValid)
         {
             return View(model);
@@ -940,6 +985,10 @@ public class AdminController : Controller
             ModelState.AddModelError(nameof(model.PromotionCode), "Mã ưu đãi đã tồn tại.");
             return View(model);
         }
+
+        var bannerImageUrl = model.BannerImage is not null
+            ? await SavePromotionBannerImageAsync(model.BannerImage, cancellationToken)
+            : EmptyToNull(model.BannerImageUrl);
 
         var promotion = new Promotion
         {
@@ -957,6 +1006,11 @@ public class AdminController : Controller
             EndAt = model.EndAt,
             IsAutoApply = false,
             IsActive = model.IsActive,
+            BannerImageUrl = bannerImageUrl,
+            BannerAltText = EmptyToNull(model.BannerAltText),
+            BannerLinkUrl = EmptyToNull(model.BannerLinkUrl),
+            ShowOnHomeBanner = model.ShowOnHomeBanner && !string.IsNullOrWhiteSpace(bannerImageUrl),
+            BannerDisplayOrder = model.BannerDisplayOrder,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -989,7 +1043,12 @@ public class AdminController : Controller
             MinOrderValue = promotion.MinOrderValue,
             StartAt = promotion.StartAt,
             EndAt = promotion.EndAt,
-            IsActive = promotion.IsActive
+            IsActive = promotion.IsActive,
+            BannerImageUrl = promotion.BannerImageUrl,
+            BannerAltText = promotion.BannerAltText,
+            BannerLinkUrl = promotion.BannerLinkUrl,
+            ShowOnHomeBanner = promotion.ShowOnHomeBanner,
+            BannerDisplayOrder = promotion.BannerDisplayOrder
         });
     }
 
@@ -1004,17 +1063,19 @@ public class AdminController : Controller
             return RedirectToAction(nameof(Promotions));
         }
 
-        ValidatePromotionForm(model);
-        if (!ModelState.IsValid)
-        {
-            return View(model);
-        }
-
         var promotion = await _dbContext.Promotions.SingleOrDefaultAsync(x => x.PromotionId == id, cancellationToken);
         if (promotion is null)
         {
             TempData["AdminErrorMessage"] = "Không tìm thấy mã ưu đãi.";
             return RedirectToAction(nameof(Promotions));
+        }
+
+        model.BannerImageUrl = promotion.BannerImageUrl;
+        ValidatePromotionForm(model);
+        ValidatePromotionBannerImage(model);
+        if (!ModelState.IsValid)
+        {
+            return View(model);
         }
 
         var code = model.PromotionCode.Trim().ToUpperInvariant();
@@ -1035,6 +1096,23 @@ public class AdminController : Controller
         promotion.StartAt = model.StartAt;
         promotion.EndAt = model.EndAt;
         promotion.IsActive = model.IsActive;
+        promotion.BannerAltText = EmptyToNull(model.BannerAltText);
+        promotion.BannerLinkUrl = EmptyToNull(model.BannerLinkUrl);
+        promotion.BannerDisplayOrder = model.BannerDisplayOrder;
+
+        if (model.RemoveBannerImage)
+        {
+            DeletePromotionBannerImageFile(promotion.BannerImageUrl);
+            promotion.BannerImageUrl = null;
+        }
+
+        if (model.BannerImage is not null)
+        {
+            DeletePromotionBannerImageFile(promotion.BannerImageUrl);
+            promotion.BannerImageUrl = await SavePromotionBannerImageAsync(model.BannerImage, cancellationToken);
+        }
+
+        promotion.ShowOnHomeBanner = model.ShowOnHomeBanner && !string.IsNullOrWhiteSpace(promotion.BannerImageUrl);
         promotion.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -2193,6 +2271,63 @@ public class AdminController : Controller
             "CUSTOMER" => RoleConstants.Customer,
             _ => roleCode
         };
+    }
+
+    private void ValidatePromotionBannerImage(PromotionFormViewModel model)
+    {
+        if (model.BannerImage is not null)
+        {
+            if (model.BannerImage.Length <= 0)
+            {
+                ModelState.AddModelError(nameof(model.BannerImage), "Ảnh banner tải lên không hợp lệ.");
+            }
+
+            var extension = Path.GetExtension(model.BannerImage.FileName).ToLowerInvariant();
+            if (!AllowedBannerImageExtensions.Contains(extension))
+            {
+                ModelState.AddModelError(nameof(model.BannerImage), "Chỉ chấp nhận ảnh banner jpg, jpeg, png, webp, gif hoặc svg.");
+            }
+
+            if (model.BannerImage.Length > 8 * 1024 * 1024)
+            {
+                ModelState.AddModelError(nameof(model.BannerImage), "Ảnh banner phải nhỏ hơn hoặc bằng 8MB.");
+            }
+        }
+
+        var willHaveBanner = model.BannerImage is not null || (!model.RemoveBannerImage && !string.IsNullOrWhiteSpace(model.BannerImageUrl));
+        if (model.ShowOnHomeBanner && !willHaveBanner)
+        {
+            ModelState.AddModelError(nameof(model.BannerImage), "Cần có ảnh banner trước khi bật hiển thị ở trang chủ.");
+        }
+    }
+
+    private async Task<string> SavePromotionBannerImageAsync(IFormFile image, CancellationToken cancellationToken)
+    {
+        var extension = Path.GetExtension(image.FileName).ToLowerInvariant();
+        var fileName = $"{Guid.NewGuid():N}{extension}";
+        var uploadsRoot = Path.Combine(_environment.WebRootPath, "uploads", "banners");
+        Directory.CreateDirectory(uploadsRoot);
+
+        var filePath = Path.Combine(uploadsRoot, fileName);
+        await using var stream = new FileStream(filePath, FileMode.Create);
+        await image.CopyToAsync(stream, cancellationToken);
+
+        return $"/uploads/banners/{fileName}";
+    }
+
+    private void DeletePromotionBannerImageFile(string? bannerImageUrl)
+    {
+        if (string.IsNullOrWhiteSpace(bannerImageUrl) || bannerImageUrl.Contains("://", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var normalized = bannerImageUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+        var filePath = Path.Combine(_environment.WebRootPath, normalized);
+        if (System.IO.File.Exists(filePath))
+        {
+            System.IO.File.Delete(filePath);
+        }
     }
 
     private void ValidatePromotionForm(PromotionFormViewModel model)

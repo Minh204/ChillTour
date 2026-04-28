@@ -9,6 +9,9 @@ public class AdminPromotionItemViewModel
     public decimal? DiscountAmount { get; set; }
     public DateTime EndAt { get; set; }
     public bool IsActive { get; set; }
+    public string? BannerImageUrl { get; set; }
+    public bool ShowOnHomeBanner { get; set; }
+    public int BannerDisplayOrder { get; set; }
     public int ClaimedCount { get; set; }
     public int UsedCount { get; set; }
 }

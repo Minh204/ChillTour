@@ -17,11 +17,18 @@ public sealed class ReportService : IReportService
         public long BookingId { get; init; }
         public long UserId { get; init; }
         public long TourId { get; init; }
+        public long TourScheduleId { get; init; }
         public string BookingCode { get; init; } = string.Empty;
+        public string CustomerName { get; init; } = string.Empty;
+        public string CustomerEmail { get; init; } = string.Empty;
         public byte BookingStatus { get; init; }
         public byte PaymentStatus { get; init; }
+        public int AdultCount { get; init; }
+        public int ChildCount { get; init; }
+        public int InfantCount { get; init; }
         public decimal TotalAmount { get; init; }
         public decimal PaidAmount { get; init; }
+        public long? PromotionId { get; init; }
         public DateTime CreatedAt { get; init; }
     }
 
@@ -72,7 +79,10 @@ public sealed class ReportService : IReportService
         FillBreakdownSheet(workbook.Worksheets.Add("TrangThaiDon"), "Trạng thái đơn", summary.BookingStatusBreakdown);
         FillBreakdownSheet(workbook.Worksheets.Add("ThanhToan"), "Trạng thái thanh toán", summary.PaymentStatusBreakdown);
         FillBreakdownSheet(workbook.Worksheets.Add("PhuongThuc"), "Phương thức thanh toán", summary.PaymentMethodBreakdown);
+        FillBreakdownSheet(workbook.Worksheets.Add("DiemDen"), "Doanh thu theo diem den", summary.RevenueByDestination);
+        FillBreakdownSheet(workbook.Worksheets.Add("KhuyenMai"), "Hieu qua khuyen mai", summary.PromotionBreakdown);
         FillTopToursSheet(workbook.Worksheets.Add("TopTour"), summary);
+        FillTopCustomersSheet(workbook.Worksheets.Add("TopKhachHang"), summary);
         FillSchedulesSheet(workbook.Worksheets.Add("LichKhoiHanh"), summary);
         FillStaffSheet(workbook.Worksheets.Add("NhanSu"), summary);
         FillTransactionsSheet(workbook.Worksheets.Add("GiaoDich"), summary);
@@ -214,9 +224,22 @@ public sealed class ReportService : IReportService
         var today = DateOnly.FromDateTime(DateTime.Today);
         var next30Days = today.AddDays(30);
         var next3Days = today.AddDays(3);
+        var isAdmin = user.IsInRole(RoleConstants.Admin);
+        var isDirector = user.IsInRole(RoleConstants.Director);
+        var isManager = user.IsInRole(RoleConstants.Manager);
+        var isAccountant = user.IsInRole(RoleConstants.Accountant);
+        var isEmployeeOnly = user.IsInRole(RoleConstants.Employee) && !isAdmin && !isDirector && !isManager && !isAccountant;
+        var currentUserId = GetCurrentUserId(user);
 
         var bookings = _dbContext.Bookings.AsNoTracking()
             .Where(x => x.CreatedAt >= normalized.FromUtc && x.CreatedAt < normalized.ToUtcExclusive);
+
+        if (isEmployeeOnly)
+        {
+            bookings = currentUserId.HasValue
+                ? bookings.Where(x => x.StatusHistory.Any(h => h.ChangedByUserId == currentUserId.Value))
+                : bookings.Where(x => false);
+        }
 
         if (normalized.TourId.HasValue)
         {
@@ -238,17 +261,34 @@ public sealed class ReportService : IReportService
             bookings = bookings.Where(x => x.Payments.Any(p => p.PaymentMethod == normalized.PaymentMethod.Value));
         }
 
+        if (!string.IsNullOrWhiteSpace(normalized.Filter.CustomerSearch))
+        {
+            var customerSearch = normalized.Filter.CustomerSearch.Trim();
+            bookings = bookings.Where(x =>
+                x.ContactName.Contains(customerSearch) ||
+                x.ContactEmail.Contains(customerSearch) ||
+                x.User.FullName.Contains(customerSearch) ||
+                x.User.Email.Contains(customerSearch));
+        }
+
         var bookingSnapshot = await bookings
             .Select(x => new BookingSnapshotItem
             {
                 BookingId = x.BookingId,
                 UserId = x.UserId,
                 TourId = x.TourId,
+                TourScheduleId = x.TourScheduleId,
                 BookingCode = x.BookingCode,
+                CustomerName = x.ContactName,
+                CustomerEmail = x.ContactEmail,
                 BookingStatus = x.BookingStatus,
                 PaymentStatus = x.PaymentStatus,
+                AdultCount = x.AdultCount,
+                ChildCount = x.ChildCount,
+                InfantCount = x.InfantCount,
                 TotalAmount = x.TotalAmount,
                 PaidAmount = x.PaidAmount,
+                PromotionId = x.PromotionId,
                 CreatedAt = x.CreatedAt
             })
             .ToListAsync(cancellationToken);
@@ -310,9 +350,11 @@ public sealed class ReportService : IReportService
 
         var customerUsers = _dbContext.Users.AsNoTracking()
             .Where(x => x.UserRoles.Any(r => r.Role.RoleCode == RoleConstants.Customer));
+        var relatedCustomerIds = bookingSnapshot.Select(x => x.UserId).Distinct().ToList();
 
-        var newCustomers = await customerUsers
-            .CountAsync(x => x.CreatedAt >= normalized.FromUtc && x.CreatedAt < normalized.ToUtcExclusive, cancellationToken);
+        var newCustomers = isEmployeeOnly
+            ? await customerUsers.CountAsync(x => relatedCustomerIds.Contains(x.UserId) && x.CreatedAt >= normalized.FromUtc && x.CreatedAt < normalized.ToUtcExclusive, cancellationToken)
+            : await customerUsers.CountAsync(x => x.CreatedAt >= normalized.FromUtc && x.CreatedAt < normalized.ToUtcExclusive, cancellationToken);
 
         var returningCustomers = bookingSnapshot
             .GroupBy(x => x.UserId)
@@ -356,6 +398,73 @@ public sealed class ReportService : IReportService
         ApplyPercents(paymentMethodBreakdown, paymentMethodBreakdown.Any() ? paymentMethodBreakdown.Max(x => x.Count) : 0);
 
         var revenueSeries = BuildRevenueSeries(normalized, bookingSnapshot, paymentSnapshot);
+        var successfulPaymentSnapshot = paymentSnapshot
+            .Where(x => x.PaymentStatus == PaymentDepositPaid || x.PaymentStatus == PaymentFullyPaid)
+            .ToList();
+        var todayStart = DateTime.Today;
+        var tomorrowStart = todayStart.AddDays(1);
+        var weekStart = todayStart.AddDays(-6);
+        var monthStart = new DateTime(todayStart.Year, todayStart.Month, 1);
+        var totalCustomers = isEmployeeOnly
+            ? relatedCustomerIds.Count
+            : await customerUsers.CountAsync(cancellationToken);
+        var activeTours = await _dbContext.Tours.AsNoTracking().CountAsync(x => x.IsPublished, cancellationToken);
+
+        var totalRevenue = successfulPaymentSnapshot.Sum(x => x.Amount);
+        var todayRevenue = successfulPaymentSnapshot
+            .Where(x => (x.PaidAt ?? x.CreatedAt) >= todayStart && (x.PaidAt ?? x.CreatedAt) < tomorrowStart)
+            .Sum(x => x.Amount);
+        var weekRevenue = successfulPaymentSnapshot
+            .Where(x => (x.PaidAt ?? x.CreatedAt) >= weekStart && (x.PaidAt ?? x.CreatedAt) < tomorrowStart)
+            .Sum(x => x.Amount);
+        var monthRevenue = successfulPaymentSnapshot
+            .Where(x => (x.PaidAt ?? x.CreatedAt) >= monthStart && (x.PaidAt ?? x.CreatedAt) < tomorrowStart)
+            .Sum(x => x.Amount);
+        var averageGuestsPerBooking = bookingSnapshot.Count == 0
+            ? 0m
+            : decimal.Round((decimal)bookingSnapshot.Average(x => x.AdultCount + x.ChildCount + x.InfantCount), 1);
+        var repeatBookingFrequency = bookingSnapshot.Select(x => x.UserId).Distinct().Count() == 0
+            ? 0m
+            : decimal.Round((decimal)bookingSnapshot.Count / bookingSnapshot.Select(x => x.UserId).Distinct().Count(), 2);
+
+        var revenueByDestination = filteredBookingIds.Count == 0
+            ? new List<AdminReportBreakdownItemViewModel>()
+            : await _dbContext.Bookings.AsNoTracking()
+                .Where(x => filteredBookingIds.Contains(x.BookingId))
+                .GroupBy(x => x.Tour.EndDestination.DestinationName)
+                .Select(g => new AdminReportBreakdownItemViewModel
+                {
+                    Label = g.Key,
+                    Count = g.Count(),
+                    Amount = g.Sum(x => x.PaidAmount)
+                })
+                .OrderByDescending(x => x.Amount)
+                .Take(6)
+                .ToListAsync(cancellationToken);
+
+        ApplyPercents(revenueByDestination, revenueByDestination.Any() ? revenueByDestination.Max(x => x.Count) : 0);
+
+        var promotionBreakdown = filteredBookingIds.Count == 0
+            ? new List<AdminReportBreakdownItemViewModel>()
+            : await _dbContext.Bookings.AsNoTracking()
+                .Where(x => filteredBookingIds.Contains(x.BookingId) && x.PromotionId != null)
+                .GroupBy(x => new
+                {
+                    x.Promotion!.PromotionCode,
+                    x.Promotion.PromotionName
+                })
+                .Select(g => new AdminReportBreakdownItemViewModel
+                {
+                    Label = g.Key.PromotionCode + " - " + g.Key.PromotionName,
+                    Count = g.Count(),
+                    Amount = g.Sum(x => x.PaidAmount)
+                })
+                .OrderByDescending(x => x.Count)
+                .ThenByDescending(x => x.Amount)
+                .Take(6)
+                .ToListAsync(cancellationToken);
+
+        ApplyPercents(promotionBreakdown, promotionBreakdown.Any() ? promotionBreakdown.Max(x => x.Count) : 0);
 
         var topTours = await _dbContext.Tours.AsNoTracking()
             .Where(x => filteredTourIds.Count == 0 ? false : filteredTourIds.Contains(x.TourId))
@@ -367,12 +476,51 @@ public sealed class ReportService : IReportService
                 BookingCount = x.Bookings.Count(b => filteredBookingIds.Contains(b.BookingId)),
                 Revenue = x.Bookings.Where(b => filteredBookingIds.Contains(b.BookingId)).Sum(b => b.PaidAmount),
                 Rating = x.Reviews.Where(r => r.ModerationStatus == 1).Average(r => (decimal?)r.Rating) ?? 0m,
-                CancelledBookings = x.Bookings.Count(b => filteredBookingIds.Contains(b.BookingId) && (b.BookingStatus == BookingCancelled || b.BookingStatus == BookingRefunded))
+                CancelledBookings = x.Bookings.Count(b => filteredBookingIds.Contains(b.BookingId) && (b.BookingStatus == BookingCancelled || b.BookingStatus == BookingRefunded)),
+                FillRate = x.Schedules.Sum(s => s.TotalSeats) <= 0
+                    ? 0m
+                    : decimal.Round(x.Schedules.Sum(s => s.ReservedSeats) * 100m / x.Schedules.Sum(s => s.TotalSeats), 1)
             })
             .OrderByDescending(x => x.BookingCount)
             .ThenByDescending(x => x.Revenue)
             .Take(5)
             .ToListAsync(cancellationToken);
+
+        var lowBookingTours = await _dbContext.Tours.AsNoTracking()
+            .Where(x => x.IsPublished)
+            .Select(x => new AdminReportTopTourViewModel
+            {
+                TourId = x.TourId,
+                TourName = x.TourName,
+                TourCode = x.TourCode,
+                BookingCount = x.Bookings.Count(b => b.CreatedAt >= normalized.FromUtc && b.CreatedAt < normalized.ToUtcExclusive),
+                Revenue = x.Bookings.Where(b => b.CreatedAt >= normalized.FromUtc && b.CreatedAt < normalized.ToUtcExclusive).Sum(b => b.PaidAmount),
+                Rating = x.Reviews.Where(r => r.ModerationStatus == 1).Average(r => (decimal?)r.Rating) ?? 0m,
+                CancelledBookings = x.Bookings.Count(b => b.CreatedAt >= normalized.FromUtc && b.CreatedAt < normalized.ToUtcExclusive && (b.BookingStatus == BookingCancelled || b.BookingStatus == BookingRefunded)),
+                FillRate = x.Schedules.Sum(s => s.TotalSeats) <= 0
+                    ? 0m
+                    : decimal.Round(x.Schedules.Sum(s => s.ReservedSeats) * 100m / x.Schedules.Sum(s => s.TotalSeats), 1)
+            })
+            .OrderBy(x => x.BookingCount)
+            .ThenBy(x => x.Revenue)
+            .Take(5)
+            .ToListAsync(cancellationToken);
+
+        var topCustomers = bookingSnapshot
+            .GroupBy(x => new { x.UserId, x.CustomerName, x.CustomerEmail })
+            .Select(g => new AdminReportTopCustomerViewModel
+            {
+                UserId = g.Key.UserId,
+                CustomerName = g.Key.CustomerName,
+                Email = g.Key.CustomerEmail,
+                BookingCount = g.Count(),
+                TotalSpent = g.Sum(x => x.PaidAmount),
+                LastBookingAt = g.Max(x => x.CreatedAt)
+            })
+            .OrderByDescending(x => x.TotalSpent)
+            .ThenByDescending(x => x.BookingCount)
+            .Take(6)
+            .ToList();
 
         var schedules = _dbContext.TourSchedules.AsNoTracking()
             .Include(x => x.Tour)
@@ -422,6 +570,7 @@ public sealed class ReportService : IReportService
             .Include(x => x.Booking)
             .ThenInclude(x => x.User)
             .Where(x => (x.PaidAt ?? x.CreatedAt) >= normalized.FromUtc && (x.PaidAt ?? x.CreatedAt) < normalized.ToUtcExclusive)
+            .Where(x => filteredBookingIds.Contains(x.BookingId))
             .OrderByDescending(x => x.PaidAt ?? x.CreatedAt)
             .Take(8)
             .Select(x => new AdminReportTransactionViewModel
@@ -442,6 +591,35 @@ public sealed class ReportService : IReportService
                 .Where(x => bookingSnapshot.Any(b => b.BookingCode == x.BookingCode))
                 .ToList();
         }
+
+        var contractsQuery = _dbContext.ElectronicContracts.AsNoTracking()
+            .Where(x => x.CreatedAt >= normalized.FromUtc && x.CreatedAt < normalized.ToUtcExclusive);
+
+        if (filteredBookingIds.Count > 0)
+        {
+            contractsQuery = contractsQuery.Where(x => filteredBookingIds.Contains(x.BookingId));
+        }
+
+        var contractSnapshot = await contractsQuery
+            .Select(x => new
+            {
+                x.ContractStatus,
+                x.CreatedAt,
+                x.CustomerSignedAt,
+                x.DirectorSignedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        var contractsSigned = contractSnapshot.Count(x => x.ContractStatus == 3 || x.DirectorSignedAt != null);
+        var contractsPending = contractSnapshot.Count(x => x.ContractStatus is 1 or 2);
+        var contractSignSuccessRate = contractSnapshot.Count == 0
+            ? 0m
+            : decimal.Round(contractsSigned * 100m / contractSnapshot.Count, 1);
+        var signedDurations = contractSnapshot
+            .Where(x => x.DirectorSignedAt.HasValue)
+            .Select(x => (decimal)(x.DirectorSignedAt!.Value - x.CreatedAt).TotalHours)
+            .ToList();
+        var averageContractSigningHours = signedDurations.Count == 0 ? 0m : decimal.Round(signedDurations.Average(), 1);
 
         var pendingStaffTasks = bookingSnapshot.Count(x =>
             x.BookingStatus == BookingDepositPaid ||
@@ -480,6 +658,50 @@ public sealed class ReportService : IReportService
             }
         };
 
+        var cancellationRate = bookingSnapshot.Count == 0 ? 0m : decimal.Round(bookingSnapshot.Count(x => x.BookingStatus == BookingCancelled || x.BookingStatus == BookingRefunded) * 100m / bookingSnapshot.Count, 1);
+        var alerts = new List<AdminReportAlertViewModel>();
+        if (lowSeatSchedulesCount > 0)
+        {
+            alerts.Add(new AdminReportAlertViewModel
+            {
+                Title = "Tour sắp hết chỗ",
+                Message = $"{lowSeatSchedulesCount} lịch khởi hành còn từ 5 chỗ trở xuống trong 30 ngày tới.",
+                Severity = "warning"
+            });
+        }
+
+        if (cancellationRate >= 20)
+        {
+            alerts.Add(new AdminReportAlertViewModel
+            {
+                Title = "Tỷ lệ hủy cao",
+                Message = $"Tỷ lệ hủy hiện là {cancellationRate:N1}%, cần rà soát nguyên nhân hủy và chính sách thanh toán.",
+                Severity = "danger"
+            });
+        }
+
+        if (revenueSeries.Count >= 2 && revenueSeries.Last().Revenue < revenueSeries.ElementAt(revenueSeries.Count - 2).Revenue)
+        {
+            alerts.Add(new AdminReportAlertViewModel
+            {
+                Title = "Doanh thu giảm",
+                Message = "Mốc gần nhất thấp hơn mốc trước đó. Nên kiểm tra nguồn đơn mới và hiệu quả ưu đãi.",
+                Severity = "info"
+            });
+        }
+
+        var expiringPromotions = await _dbContext.Promotions.AsNoTracking()
+            .CountAsync(x => x.IsActive && x.EndAt >= DateTime.UtcNow && x.EndAt <= DateTime.UtcNow.AddDays(7), cancellationToken);
+        if (expiringPromotions > 0)
+        {
+            alerts.Add(new AdminReportAlertViewModel
+            {
+                Title = "Mã giảm giá sắp hết hạn",
+                Message = $"{expiringPromotions} ưu đãi sẽ hết hạn trong 7 ngày tới.",
+                Severity = "warning"
+            });
+        }
+
         return new AdminReportSummaryViewModel
         {
             FromDate = normalized.FromDate,
@@ -487,10 +709,25 @@ public sealed class ReportService : IReportService
             TotalBookings = bookingSnapshot.Count,
             PaidBookings = bookingSnapshot.Count(x => x.PaymentStatus == PaymentDepositPaid || x.PaymentStatus == PaymentFullyPaid),
             CancelledBookings = bookingSnapshot.Count(x => x.BookingStatus == BookingCancelled || x.BookingStatus == BookingRefunded),
-            CollectedRevenue = paymentSnapshot.Where(x => x.PaymentStatus == PaymentDepositPaid || x.PaymentStatus == PaymentFullyPaid).Sum(x => x.Amount),
+            TotalCustomers = totalCustomers,
+            ActiveTours = activeTours,
+            NewBookings = bookingSnapshot.Count(x => x.CreatedAt >= todayStart && x.CreatedAt < tomorrowStart),
+            TotalRevenue = totalRevenue,
+            TodayRevenue = todayRevenue,
+            WeekRevenue = weekRevenue,
+            MonthRevenue = monthRevenue,
+            CollectedRevenue = totalRevenue,
             PendingRevenue = bookingSnapshot.Where(x => x.BookingStatus == BookingPendingFullPayment || x.BookingStatus == BookingPendingFullPaymentVerification).Sum(x => x.TotalAmount - x.PaidAmount),
             RefundedAmount = paymentSnapshot.Where(x => x.PaymentStatus == PaymentFailed).Sum(x => x.Amount),
-            CancellationRate = bookingSnapshot.Count == 0 ? 0m : decimal.Round(bookingSnapshot.Count(x => x.BookingStatus == BookingCancelled || x.BookingStatus == BookingRefunded) * 100m / bookingSnapshot.Count, 1),
+            AverageGuestsPerBooking = averageGuestsPerBooking,
+            RepeatBookingFrequency = repeatBookingFrequency,
+            SuccessfulPayments = paymentSnapshot.Count(x => x.PaymentStatus == PaymentDepositPaid || x.PaymentStatus == PaymentFullyPaid),
+            FailedPayments = paymentSnapshot.Count(x => x.PaymentStatus == PaymentFailed),
+            ContractsSigned = contractsSigned,
+            ContractsPending = contractsPending,
+            ContractSignSuccessRate = contractSignSuccessRate,
+            AverageContractSigningHours = averageContractSigningHours,
+            CancellationRate = cancellationRate,
             NewCustomers = newCustomers,
             ReturningCustomers = returningCustomers,
             AverageRating = reviewSnapshot.Count == 0 ? 0m : decimal.Round(reviewSnapshot.Average(x => x.Rating), 1),
@@ -502,11 +739,16 @@ public sealed class ReportService : IReportService
             BookingStatusBreakdown = bookingStatusBreakdown,
             PaymentStatusBreakdown = paymentStatusBreakdown,
             PaymentMethodBreakdown = paymentMethodBreakdown,
+            RevenueByDestination = revenueByDestination,
+            PromotionBreakdown = promotionBreakdown,
             TopTours = topTours,
+            LowBookingTours = lowBookingTours,
+            TopCustomers = topCustomers,
             ScheduleSnapshot = scheduleSnapshot,
             StaffPerformance = staffPerformance,
             RecentTransactions = recentTransactions,
-            StaffTasks = staffTasks
+            StaffTasks = staffTasks,
+            Alerts = alerts
         };
     }
 
@@ -520,7 +762,8 @@ public sealed class ReportService : IReportService
             TourId = filter.TourId,
             BookingStatus = filter.BookingStatus,
             PaymentStatus = filter.PaymentStatus,
-            PaymentMethod = filter.PaymentMethod
+            PaymentMethod = filter.PaymentMethod,
+            CustomerSearch = string.IsNullOrWhiteSpace(filter.CustomerSearch) ? null : filter.CustomerSearch.Trim()
         };
 
         var today = DateOnly.FromDateTime(DateTime.Today);
@@ -531,6 +774,10 @@ public sealed class ReportService : IReportService
         {
             case "day":
                 fromDate = today;
+                toDate = today;
+                break;
+            case "week":
+                fromDate = today.AddDays(-6);
                 toDate = today;
                 break;
             case "year":
@@ -643,11 +890,25 @@ public sealed class ReportService : IReportService
         var overviewRows = new (string Label, object Value)[]
         {
             ("Tong booking", summary.TotalBookings),
+            ("Tong doanh thu", summary.TotalRevenue),
+            ("Doanh thu hom nay", summary.TodayRevenue),
+            ("Doanh thu 7 ngay", summary.WeekRevenue),
+            ("Doanh thu thang", summary.MonthRevenue),
+            ("Tong khach hang", summary.TotalCustomers),
+            ("Tour dang hoat dong", summary.ActiveTours),
+            ("Don moi hom nay", summary.NewBookings),
             ("Don da thanh toan", summary.PaidBookings),
             ("Don da huy", summary.CancelledBookings),
             ("Doanh thu da thu", summary.CollectedRevenue),
             ("Doanh thu cho thu", summary.PendingRevenue),
             ("Da hoan tien", summary.RefundedAmount),
+            ("Khach trung binh / booking", summary.AverageGuestsPerBooking),
+            ("Tan suat dat / khach", summary.RepeatBookingFrequency),
+            ("Giao dich thanh cong", summary.SuccessfulPayments),
+            ("Giao dich that bai", summary.FailedPayments),
+            ("Hop dong da ky", summary.ContractsSigned),
+            ("Hop dong cho ky", summary.ContractsPending),
+            ("Ty le ky thanh cong (%)", summary.ContractSignSuccessRate),
             ("Ty le huy (%)", summary.CancellationRate),
             ("Khach moi", summary.NewCustomers),
             ("Khach quay lai", summary.ReturningCustomers),
@@ -715,6 +976,29 @@ public sealed class ReportService : IReportService
         }
 
         StyleWorksheet(sheet, 6);
+    }
+
+    private static void FillTopCustomersSheet(IXLWorksheet sheet, AdminReportSummaryViewModel summary)
+    {
+        sheet.Cell(1, 1).Value = "Top khach hang";
+        sheet.Cell(2, 1).Value = "Khach hang";
+        sheet.Cell(2, 2).Value = "Email";
+        sheet.Cell(2, 3).Value = "Booking";
+        sheet.Cell(2, 4).Value = "Tong chi";
+        sheet.Cell(2, 5).Value = "Lan dat gan nhat";
+
+        var row = 3;
+        foreach (var item in summary.TopCustomers)
+        {
+            sheet.Cell(row, 1).Value = item.CustomerName;
+            sheet.Cell(row, 2).Value = item.Email;
+            sheet.Cell(row, 3).Value = item.BookingCount;
+            sheet.Cell(row, 4).Value = item.TotalSpent;
+            sheet.Cell(row, 5).Value = item.LastBookingAt.ToString("dd/MM/yyyy HH:mm");
+            row++;
+        }
+
+        StyleWorksheet(sheet, 5);
     }
 
     private static void FillSchedulesSheet(IXLWorksheet sheet, AdminReportSummaryViewModel summary)
@@ -870,4 +1154,10 @@ public sealed class ReportService : IReportService
         3 => "Tiền mặt",
         _ => "Khác"
     };
+
+    private static long? GetCurrentUserId(ClaimsPrincipal user)
+    {
+        var raw = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        return long.TryParse(raw, out var userId) ? userId : null;
+    }
 }

@@ -7,12 +7,24 @@ public class HomePageViewModel
     public int UpcomingDepartureCount { get; set; }
     public int PaidBookingCount { get; set; }
     public string? HeroImageUrl { get; set; }
+    public List<HomePromotionBannerViewModel> PromotionBanners { get; set; } = [];
     public List<HomeCategoryViewModel> Categories { get; set; } = [];
     public List<HomeDestinationViewModel> Destinations { get; set; } = [];
     public List<HomeSearchDestinationViewModel> SearchDestinations { get; set; } = [];
     public List<HomeTourCardViewModel> FeaturedTours { get; set; } = [];
     public List<HomeTourCardViewModel> LastMinuteTours { get; set; } = [];
     public List<HomeTourCardViewModel> ValueTours { get; set; } = [];
+}
+
+public class HomePromotionBannerViewModel
+{
+    public long PromotionId { get; set; }
+    public string PromotionCode { get; set; } = string.Empty;
+    public string PromotionName { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string BannerImageUrl { get; set; } = string.Empty;
+    public string? BannerAltText { get; set; }
+    public string? BannerLinkUrl { get; set; }
 }
 
 public class HomeCategoryViewModel

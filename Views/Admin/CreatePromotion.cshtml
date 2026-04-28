@@ -13,7 +13,7 @@
     </div>
 
     <section class="admin-panel admin-form-panel">
-        <form method="post" class="auth-form">
+        <form method="post" enctype="multipart/form-data" class="auth-form">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
             <div class="admin-form-grid">
@@ -65,6 +65,45 @@
                 <textarea asp-for="Description" class="form-control admin-textarea"></textarea>
                 <span asp-validation-for="Description" class="text-danger"></span>
             </label>
+
+            <section class="admin-banner-editor">
+                <div>
+                    <span class="admin-panel__label">Banner trang chủ</span>
+                    <h3>Ảnh banner ưu đãi</h3>
+                    <p>Khuyến nghị dùng ảnh ngang tỷ lệ 16:9 hoặc 1600x900 để hiển thị đẹp ở trang chủ.</p>
+                </div>
+
+                <div class="admin-form-grid">
+                    <label>
+                        Tải ảnh banner
+                        <input asp-for="BannerImage" type="file" accept="image/*" class="form-control" />
+                        <span asp-validation-for="BannerImage" class="text-danger"></span>
+                    </label>
+
+                    <label>
+                        Alt text
+                        <input asp-for="BannerAltText" class="form-control" placeholder="Mô tả ngắn cho ảnh banner" />
+                        <span asp-validation-for="BannerAltText" class="text-danger"></span>
+                    </label>
+
+                    <label>
+                        Link khi bấm banner
+                        <input asp-for="BannerLinkUrl" class="form-control" placeholder="/Promotions hoặc /tours" />
+                        <span asp-validation-for="BannerLinkUrl" class="text-danger"></span>
+                    </label>
+
+                    <label>
+                        Thứ tự hiển thị
+                        <input asp-for="BannerDisplayOrder" class="form-control" />
+                        <span asp-validation-for="BannerDisplayOrder" class="text-danger"></span>
+                    </label>
+                </div>
+
+                <label class="auth-checkbox">
+                    <input asp-for="ShowOnHomeBanner" />
+                    <span>Hiển thị banner này ở trang chủ</span>
+                </label>
+            </section>
 
             <label class="auth-checkbox">
                 <input asp-for="IsActive" />

@@ -152,6 +152,24 @@ public class ToursController : Controller
             })
             .ToListAsync(cancellationToken);
 
+        var snapshotTours = await query
+            .Select(x => new
+            {
+                x.IsFeatured,
+                LowestPrice = x.Schedules
+                    .Where(s => s.Status == 1 && s.DepartureDate >= today)
+                    .OrderBy(s => s.AdultPrice)
+                    .Select(s => (decimal?)s.AdultPrice)
+                    .FirstOrDefault() ?? x.BasePrice,
+                EarliestDepartureDate = x.Schedules
+                    .Where(s => s.Status == 1 && s.DepartureDate >= today)
+                    .OrderBy(s => s.DepartureDate)
+                    .Select(s => (DateOnly?)s.DepartureDate)
+                    .FirstOrDefault(),
+                IsLastMinute = x.Schedules.Any(s => s.Status == 1 && s.DepartureDate >= today && s.DepartureDate <= lastMinuteLimit)
+            })
+            .ToListAsync(cancellationToken);
+
         var destinationOptions = await _dbContext.Destinations
             .AsNoTracking()
             .Where(x => x.IsActive)
@@ -181,6 +199,14 @@ public class ToursController : Controller
             TotalPages = totalPages,
             TotalItems = totalItems,
             PageSize = PageSize,
+            FeaturedCount = snapshotTours.Count(x => x.IsFeatured),
+            LastMinuteCount = snapshotTours.Count(x => x.IsLastMinute),
+            LowestPrice = snapshotTours.Count == 0 ? null : snapshotTours.Min(x => x.LowestPrice),
+            EarliestDepartureDate = snapshotTours
+                .Select(x => x.EarliestDepartureDate)
+                .Where(x => x.HasValue)
+                .OrderBy(x => x)
+                .FirstOrDefault(),
             SearchTerm = searchTerm,
             SelectedDestinationId = destinationId,
             SelectedCategoryId = categoryId,

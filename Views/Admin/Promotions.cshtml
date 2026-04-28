@@ -8,7 +8,7 @@
         <div>
             <span class="admin-panel__label">Promotion</span>
             <h2>Quản lý ưu đãi</h2>
-            <p>Tạo sự kiện ưu đãi, theo dõi thời hạn và số lượng khách đã nhận hoặc sử dụng.</p>
+            <p>Tạo mã ưu đãi, theo dõi hạn dùng và cấu hình banner hiển thị ở trang chủ.</p>
         </div>
         <a asp-action="CreatePromotion" class="btn btn-primary nav-cta">Thêm ưu đãi</a>
     </div>
@@ -69,9 +69,10 @@
         </form>
 
         <div class="admin-table-wrap">
-            <table class="admin-table">
+            <table class="admin-table admin-promotion-table">
                 <thead>
                     <tr>
+                        <th>Banner</th>
                         <th>Mã</th>
                         <th>Sự kiện ưu đãi</th>
                         <th>% giảm</th>
@@ -86,7 +87,7 @@
                     @if (Model.Promotions.Count == 0)
                     {
                         <tr>
-                            <td colspan="8" class="text-center py-4">Không có ưu đãi phù hợp với bộ lọc hiện tại.</td>
+                            <td colspan="9" class="text-center py-4">Không có ưu đãi phù hợp với bộ lọc hiện tại.</td>
                         </tr>
                     }
                     else
@@ -95,8 +96,30 @@
                         {
                             var isLive = item.IsActive && item.EndAt >= DateTime.UtcNow;
                             <tr>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(item.BannerImageUrl))
+                                    {
+                                        <div class="admin-promotion-banner-thumb">
+                                            <img src="@item.BannerImageUrl" alt="@item.PromotionName" />
+                                            @if (item.ShowOnHomeBanner)
+                                            {
+                                                <span>Home</span>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="admin-table__sub">Chưa có</span>
+                                    }
+                                </td>
                                 <td><strong>@item.PromotionCode</strong></td>
-                                <td>@item.PromotionName</td>
+                                <td>
+                                    @item.PromotionName
+                                    @if (item.ShowOnHomeBanner)
+                                    {
+                                        <div class="admin-table__sub">Banner thứ tự @item.BannerDisplayOrder</div>
+                                    }
+                                </td>
                                 <td>@(item.DiscountPercent.HasValue ? $"{item.DiscountPercent.Value:N0}%" : "-")</td>
                                 <td>@item.EndAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
                                 <td>@item.ClaimedCount</td>

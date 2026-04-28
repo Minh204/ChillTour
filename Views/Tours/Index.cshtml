@@ -10,10 +10,9 @@
 <section class="tour-list-page">
     <div class="container">
         <div class="tour-list-hero" data-reveal>
-            <div>
+            <div class="tour-list-hero__content">
                 <span class="eyebrow">Danh sách tour</span>
                 <h1>Chọn hành trình phù hợp cho chuyến đi tiếp theo</h1>
-
                 <form method="get" class="tour-list-toolbar">
                     <label>
                         <span>Từ khóa</span>
@@ -118,10 +117,37 @@
                 }
             </div>
 
-            <div class="tour-list-summary">
-                <span>Tổng tour đang mở bán</span>
-                <strong>@Model.TotalItems</strong>
-            </div>
+            <aside class="tour-list-summary">
+                <div class="tour-list-summary__hero">
+                    <span>Kho tour đang mở bán</span>
+                    <strong>@Model.TotalItems</strong>
+                    <p>@(Model.TotalItems == 1 ? "1 hành trình phù hợp với bộ lọc hiện tại." : $"{Model.TotalItems} hành trình đang sẵn sàng để bạn lựa chọn.")</p>
+                </div>
+
+                <div class="tour-list-summary__grid">
+                    <div>
+                        <span>Nổi bật</span>
+                        <strong>@Model.FeaturedCount</strong>
+                    </div>
+                    <div>
+                        <span>Giờ chót</span>
+                        <strong>@Model.LastMinuteCount</strong>
+                    </div>
+                    <div>
+                        <span>Giá từ</span>
+                        <strong>@((Model.LowestPrice ?? 0m).ToString("N0")) đ</strong>
+                    </div>
+                    <div>
+                        <span>Khởi hành sớm nhất</span>
+                        <strong>@(Model.EarliestDepartureDate?.ToString("dd/MM/yyyy") ?? "Đang cập nhật")</strong>
+                    </div>
+                </div>
+
+                @* <div class="tour-list-summary__note">
+                    <span>Gợi ý</span>
+                    <p>Dùng bộ lọc “Trạng thái lịch gần” để tách riêng tour giờ chót và tour khởi hành xa hơn, tránh cảm giác danh sách quá rộng và khó chọn.</p>
+                </div> *@
+            </aside>
         </div>
 
         @if (Model.Tours.Count == 0)

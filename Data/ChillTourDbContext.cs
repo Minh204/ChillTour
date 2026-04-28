@@ -229,6 +229,9 @@ public class ChillTourDbContext : DbContext
             entity.Property(x => x.DiscountAmount).HasPrecision(18, 2);
             entity.Property(x => x.MaxDiscountAmount).HasPrecision(18, 2);
             entity.Property(x => x.MinOrderValue).HasPrecision(18, 2);
+            entity.Property(x => x.BannerImageUrl).HasMaxLength(500);
+            entity.Property(x => x.BannerAltText).HasMaxLength(200);
+            entity.Property(x => x.BannerLinkUrl).HasMaxLength(500);
         });
 
         modelBuilder.Entity<UserPromotion>(entity =>

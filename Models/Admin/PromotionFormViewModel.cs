@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace ChillTour.Models.Admin;
 
@@ -33,4 +34,21 @@ public class PromotionFormViewModel
     public DateTime EndAt { get; set; } = DateTime.Now.AddMonths(1);
 
     public bool IsActive { get; set; } = true;
+
+    public string? BannerImageUrl { get; set; }
+
+    public IFormFile? BannerImage { get; set; }
+
+    [StringLength(200)]
+    public string? BannerAltText { get; set; }
+
+    [StringLength(500)]
+    public string? BannerLinkUrl { get; set; }
+
+    public bool ShowOnHomeBanner { get; set; }
+
+    [Range(0, 9999, ErrorMessage = "Thứ tự hiển thị không hợp lệ.")]
+    public int BannerDisplayOrder { get; set; }
+
+    public bool RemoveBannerImage { get; set; }
 }
