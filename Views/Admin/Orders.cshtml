@@ -4,6 +4,7 @@
     ViewData["Title"] = "Xử lý đơn";
     var canManageBookings = RoleConstants.ManageBookings.Any(User.IsInRole);
     var canManageFinance = RoleConstants.ManageFinance.Any(User.IsInRole);
+    var canEditBookingStatus = canManageBookings;
 }
 
 <section class="admin-page-stack">
@@ -157,7 +158,25 @@
                                                 <button type="submit" name="isValid" value="false" class="btn btn-outline-danger btn-sm" onclick="return confirm('Từ chối giao dịch này?');">Sai giao dịch</button>
                                             </form>
                                         }
-                                        @if (booking.BookingStatus is 4 or 5)
+                                        @if (canEditBookingStatus)
+                                        {
+                                            <form asp-action="UpdateOrderStatus" method="post" class="admin-status-editor">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="BookingId" value="@booking.BookingId" />
+                                                <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
+                                                <select name="BookingStatus" class="form-select form-select-sm">
+                                                    @for (var status = 0; status <= 10; status++)
+                                                    {
+                                                        <option value="@status" selected="@(booking.BookingStatus == status)">@StatusLabel(status)</option>
+                                                    }
+                                                </select>
+                                                <div class="admin-status-editor__actions">
+                                                    <input type="text" name="Notes" class="form-control form-control-sm" maxlength="500" placeholder="Ghi chú..." />
+                                                    <button type="submit" class="btn btn-primary btn-sm">Lưu</button>
+                                                </div>
+                                            </form>
+                                        }
+                                        else if (booking.BookingStatus is 4 or 5)
                                         {
                                             <span class="text-muted small">Đơn đã đóng, không thể sửa trạng thái.</span>
                                         }
@@ -205,6 +224,37 @@
                                     </div>
                                 </td>
                                 <td>
+                                    @if (canEditBookingStatus)
+                                    {
+                                        <button type="button"
+                                                class="btn btn-primary btn-sm"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#editOrderStatusModal"
+                                                data-booking-id="@booking.BookingId"
+                                                data-booking-code="@booking.BookingCode"
+                                                data-booking-status="@booking.BookingStatus">
+                                            Sửa 
+                                        </button>
+                                    }
+                                    @if (booking.HasPaymentToVerify && canManageFinance && booking.LatestPaymentId.HasValue)
+                                    {
+                                        <form asp-action="VerifyPayment" method="post" class="admin-row-action-form">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="paymentId" value="@booking.LatestPaymentId" />
+                                            <input type="hidden" name="currentPage" value="@Model.CurrentPage" />
+                                            <button type="submit" name="isValid" value="true" class="btn btn-success btn-sm">Xác nhận tiền</button>
+                                            <button type="submit" name="isValid" value="false" class="btn btn-outline-danger btn-sm" onclick="return confirm('Từ chối giao dịch này?');">Sai giao dịch</button>
+                                        </form>
+                                    }
+                                    @if (booking.BookingStatus == 10 && canManageFinance)
+                                    {
+                                        <form asp-action="CompleteRefund" method="post" class="admin-row-action-form" onsubmit="return confirm('Xác nhận đã hoàn tiền cho đơn này?');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="bookingId" value="@booking.BookingId" />
+                                            <input type="hidden" name="currentPage" value="@Model.CurrentPage" />
+                                            <button type="submit" class="btn btn-success btn-sm">Đã hoàn tiền</button>
+                                        </form>
+                                    }
                                     <button type="button"
                                             class="btn btn-outline-primary btn-sm"
                                             data-bs-toggle="modal"
@@ -229,7 +279,7 @@
                                             data-payment-code="@booking.LatestPaymentCode"
                                             data-payment-transaction="@booking.LatestPaymentTransactionReference"
                                             data-special-requests="@(string.IsNullOrWhiteSpace(booking.SpecialRequests) ? "Không có" : booking.SpecialRequests)">
-                                        Chi tiết đơn
+                                        Chi tiết
                                     </button>
                                 </td>
                             </tr>
@@ -260,6 +310,42 @@
         }
     </section>
 </section>
+
+<div class="modal fade" id="editOrderStatusModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form asp-action="UpdateOrderStatus" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="editStatusBookingId" name="BookingId" />
+                <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
+                <div class="modal-header">
+                    <h5 class="modal-title">Sửa trạng thái đơn</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="editStatusBookingCode" class="text-muted mb-3"></p>
+                    <label class="w-100">
+                        Trạng thái mới
+                        <select id="editStatusValue" name="BookingStatus" class="form-select">
+                            @for (var status = 0; status <= 10; status++)
+                            {
+                                <option value="@status">@StatusLabel(status)</option>
+                            }
+                        </select>
+                    </label>
+                    <label class="w-100 mt-3">
+                        Ghi chú
+                        <textarea name="Notes" class="form-control admin-textarea" maxlength="500" placeholder="Nhập lý do hoặc ghi chú xử lý..."></textarea>
+                    </label>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-primary">Lưu trạng thái</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <div class="modal fade" id="orderDetailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -349,6 +435,24 @@
 </div>
 
 <script>
+    (() => {
+        const modal = document.getElementById('editOrderStatusModal');
+        if (!modal) {
+            return;
+        }
+
+        modal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            if (!button) {
+                return;
+            }
+
+            document.getElementById('editStatusBookingId').value = button.getAttribute('data-booking-id') || '';
+            document.getElementById('editStatusValue').value = button.getAttribute('data-booking-status') || '0';
+            document.getElementById('editStatusBookingCode').textContent = `Đơn ${button.getAttribute('data-booking-code') || ''}`;
+        });
+    })();
+
     (() => {
         const modal = document.getElementById('orderDetailModal');
         if (!modal) {

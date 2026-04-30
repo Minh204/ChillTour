@@ -17,4 +17,6 @@ public class CustomerBookingItemViewModel
     public DateTime CreatedAt { get; set; }
     public bool CanCancel { get; set; }
     public bool RequiresRefundRequest { get; set; }
+    public int RefundPercent { get; set; }
+    public decimal EstimatedRefundAmount { get; set; }
 }

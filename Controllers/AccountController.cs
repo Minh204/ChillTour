@@ -322,6 +322,7 @@ public class AccountController : Controller
 
         await AutoCancelOverdueDepositBookingsAsync(userId.Value, cancellationToken);
         var today = DateOnly.FromDateTime(DateTime.Today);
+        var fullRefundCutoffDate = today.AddDays(7);
 
         var query = _dbContext.Bookings
             .AsNoTracking()
@@ -377,10 +378,15 @@ public class AccountController : Controller
                     && x.BookingStatus != BookingRefunded
                     && x.BookingStatus != BookingRefundRequested
                     && x.BookingStatus != BookingPendingRefund
-                    && (x.PaidAmount <= 0m || (x.PaymentStatus == PaymentFullyPaid && x.TourSchedule.DepartureDate > today)),
+                    && x.TourSchedule.DepartureDate >= today,
                 RequiresRefundRequest = x.PaidAmount > 0m
-                    && x.PaymentStatus == PaymentFullyPaid
-                    && x.TourSchedule.DepartureDate > today
+                    && x.TourSchedule.DepartureDate >= today,
+                RefundPercent = x.PaidAmount > 0m && x.TourSchedule.DepartureDate >= today
+                    ? (x.TourSchedule.DepartureDate >= fullRefundCutoffDate ? 100 : 60)
+                    : 0,
+                EstimatedRefundAmount = x.PaidAmount > 0m && x.TourSchedule.DepartureDate >= today
+                    ? Math.Round(x.PaidAmount * (x.TourSchedule.DepartureDate >= fullRefundCutoffDate ? 1m : 0.6m), 0)
+                    : 0m
             })
             .ToListAsync(cancellationToken);
 
@@ -431,18 +437,27 @@ public class AccountController : Controller
             return RedirectToAction(nameof(Bookings));
         }
 
-        if (booking.PaidAmount > 0m && (booking.PaymentStatus != PaymentFullyPaid || booking.TourSchedule.DepartureDate <= DateOnly.FromDateTime(DateTime.Today)))
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        if (booking.TourSchedule.DepartureDate < today)
         {
-            TempData["BookingErrorMessage"] = "Đơn đã cọc nhưng không đủ điều kiện hoàn tiền. Đơn quá hạn thanh toán phần còn lại sẽ tự động bị hủy theo chính sách.";
+            TempData["BookingErrorMessage"] = "Đơn đã qua ngày khởi hành nên không còn đủ điều kiện hủy/hoàn tiền.";
             return RedirectToAction(nameof(Bookings));
         }
 
         var oldStatus = booking.BookingStatus;
         var bookedSeats = booking.AdultCount + booking.ChildCount;
         var hasPaidAmount = booking.PaidAmount > 0m;
+        var refundPercent = hasPaidAmount && booking.TourSchedule.DepartureDate >= today.AddDays(7) ? 100 : 60;
+        var estimatedRefundAmount = hasPaidAmount
+            ? Math.Round(booking.PaidAmount * (refundPercent == 100 ? 1m : 0.6m), 0)
+            : 0m;
+        var cancellationReason = model.CancellationReason.Trim();
+
         booking.BookingStatus = hasPaidAmount ? (byte)9 : (byte)4;
-        booking.CancelledAt = hasPaidAmount ? null : DateTime.UtcNow;
-        booking.CancellationReason = model.CancellationReason.Trim();
+        booking.CancelledAt = DateTime.UtcNow;
+        booking.CancellationReason = hasPaidAmount
+            ? $"{cancellationReason} | Chính sách hoàn tiền: {refundPercent}% số tiền đã thanh toán, dự kiến {estimatedRefundAmount:N0} {booking.CurrencyCode}."
+            : cancellationReason;
         booking.UpdatedAt = DateTime.UtcNow;
 
         if (!hasPaidAmount)
@@ -471,7 +486,7 @@ public class AccountController : Controller
             notificationType: 4,
             title: hasPaidAmount ? "Đã gửi yêu cầu hoàn tiền" : "Bạn đã hủy đơn đặt tour",
             message: hasPaidAmount
-                ? $"Đơn {booking.BookingCode} đã gửi yêu cầu hoàn tiền. Staff sẽ kiểm tra và chuyển sang Accountant xử lý hoàn tiền."
+                ? $"Đơn {booking.BookingCode} đã gửi yêu cầu hoàn tiền. Dự kiến hoàn {refundPercent}% số tiền đã thanh toán ({estimatedRefundAmount:N0} đ). Staff sẽ kiểm tra và chuyển sang Accountant xử lý."
                 : $"Đơn {booking.BookingCode} đã được hủy thành công. Lý do: {booking.CancellationReason}",
             relatedEntityType: "Booking",
             relatedEntityId: booking.BookingId,
@@ -482,14 +497,14 @@ public class AccountController : Controller
             notificationType: 13,
             title: hasPaidAmount ? "Khách yêu cầu hoàn tiền" : "Khách hàng đã hủy đơn tour",
             message: hasPaidAmount
-                ? $"Đơn {booking.BookingCode} đã được khách yêu cầu hoàn tiền. Lý do: {booking.CancellationReason}. Staff cần kiểm tra và chuyển trạng thái chờ hoàn tiền."
+                ? $"Đơn {booking.BookingCode} đã được khách yêu cầu hoàn tiền {refundPercent}% ({estimatedRefundAmount:N0} đ). Lý do: {booking.CancellationReason}. Staff cần kiểm tra và chuyển trạng thái chờ hoàn tiền."
                 : $"Đơn {booking.BookingCode} đã được khách hàng hủy. Lý do: {booking.CancellationReason}",
             relatedEntityType: "Booking",
             relatedEntityId: booking.BookingId,
             cancellationToken: cancellationToken);
 
         TempData["BookingSuccessMessage"] = hasPaidAmount
-            ? $"Đã gửi yêu cầu hoàn tiền cho đơn {booking.BookingCode}."
+            ? $"Đã gửi yêu cầu hoàn tiền cho đơn {booking.BookingCode}. Dự kiến hoàn {refundPercent}% ({estimatedRefundAmount:N0} đ)."
             : $"Đã hủy đơn {booking.BookingCode}.";
         return RedirectToAction(nameof(Bookings));
     }

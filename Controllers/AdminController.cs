@@ -2054,6 +2054,7 @@ public class AdminController : Controller
     public async Task<IActionResult> CompleteRefund(long bookingId, int currentPage, CancellationToken cancellationToken)
     {
         var booking = await _dbContext.Bookings
+            .Include(x => x.TourSchedule)
             .SingleOrDefaultAsync(x => x.BookingId == bookingId, cancellationToken);
 
         if (booking is null)
@@ -2069,6 +2070,9 @@ public class AdminController : Controller
         }
 
         var oldStatus = booking.BookingStatus;
+        var cancellationDate = DateOnly.FromDateTime((booking.CancelledAt ?? DateTime.UtcNow).ToLocalTime());
+        var refundPercent = booking.TourSchedule.DepartureDate >= cancellationDate.AddDays(7) ? 100 : 60;
+        var refundAmount = Math.Round(booking.PaidAmount * (refundPercent == 100 ? 1m : 0.6m), 0);
         booking.BookingStatus = BookingRefunded;
         booking.CancelledAt ??= DateTime.UtcNow;
         booking.UpdatedAt = DateTime.UtcNow;
@@ -2079,7 +2083,7 @@ public class AdminController : Controller
             OldStatus = oldStatus,
             NewStatus = BookingRefunded,
             ChangedByUserId = GetCurrentUserId(),
-            Notes = $"Accountant đã hoàn tiền {booking.PaidAmount:N0} đ.",
+            Notes = $"Accountant đã hoàn tiền {refundAmount:N0} đ ({refundPercent}% số tiền đã thanh toán).",
             ChangedAt = DateTime.UtcNow
         });
 
@@ -2089,7 +2093,7 @@ public class AdminController : Controller
             booking.UserId,
             notificationType: 4,
             title: "Đã hoàn tiền",
-            message: $"Đơn {booking.BookingCode} đã được Accountant xử lý hoàn tiền {booking.PaidAmount:N0} đ.",
+            message: $"Đơn {booking.BookingCode} đã được Accountant xử lý hoàn tiền {refundAmount:N0} đ ({refundPercent}% số tiền đã thanh toán).",
             relatedEntityType: "Booking",
             relatedEntityId: booking.BookingId,
             cancellationToken: cancellationToken);
@@ -2117,30 +2121,6 @@ public class AdminController : Controller
         {
             TempData["AdminErrorMessage"] = "Không tìm thấy đơn đặt tour.";
             return RedirectToAction(nameof(Orders));
-        }
-
-        if (booking.BookingStatus is BookingCancelled or BookingRefunded)
-        {
-            TempData["AdminErrorMessage"] = $"Đơn {booking.BookingCode} đã đóng và không thể cập nhật trạng thái nữa.";
-            return RedirectToAction(nameof(Orders), new { page = model.CurrentPage <= 0 ? 1 : model.CurrentPage });
-        }
-
-        if (model.BookingStatus == BookingPendingRefund && booking.BookingStatus != BookingRefundRequested)
-        {
-            TempData["AdminErrorMessage"] = "Chỉ đơn đã có yêu cầu hoàn tiền mới được chuyển sang chờ hoàn tiền.";
-            return RedirectToAction(nameof(Orders), new { page = model.CurrentPage <= 0 ? 1 : model.CurrentPage });
-        }
-
-        if (model.BookingStatus != BookingPendingRefund && booking.PaymentStatus is not (PaymentDepositPaid or PaymentFullyPaid))
-        {
-            TempData["AdminErrorMessage"] = $"Đơn {booking.BookingCode} chưa được Accountant xác nhận thanh toán. Staff chưa được xử lý booking.";
-            return RedirectToAction(nameof(Orders), new { page = model.CurrentPage <= 0 ? 1 : model.CurrentPage });
-        }
-
-        if (model.BookingStatus is not (BookingConfirmed or BookingCancelled or BookingPendingRefund))
-        {
-            TempData["AdminErrorMessage"] = "Staff chỉ được xác nhận booking, hủy đơn hoặc chuyển đơn sang chờ hoàn tiền.";
-            return RedirectToAction(nameof(Orders), new { page = model.CurrentPage <= 0 ? 1 : model.CurrentPage });
         }
 
         var oldStatus = booking.BookingStatus;
@@ -2206,6 +2186,21 @@ public class AdminController : Controller
                 message: booking.PaymentStatus == PaymentFullyPaid
                     ? $"Đơn {booking.BookingCode} đã được Staff xác nhận. Hợp đồng điện tử đã được tạo, vui lòng ký để hoàn tất hồ sơ."
                     : $"Đơn {booking.BookingCode} đã được Staff xác nhận sau khi cọc. Hợp đồng điện tử đã được tạo, vui lòng ký và thanh toán phần còn lại trước hạn.",
+                relatedEntityType: "Booking",
+                relatedEntityId: booking.BookingId,
+                cancellationToken: cancellationToken);
+        }
+        else if (model.BookingStatus == BookingRefunded)
+        {
+            var cancellationDate = DateOnly.FromDateTime((booking.CancelledAt ?? DateTime.UtcNow).ToLocalTime());
+            var refundPercent = booking.TourSchedule.DepartureDate >= cancellationDate.AddDays(7) ? 100 : 60;
+            var refundAmount = Math.Round(booking.PaidAmount * (refundPercent == 100 ? 1m : 0.6m), 0);
+
+            await _notificationService.CreateAsync(
+                booking.UserId,
+                notificationType: 4,
+                title: "Đã hoàn tiền",
+                message: $"Đơn {booking.BookingCode} đã được cập nhật hoàn tiền {refundAmount:N0} đ ({refundPercent}% số tiền đã thanh toán).",
                 relatedEntityType: "Booking",
                 relatedEntityId: booking.BookingId,
                 cancellationToken: cancellationToken);

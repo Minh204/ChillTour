@@ -99,6 +99,401 @@
     padding: 2rem 0 4rem;
 }
 
+/* Final compact overrides for public tour cards */
+.tour-list-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.tour-list-card {
+    border-radius: 16px;
+    box-shadow: 0 10px 24px rgba(20, 51, 84, 0.08);
+}
+
+.tour-list-card__media {
+    height: 168px;
+}
+
+.tour-list-card__body {
+    gap: 0.55rem;
+    padding: 0.85rem;
+}
+
+.tour-list-card__meta,
+.tour-list-card__rating span:last-child,
+.tour-list-card__desc {
+    display: none;
+}
+
+.tour-list-card__body h2 {
+    min-height: 3.2rem;
+    font-size: 1rem;
+    line-height: 1.35;
+    -webkit-line-clamp: 2;
+}
+
+.tour-list-card__route {
+    min-height: 1.3rem;
+    font-size: 0.84rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tour-list-card__footer strong {
+    font-size: 1.18rem;
+    color: #dc2626;
+}
+
+.tour-list-card__footer .btn {
+    padding: 0.45rem 0.65rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 1180px) {
+    .tour-list-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 820px) {
+    .tour-list-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .tour-list-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Stable final layout: left filters + right tour grid */
+@media (min-width: 1100px) {
+    .tour-list-page .container {
+        width: min(1360px, calc(100% - 2rem)) !important;
+        display: grid !important;
+        grid-template-columns: 300px minmax(0, 1fr) !important;
+        gap: 1.35rem !important;
+        align-items: start !important;
+    }
+
+    .tour-list-hero {
+        grid-column: 1 !important;
+        grid-row: 1 / span 4 !important;
+        position: sticky !important;
+        top: 96px !important;
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+
+    .tour-list-summary {
+        display: none !important;
+    }
+
+    .tour-list-hero__content {
+        display: block !important;
+        padding: 1.2rem !important;
+        border-radius: 18px !important;
+        background: #f7f7f7 !important;
+        border: 1px solid rgba(15, 23, 42, 0.06) !important;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06) !important;
+    }
+
+    .tour-list-hero__content .eyebrow {
+        display: none !important;
+    }
+
+    .tour-list-hero h1 {
+        margin: 0 0 1.1rem !important;
+        font-size: 0 !important;
+        line-height: 1.2 !important;
+    }
+
+    .tour-list-hero h1::before {
+        content: "BỘ LỌC TÌM KIẾM";
+        display: block;
+        font-size: 1.25rem;
+        font-weight: 900;
+        color: #111827;
+    }
+
+    .tour-list-toolbar {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 0.85rem !important;
+        margin-top: 0 !important;
+    }
+
+    .tour-list-toolbar label {
+        gap: 0.35rem !important;
+        font-size: 0.95rem !important;
+        color: #111827 !important;
+    }
+
+    .tour-list-toolbar label span {
+        color: #111827 !important;
+        font-size: 0.92rem !important;
+        font-weight: 800 !important;
+    }
+
+    .tour-list-toolbar .form-control,
+    .tour-list-toolbar .form-select {
+        min-height: 44px !important;
+        border-radius: 10px !important;
+        background-color: #fff !important;
+    }
+
+    .tour-list-toolbar__actions {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 0.55rem !important;
+    }
+
+    .tour-list-toolbar__actions .btn {
+        width: 100% !important;
+        min-height: 42px !important;
+    }
+
+    .tour-list-filter-summary,
+    .tour-list-empty,
+    .tour-list-grid,
+    .tour-list-pagination {
+        grid-column: 2 !important;
+    }
+
+    .tour-list-grid {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 1rem !important;
+    }
+}
+
+@media (max-width: 1099.98px) {
+    .tour-list-page .container {
+        display: block !important;
+    }
+
+    .tour-list-hero {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+    }
+
+    .tour-list-summary {
+        display: none !important;
+    }
+}
+
+/* Sidebar filter layout for tour listing */
+@media (min-width: 1100px) {
+    .tour-list-page .container {
+        display: grid;
+        grid-template-columns: 320px minmax(0, 1fr);
+        gap: 1.5rem;
+        align-items: start;
+    }
+
+    .tour-list-hero {
+        grid-column: 1;
+        grid-row: 1 / span 4;
+        position: sticky;
+        top: 96px;
+        display: block;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .tour-list-hero__content {
+        padding: 1.25rem;
+        border-radius: 22px;
+        background: #f7f7f7;
+        border: 1px solid rgba(15, 23, 42, 0.06);
+    }
+
+    .tour-list-hero__content .eyebrow {
+        display: none;
+    }
+
+    .tour-list-hero h1 {
+        margin: 0 0 1.2rem;
+        font-size: 0;
+        line-height: 1.2;
+    }
+
+    .tour-list-hero h1::before {
+        content: "BỘ LỌC TÌM KIẾM";
+        font-size: 1.35rem;
+        font-weight: 900;
+        letter-spacing: 0.02em;
+        color: #111827;
+    }
+
+    .tour-list-toolbar {
+        grid-template-columns: 1fr;
+        gap: 0.9rem;
+        margin-top: 0;
+    }
+
+    .tour-list-toolbar label {
+        gap: 0.35rem;
+        color: #111827;
+    }
+
+    .tour-list-toolbar label span {
+        color: #111827;
+        font-size: 0.95rem;
+        font-weight: 800;
+    }
+
+    .tour-list-toolbar .form-control,
+    .tour-list-toolbar .form-select {
+        min-height: 46px;
+        border-radius: 10px;
+        background-color: #fff;
+    }
+
+    .tour-list-toolbar__actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.55rem;
+    }
+
+    .tour-list-toolbar__actions .btn {
+        width: 100%;
+        min-height: 42px;
+    }
+
+    .tour-list-summary {
+        display: none;
+    }
+
+    .tour-list-filter-summary,
+    .tour-list-empty,
+    .tour-list-grid,
+    .tour-list-pagination {
+        grid-column: 2;
+    }
+
+    .tour-list-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+    }
+}
+
+/* Compact tour cards */
+.tour-list-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.tour-list-card {
+    border-radius: 16px;
+    box-shadow: 0 10px 24px rgba(20, 51, 84, 0.08);
+}
+
+.tour-list-card__media {
+    height: 168px;
+}
+
+.tour-list-card__badges {
+    top: 0.75rem;
+    left: 0.75rem;
+    right: 0.75rem;
+}
+
+.tour-list-card__code,
+.tour-list-card__featured {
+    padding: 0.32rem 0.6rem;
+    font-size: 0.72rem;
+}
+
+.tour-list-card__body {
+    gap: 0.55rem;
+    padding: 0.85rem;
+}
+
+.tour-list-card__meta,
+.tour-list-card__rating span:last-child,
+.tour-list-card__desc {
+    display: none;
+}
+
+.tour-list-card__rating {
+    gap: 0.3rem;
+    font-size: 0.78rem;
+}
+
+.tour-list-card__rating strong,
+.tour-list-card__stars {
+    font-size: 0.85rem;
+}
+
+.tour-list-card__body h2 {
+    min-height: 3.2rem;
+    font-size: 1rem;
+    line-height: 1.35;
+    -webkit-line-clamp: 2;
+}
+
+.tour-list-card__route {
+    min-height: 1.3rem;
+    font-size: 0.84rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tour-list-card__flash {
+    padding: 0.35rem 0.55rem;
+    font-size: 0.78rem;
+}
+
+.tour-list-card__footer {
+    gap: 0.75rem;
+}
+
+.tour-list-card__footer span {
+    font-size: 0.78rem;
+}
+
+.tour-list-card__footer strong {
+    margin-top: 0.1rem;
+    font-size: 1.18rem;
+    color: #dc2626;
+}
+
+.tour-list-card__footer .btn {
+    padding: 0.45rem 0.65rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 1180px) {
+    .tour-list-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 820px) {
+    .tour-list-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .tour-list-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .tour-list-page .container {
     width: min(1360px, calc(100% - 2rem));
 }
@@ -1778,6 +2173,76 @@
 
     .customer-notification-card__actions {
         justify-items: start;
+    }
+}
+
+/* Final compact overrides for public tour cards */
+.tour-list-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.tour-list-card {
+    border-radius: 16px;
+    box-shadow: 0 10px 24px rgba(20, 51, 84, 0.08);
+}
+
+.tour-list-card__media {
+    height: 168px;
+}
+
+.tour-list-card__body {
+    gap: 0.55rem;
+    padding: 0.85rem;
+}
+
+.tour-list-card__meta,
+.tour-list-card__rating span:last-child,
+.tour-list-card__desc {
+    display: none;
+}
+
+.tour-list-card__body h2 {
+    min-height: 3.2rem;
+    font-size: 1rem;
+    line-height: 1.35;
+    -webkit-line-clamp: 2;
+}
+
+.tour-list-card__route {
+    min-height: 1.3rem;
+    font-size: 0.84rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tour-list-card__footer strong {
+    font-size: 1.18rem;
+    color: #dc2626;
+}
+
+.tour-list-card__footer .btn {
+    padding: 0.45rem 0.65rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 1180px) {
+    .tour-list-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 820px) {
+    .tour-list-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .tour-list-grid {
+        grid-template-columns: 1fr;
     }
 }
 

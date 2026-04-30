@@ -14,9 +14,9 @@ public static class RoleConstants
     public static readonly string[] ManageUsers = [Admin];
     public static readonly string[] ViewReports = [Admin, Director, Manager, Accountant, Employee];
     public static readonly string[] ManageTours = [Admin, Manager];
-    public static readonly string[] ManageBookings = [Employee];
+    public static readonly string[] ManageBookings = [Admin, Manager, Employee];
     public static readonly string[] ViewBookings = [Admin, Director, Manager, Accountant, Employee];
-    public static readonly string[] ManageFinance = [Accountant];
+    public static readonly string[] ManageFinance = [Admin, Accountant];
     public static readonly string[] ManagePromotions = [Admin, Manager];
     public static readonly string[] ManageContent = [Admin, Manager, Employee];
 

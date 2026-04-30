@@ -810,3 +810,186 @@
     }
 }
 
+/* Compact homepage tour cards */
+.travel-home__tour-card--rail,
+.travel-home__last-minute-card--rail {
+    flex-basis: min(300px, calc(100vw - 3rem));
+}
+
+.travel-home__tour-card,
+.travel-home__last-minute-card {
+    border-radius: 16px;
+    box-shadow: 0 10px 24px rgba(20, 51, 84, 0.08);
+}
+
+.travel-home__tour-image {
+    aspect-ratio: 1.55 / 1;
+}
+
+.travel-home__last-minute-image {
+    aspect-ratio: 1.55 / 1;
+}
+
+.travel-home__tour-badge {
+    top: 0.75rem;
+    left: 0.75rem;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.78rem;
+}
+
+.travel-home__tour-body,
+.travel-home__last-minute-body {
+    gap: 0.55rem;
+    padding: 0.85rem;
+}
+
+.travel-home__tour-meta span,
+.travel-home__tour-facts span,
+.travel-home__last-minute-badge,
+.travel-home__last-minute-rating,
+.travel-home__last-minute-facts span {
+    padding: 0.28rem 0.55rem;
+    font-size: 0.74rem;
+}
+
+.travel-home__tour-rating span:last-child,
+.travel-home__tour-copy {
+    display: none;
+}
+
+.travel-home__tour-body h3,
+.travel-home__last-minute-body h3 {
+    min-height: 3.2rem;
+    font-size: 1rem;
+    line-height: 1.35;
+    -webkit-line-clamp: 2;
+}
+
+.travel-home__tour-route,
+.travel-home__last-minute-body p {
+    min-height: 1.25rem;
+    font-size: 0.84rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.travel-home__tour-facts,
+.travel-home__last-minute-facts {
+    gap: 0.35rem;
+}
+
+.travel-home__tour-facts span:nth-child(2),
+.travel-home__last-minute-facts span:nth-child(2) {
+    display: none;
+}
+
+.travel-home__tour-foot,
+.travel-home__last-minute-foot {
+    gap: 0.7rem;
+}
+
+.travel-home__tour-foot span,
+.travel-home__last-minute-foot span {
+    font-size: 0.78rem;
+}
+
+.travel-home__tour-foot strong,
+.travel-home__last-minute-foot strong {
+    font-size: 1.18rem;
+    color: #dc2626;
+}
+
+.travel-home__tour-foot .btn,
+.travel-home__last-minute-foot .btn {
+    padding: 0.42rem 0.65rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+.travel-home__value-card--rail {
+    flex-basis: min(300px, calc(100vw - 3rem));
+}
+
+.travel-home__value-card {
+    border-radius: 16px;
+    box-shadow: 0 10px 24px rgba(20, 51, 84, 0.08);
+}
+
+.travel-home__value-image {
+    aspect-ratio: 1.55 / 1;
+}
+
+.travel-home__value-body {
+    gap: 0.55rem;
+    padding: 0.85rem;
+}
+
+.travel-home__value-card span {
+    font-size: 0.78rem;
+}
+
+.travel-home__value-card h3 {
+    min-height: 3.2rem;
+    font-size: 1rem;
+    line-height: 1.35;
+    -webkit-line-clamp: 2;
+}
+
+.travel-home__value-card p {
+    min-height: 1.25rem;
+    font-size: 0.84rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.travel-home__value-meta {
+    gap: 0.35rem;
+}
+
+.travel-home__value-meta span {
+    padding: 0.28rem 0.55rem;
+    font-size: 0.74rem;
+}
+
+.travel-home__value-meta span:nth-child(2) {
+    display: none;
+}
+
+.travel-home__value-foot strong {
+    font-size: 1.18rem;
+    color: #dc2626;
+}
+
+.travel-home__value-foot .btn {
+    padding: 0.42rem 0.65rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+/* Equal image heights across homepage tour sections */
+.travel-home__tour-image,
+.travel-home__last-minute-image,
+.travel-home__value-image {
+    height: 210px !important;
+    aspect-ratio: auto !important;
+}
+
+.travel-home__tour-image img,
+.travel-home__last-minute-image img,
+.travel-home__value-image img,
+.travel-home__tour-image-fallback {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+}
+
+@media (max-width: 768px) {
+    .travel-home__tour-image,
+    .travel-home__last-minute-image,
+    .travel-home__value-image {
+        height: 190px !important;
+    }
+}
+

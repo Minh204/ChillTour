@@ -14,7 +14,7 @@ namespace ChillTour.Controllers;
 
 public class ToursController : Controller
 {
-    private const int PageSize = 9;
+    private const int PageSize = 12;
     private const decimal LastMinuteDiscountRate = 0.15m;
     private static readonly string[] AllowedReviewImageExtensions = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
     private readonly ChillTourDbContext _dbContext;

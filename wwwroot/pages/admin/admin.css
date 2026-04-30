@@ -239,10 +239,31 @@
 
 .status-pill {
   display: inline-flex;
+  width: fit-content;
   padding: 0.45rem 0.8rem;
   border-radius: 999px;
   font-size: 0.82rem;
   font-weight: 700;
+}
+
+.admin-status-editor {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 220px;
+}
+
+.admin-status-editor .form-select,
+.admin-status-editor .form-control {
+  min-height: 34px;
+  border-radius: 0.7rem;
+  font-size: 0.84rem;
+}
+
+.admin-status-editor__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.4rem;
+  align-items: center;
 }
 
 .status-pill--success {
@@ -258,6 +279,25 @@
 .status-pill--info {
   color: #0b74ff;
   background: #e6f1ff;
+}
+
+.table.align-middle tbody td:nth-child(7) .d-flex > :not(.status-pill) {
+  display: none !important;
+}
+
+.table.align-middle tbody td:nth-child(8) {
+  white-space: nowrap;
+}
+
+.table.align-middle tbody td:nth-child(8) > .btn,
+.table.align-middle tbody td:nth-child(8) > form {
+  margin: 0.15rem 0.25rem 0.15rem 0;
+}
+
+.admin-row-action-form {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
 }
 
 .admin-orders {
