@@ -1,7 +1,9 @@
 using System.Diagnostics;
+using System.Net;
 using ChillTour.Data;
 using ChillTour.Models.Home;
 using ChillTour.Models;
+using ChillTour.Services.Mail;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,11 +13,13 @@ namespace ChillTour.Controllers
     {
         private readonly ILogger<HomeController> _logger;
         private readonly ChillTourDbContext _dbContext;
+        private readonly IEmailSender _emailSender;
 
-        public HomeController(ILogger<HomeController> logger, ChillTourDbContext dbContext)
+        public HomeController(ILogger<HomeController> logger, ChillTourDbContext dbContext, IEmailSender emailSender)
         {
             _logger = logger;
             _dbContext = dbContext;
+            _emailSender = emailSender;
         }
 
         public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -188,6 +192,70 @@ namespace ChillTour.Controllers
         public IActionResult Privacy()
         {
             return View();
+        }
+
+        [HttpGet]
+        public IActionResult Contact()
+        {
+            return View(new ContactFormViewModel());
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Contact(ContactFormViewModel model, CancellationToken cancellationToken)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            if (!_emailSender.IsConfigured)
+            {
+                ModelState.AddModelError(string.Empty, "Hệ thống email chưa được cấu hình. Vui lòng liên hệ quản trị viên.");
+                return View(model);
+            }
+
+            try
+            {
+                await _emailSender.SendAsync(
+                    "minhabc2004@gmail.com",
+                    $"[ChillTour] Liên hệ: {model.Subject.Trim()}",
+                    BuildContactEmailBody(model),
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send contact email for {Email}", model.Email);
+                ModelState.AddModelError(string.Empty, "Không thể gửi email liên hệ lúc này. Vui lòng thử lại sau.");
+                return View(model);
+            }
+
+            TempData["ContactSuccessMessage"] = "ChillTour đã nhận thông tin liên hệ của bạn. Bộ phận tư vấn sẽ phản hồi trong thời gian sớm nhất.";
+            ModelState.Clear();
+            return View(new ContactFormViewModel());
+        }
+
+        private static string BuildContactEmailBody(ContactFormViewModel model)
+        {
+            static string E(string? value) => WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(value) ? "Không có" : value.Trim());
+
+            return $"""
+                <div style="font-family:Arial,sans-serif;color:#111827;line-height:1.6">
+                    <h2 style="margin:0 0 16px;color:#0b63b6">Thông tin liên hệ mới từ ChillTour</h2>
+                    <table cellpadding="8" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:720px">
+                        <tr><td style="font-weight:700;width:180px">Loại thông tin</td><td>{E(model.ContactType)}</td></tr>
+                        <tr><td style="font-weight:700">Họ tên</td><td>{E(model.FullName)}</td></tr>
+                        <tr><td style="font-weight:700">Email</td><td>{E(model.Email)}</td></tr>
+                        <tr><td style="font-weight:700">Điện thoại</td><td>{E(model.Phone)}</td></tr>
+                        <tr><td style="font-weight:700">Tên công ty</td><td>{E(model.CompanyName)}</td></tr>
+                        <tr><td style="font-weight:700">Số khách</td><td>{model.GuestCount}</td></tr>
+                        <tr><td style="font-weight:700">Địa chỉ</td><td>{E(model.Address)}</td></tr>
+                        <tr><td style="font-weight:700">Tiêu đề</td><td>{E(model.Subject)}</td></tr>
+                        <tr><td style="font-weight:700;vertical-align:top">Nội dung</td><td>{E(model.Message).Replace("\n", "<br>")}</td></tr>
+                    </table>
+                    <p style="margin-top:18px;color:#64748b">Thời gian gửi: {DateTime.Now:dd/MM/yyyy HH:mm}</p>
+                </div>
+                """;
         }
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

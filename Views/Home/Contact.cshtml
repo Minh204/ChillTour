@@ -1,0 +1,134 @@
+@model ChillTour.Models.Home.ContactFormViewModel
+@{
+    ViewData["Title"] = "Liên hệ";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/pages/home/contact.css" asp-append-version="true" />
+}
+
+<section class="contact-page">
+    <div class="container">
+        <div class="contact-page__hero">
+            <span class="eyebrow">Liên hệ ChillTour</span>
+            <h1>LIÊN HỆ</h1>
+            <p>Để có thể đáp ứng được các yêu cầu và đóng góp ý kiến của quý khách, vui lòng gửi thông tin hoặc gọi đến hotline để được hỗ trợ nhanh chóng.</p>
+        </div>
+
+        @if (TempData["ContactSuccessMessage"] is string successMessage)
+        {
+            <div class="alert alert-success contact-page__alert">@successMessage</div>
+        }
+
+        <div class="contact-page__grid">
+            <section class="contact-card">
+                <h2>Thông tin liên lạc</h2>
+                <form asp-action="Contact" method="post" class="contact-form">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                    <label>
+                        <span class="contact-form__label-text">Loại thông tin <strong>*</strong></span>
+                        <select asp-for="ContactType" class="form-select">
+                            <option>Du lịch</option>
+                            <option>Đặt tour đoàn</option>
+                            <option>Hợp tác doanh nghiệp</option>
+                            <option>Góp ý dịch vụ</option>
+                        </select>
+                        <span asp-validation-for="ContactType" class="text-danger"></span>
+                    </label>
+
+                    <label>
+                        <span class="contact-form__label-text">Họ tên <strong>*</strong></span>
+                        <input asp-for="FullName" class="form-control" placeholder="Liên hệ" />
+                        <span asp-validation-for="FullName" class="text-danger"></span>
+                    </label>
+
+                    <label>
+                        <span class="contact-form__label-text">Email <strong>*</strong></span>
+                        <input asp-for="Email" class="form-control" placeholder="Nhập email" />
+                        <span asp-validation-for="Email" class="text-danger"></span>
+                    </label>
+
+                    <label>
+                        <span class="contact-form__label-text">Điện thoại <strong>*</strong></span>
+                        <input asp-for="Phone" class="form-control" placeholder="Nhập số điện thoại" />
+                        <span asp-validation-for="Phone" class="text-danger"></span>
+                    </label>
+
+                    <label>
+                        <span class="contact-form__label-text">Tên công ty</span>
+                        <input asp-for="CompanyName" class="form-control" placeholder="Nhập tên công ty" />
+                        <span asp-validation-for="CompanyName" class="text-danger"></span>
+                    </label>
+
+                    <label>
+                        <span class="contact-form__label-text">Số khách</span>
+                        <input asp-for="GuestCount" type="number" min="0" class="form-control" />
+                        <span asp-validation-for="GuestCount" class="text-danger"></span>
+                    </label>
+
+                    <label class="contact-form__wide">
+                        <span class="contact-form__label-text">Địa chỉ</span>
+                        <input asp-for="Address" class="form-control" placeholder="Nhập địa chỉ" />
+                        <span asp-validation-for="Address" class="text-danger"></span>
+                    </label>
+
+                    <label class="contact-form__wide">
+                        <span class="contact-form__label-text">Tiêu đề <strong>*</strong></span>
+                        <input asp-for="Subject" class="form-control" placeholder="Nhập tiêu đề" />
+                        <span asp-validation-for="Subject" class="text-danger"></span>
+                    </label>
+
+                    <label class="contact-form__wide">
+                        <span class="contact-form__label-text">Nội dung <strong>*</strong></span>
+                        <textarea asp-for="Message" class="form-control" placeholder="Nhập nội dung"></textarea>
+                        <span asp-validation-for="Message" class="text-danger"></span>
+                    </label>
+
+                    <div class="contact-form__submit">
+                        <button type="submit" class="btn btn-primary">Gửi ngay</button>
+                    </div>
+                </form>
+            </section>
+
+            <aside class="contact-branches">
+                <h2>Chi nhánh toàn cầu</h2>
+                <div class="contact-branches__tabs">
+                    <button type="button" class="is-active">Hà Nội</button>
+                    <button type="button">Miền Bắc</button>
+                    <button type="button">Miền Trung</button>
+                    <button type="button">Miền Nam</button>
+                </div>
+
+                <div class="contact-branches__list">
+                    <article>
+                        <h3>Trụ sở chính ChillTour</h3>
+                        <p>📍 298 Đ. Cầu Diễn, Tây Tựu, Hà Nội, Việt Nam</p>
+                        <p>☎ Hotline: 0348326394</p>
+                        <p>✉ Email: minhabc2004@gmail.com</p>
+                    </article>
+                    <article>
+                        <h3>Phòng kinh doanh tour</h3>
+                        <p>📍 Tây Tựu, Hà Nội</p>
+                        <p>☎ Tư vấn khách đoàn, tour nội địa và quốc tế</p>
+                        <p>✉ Hỗ trợ báo giá, lịch khởi hành và xác nhận booking</p>
+                    </article>
+                    <article>
+                        <h3>Bộ phận chăm sóc khách hàng</h3>
+                        <p>☎ Hỗ trợ sau đặt tour, thanh toán, hợp đồng và hoàn tiền</p>
+                        <p>⏱ Thời gian hỗ trợ: 08:00 - 21:00 hằng ngày</p>
+                    </article>
+                </div>
+
+                <div class="contact-map">
+                    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d4470.831091032273!2d105.73504779892382!3d21.053227009015387!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x313455aa15919acf%3A0xd83f79a5852943f6!2zVMOieSBU4buxdSwgSMOgIE7hu5lpLCBWaeG7h3QgTmFt!5e0!3m2!1svi!2s!4v1777574253787!5m2!1svi!2s" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Bản đồ ChillTour - 298 Đ. Cầu Diễn, Tây Tựu, Hà Nội"></iframe>
+                </div>
+            </aside>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

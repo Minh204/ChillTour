@@ -45,6 +45,7 @@
                         <li class="nav-item"><a class="nav-link @(IsControllerActive("Tours") ? "nav-link--active" : string.Empty)" asp-controller="Tours" asp-action="Index">Danh sách tour</a></li>
                         <li class="nav-item"><a class="nav-link @(IsControllerActive("Promotions") ? "nav-link--active" : string.Empty)" asp-controller="Promotions" asp-action="Index">Ưu đãi</a></li>
                         <li class="nav-item"><a class="nav-link @(IsControllerActive("Guides") ? "nav-link--active" : string.Empty)" asp-controller="Guides" asp-action="Index">Cẩm nang</a></li>
+                        <li class="nav-item"><a class="nav-link @(IsActive("Home", "Contact") ? "nav-link--active" : string.Empty)" asp-controller="Home" asp-action="Contact">Liên hệ</a></li>
                     </ul>
                     <div class="d-flex align-items-center gap-2">
                         @if (User.Identity?.IsAuthenticated == true)
@@ -105,12 +106,14 @@
                     <a asp-controller="Home" asp-action="Index" asp-fragment="kham-pha">Điểm đến</a>
                     <a asp-controller="Tours" asp-action="Index">Danh sách tour</a>
                     <a asp-controller="Promotions" asp-action="Index">Ưu đãi theo mùa</a>
+                    <a asp-controller="Home" asp-action="Contact">Liên hệ</a>
                 </div>
                 <div>
                     <h3>Hỗ trợ</h3>
                     <a asp-controller="Guides" asp-action="Index">Cẩm nang du lịch</a>
                     <a asp-controller="Home" asp-action="Index" asp-fragment="dat-tour">Điều khoản đặt tour</a>
                     <a asp-area="" asp-controller="Home" asp-action="Privacy">Chính sách riêng tư</a>
+                    <a asp-controller="Home" asp-action="Contact">Gửi yêu cầu hỗ trợ</a>
                 </div>
                 <div>
                     <h3>Liên hệ nhanh</h3>
