@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 using System.Security.Claims;
 
 namespace ChillTour.Controllers;
@@ -514,6 +515,8 @@ public class ToursController : Controller
             return Challenge();
         }
 
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+
         var duplicatedBookingExists = await _dbContext.Bookings.AnyAsync(
             x => x.UserId == userId
                  && x.TourId == form.TourId
@@ -528,9 +531,9 @@ public class ToursController : Controller
             return await RedirectToTourDetailsAsync(form.TourId, cancellationToken);
         }
 
-        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-
-        var tour = await _dbContext.Tours.SingleOrDefaultAsync(x => x.TourId == form.TourId && x.IsPublished, cancellationToken);
+        var tour = await _dbContext.Tours
+            .AsNoTracking()
+            .SingleOrDefaultAsync(x => x.TourId == form.TourId && x.IsPublished, cancellationToken);
         if (tour is null)
         {
             TempData["TourErrorMessage"] = "Không tìm thấy tour hoặc tour chưa được mở bán.";
@@ -538,6 +541,7 @@ public class ToursController : Controller
         }
 
         var schedule = await _dbContext.TourSchedules
+            .AsNoTracking()
             .SingleOrDefaultAsync(x => x.TourScheduleId == form.TourScheduleId && x.TourId == form.TourId && x.Status == 1, cancellationToken);
 
         if (schedule is null)
@@ -568,6 +572,41 @@ public class ToursController : Controller
         if (form.SingleRoomCount > 0 && !(schedule.SingleSupplement ?? tour.SingleSupplement).HasValue)
         {
             TempData["TourErrorMessage"] = "Tour này hiện chưa cấu hình phụ thu phòng đơn.";
+            return RedirectToAction(nameof(Details), new { slug = tour.Slug });
+        }
+
+        var reservedAt = DateTime.UtcNow;
+        var scheduleRows = await _dbContext.TourSchedules
+            .Where(x => x.TourScheduleId == schedule.TourScheduleId
+                        && x.TourId == tour.TourId
+                        && x.Status == 1
+                        && x.AvailableSeats >= seatsRequested)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.AvailableSeats, x => x.AvailableSeats - seatsRequested)
+                .SetProperty(x => x.ReservedSeats, x => x.ReservedSeats + seatsRequested)
+                .SetProperty(x => x.UpdatedAt, reservedAt),
+                cancellationToken);
+
+        if (scheduleRows == 0)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            TempData["TourErrorMessage"] = "Rất tiếc, số vé vừa được khách khác giữ chỗ trước. Vui lòng chọn lịch khởi hành khác.";
+            return RedirectToAction(nameof(Details), new { slug = tour.Slug });
+        }
+
+        var tourRows = await _dbContext.Tours
+            .Where(x => x.TourId == tour.TourId
+                        && x.IsPublished
+                        && x.RemainingSeats >= seatsRequested)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.RemainingSeats, x => x.RemainingSeats - seatsRequested)
+                .SetProperty(x => x.UpdatedAt, reservedAt),
+                cancellationToken);
+
+        if (tourRows == 0)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            TempData["TourErrorMessage"] = "Rất tiếc, kho vé của tour vừa thay đổi. Vui lòng tải lại trang và thử lại.";
             return RedirectToAction(nameof(Details), new { slug = tour.Slug });
         }
 
@@ -614,14 +653,8 @@ public class ToursController : Controller
             SpecialRequests = string.IsNullOrWhiteSpace(form.SpecialRequests) ? null : form.SpecialRequests.Trim(),
             IsLastMinuteDeal = isLastMinuteDeal,
             BalanceDueAt = balanceDueAt,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = reservedAt
         };
-
-        tour.RemainingSeats -= seatsRequested;
-        schedule.AvailableSeats -= seatsRequested;
-        schedule.ReservedSeats += seatsRequested;
-        schedule.UpdatedAt = DateTime.UtcNow;
-        tour.UpdatedAt = DateTime.UtcNow;
 
         _dbContext.Bookings.Add(booking);
         await _dbContext.SaveChangesAsync(cancellationToken);
