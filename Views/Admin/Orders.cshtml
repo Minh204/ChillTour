@@ -140,6 +140,14 @@
                                 <td>
                                     <div class="d-flex flex-column gap-2">
                                         <span class="status-pill @StatusClass(booking.BookingStatus)">@StatusLabel(booking.BookingStatus)</span>
+                                        @if (!string.IsNullOrWhiteSpace(booking.PaymentConfirmedByName))
+                                        {
+                                            <span class="admin-audit-line">Accountant: <strong>@booking.PaymentConfirmedByName</strong>@(booking.PaymentConfirmedAt.HasValue ? $" • {booking.PaymentConfirmedAt.Value.ToLocalTime():dd/MM/yyyy HH:mm}" : string.Empty)</span>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(booking.BookingConfirmedByName))
+                                        {
+                                            <span class="admin-audit-line">Staff: <strong>@booking.BookingConfirmedByName</strong>@(booking.BookingConfirmedAt.HasValue ? $" • {booking.BookingConfirmedAt.Value.ToLocalTime():dd/MM/yyyy HH:mm}" : string.Empty)</span>
+                                        }
                                         @if (!string.IsNullOrWhiteSpace(booking.LatestPaymentCode))
                                         {
                                             <div class="text-muted small">@booking.LatestPaymentCode • @booking.LatestPaymentAmount.ToString("N0") đ</div>
@@ -278,6 +286,10 @@
                                             data-booking-status="@StatusLabel(booking.BookingStatus)"
                                             data-payment-code="@booking.LatestPaymentCode"
                                             data-payment-transaction="@booking.LatestPaymentTransactionReference"
+                                            data-payment-confirmed-by="@(string.IsNullOrWhiteSpace(booking.PaymentConfirmedByName) ? "Chưa có log" : booking.PaymentConfirmedByName)"
+                                            data-payment-confirmed-at="@(booking.PaymentConfirmedAt.HasValue ? booking.PaymentConfirmedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "Chưa có log")"
+                                            data-booking-confirmed-by="@(string.IsNullOrWhiteSpace(booking.BookingConfirmedByName) ? "Chưa có log" : booking.BookingConfirmedByName)"
+                                            data-booking-confirmed-at="@(booking.BookingConfirmedAt.HasValue ? booking.BookingConfirmedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "Chưa có log")"
                                             data-special-requests="@(string.IsNullOrWhiteSpace(booking.SpecialRequests) ? "Không có" : booking.SpecialRequests)">
                                         Chi tiết
                                     </button>
@@ -420,6 +432,22 @@
                         Mã giao dịch VNPay
                         <input id="detailPaymentTransaction" class="form-control" readonly />
                     </label>
+                    <label>
+                        Accountant xác nhận
+                        <input id="detailPaymentConfirmedBy" class="form-control" readonly />
+                    </label>
+                    <label>
+                        Thời điểm xác nhận tiền
+                        <input id="detailPaymentConfirmedAt" class="form-control" readonly />
+                    </label>
+                    <label>
+                        Staff xác nhận booking
+                        <input id="detailBookingConfirmedBy" class="form-control" readonly />
+                    </label>
+                    <label>
+                        Thời điểm xác nhận booking
+                        <input id="detailBookingConfirmedAt" class="form-control" readonly />
+                    </label>
                 </div>
 
                 <label class="mt-3">
@@ -483,6 +511,10 @@
             document.getElementById('detailRemainingAmount').value = button.getAttribute('data-remaining-amount') || '';
             document.getElementById('detailPaymentCode').value = button.getAttribute('data-payment-code') || '';
             document.getElementById('detailPaymentTransaction').value = button.getAttribute('data-payment-transaction') || '';
+            document.getElementById('detailPaymentConfirmedBy').value = button.getAttribute('data-payment-confirmed-by') || '';
+            document.getElementById('detailPaymentConfirmedAt').value = button.getAttribute('data-payment-confirmed-at') || '';
+            document.getElementById('detailBookingConfirmedBy').value = button.getAttribute('data-booking-confirmed-by') || '';
+            document.getElementById('detailBookingConfirmedAt').value = button.getAttribute('data-booking-confirmed-at') || '';
             document.getElementById('detailSpecialRequests').value = button.getAttribute('data-special-requests') || '';
         });
     })();

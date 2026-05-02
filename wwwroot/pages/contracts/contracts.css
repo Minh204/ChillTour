@@ -158,3 +158,38 @@
     position: static;
   }
 }
+
+@media (max-width: 575.98px) {
+  .contract-page {
+    padding: 1.25rem 0;
+  }
+
+  .contract-shell {
+    padding: 1rem;
+    border-radius: 22px;
+  }
+
+  .contract-document,
+  .contract-panel,
+  .contract-preview {
+    padding: 1rem;
+    border-radius: 18px;
+  }
+
+  .contract-pdf-frame {
+    min-height: 520px;
+  }
+
+  .contract-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .contract-actions .btn {
+    width: 100%;
+  }
+
+  .signature-canvas {
+    height: 150px;
+  }
+}

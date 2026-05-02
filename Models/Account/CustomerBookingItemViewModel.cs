@@ -15,6 +15,10 @@ public class CustomerBookingItemViewModel
     public decimal PaidAmount { get; set; }
     public string? CancellationReason { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string? PaymentConfirmedByName { get; set; }
+    public DateTime? PaymentConfirmedAt { get; set; }
+    public string? BookingConfirmedByName { get; set; }
+    public DateTime? BookingConfirmedAt { get; set; }
     public bool CanCancel { get; set; }
     public bool RequiresRefundRequest { get; set; }
     public int RefundPercent { get; set; }

@@ -993,3 +993,112 @@
     }
 }
 
+/* Responsive pass for the home page */
+@media (max-width: 991.98px) {
+    .travel-home {
+        padding-bottom: 2.5rem;
+    }
+
+    .travel-home__hero {
+        padding-top: 1rem;
+    }
+
+    .travel-home__hero-banner {
+        min-height: 430px;
+        padding: 1.5rem;
+        border-radius: 26px;
+    }
+
+    .travel-home__hero-copy h1 {
+        max-width: none;
+    }
+
+    .travel-home__hero-stats,
+    .travel-home__category-grid,
+    .travel-home__destination-grid,
+    .travel-home__tour-grid,
+    .travel-home__last-minute-grid,
+    .travel-home__value-grid,
+    .travel-home__promo-grid,
+    .travel-home__trust-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .travel-home__search-card--horizontal {
+        width: calc(100% - 1rem);
+        margin-top: -2rem;
+    }
+
+    .travel-home__rail {
+        margin-inline: -1rem;
+        padding-inline: 1rem;
+        mask-image: none;
+        overflow-x: auto;
+        scroll-snap-type: x proximity;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .travel-home__tour-card--rail,
+    .travel-home__last-minute-card--rail,
+    .travel-home__value-card--rail,
+    .travel-home__destination-card--rail {
+        flex-basis: min(82vw, 330px) !important;
+        scroll-snap-align: start;
+    }
+
+    .travel-home__section-head {
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .travel-home__hero-banner {
+        min-height: 360px;
+        padding: 1.15rem;
+        border-radius: 22px;
+    }
+
+    .travel-home__hero-actions,
+    .travel-home__tour-foot,
+    .travel-home__last-minute-foot,
+    .travel-home__value-foot {
+        display: grid;
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .travel-home__hero-actions .btn,
+    .travel-home__tour-foot .btn,
+    .travel-home__last-minute-foot .btn,
+    .travel-home__value-foot .btn {
+        width: 100%;
+    }
+
+    .travel-home__search-card,
+    .travel-home__promo-banner,
+    .travel-home__category-card,
+    .travel-home__trust-card {
+        padding: 1rem;
+        border-radius: 20px;
+    }
+
+    .travel-home__tour-image,
+    .travel-home__last-minute-image,
+    .travel-home__value-image {
+        height: 176px !important;
+    }
+
+    .travel-home__section-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .travel-home__banner-track {
+        gap: 0.75rem;
+    }
+
+    .travel-home__promo-banner-image {
+        flex-basis: 86vw;
+    }
+}
+

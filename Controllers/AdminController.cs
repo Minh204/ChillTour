@@ -568,6 +568,8 @@ public class AdminController : Controller
             .Include(x => x.Tour)
             .Include(x => x.TourSchedule)
             .Include(x => x.Payments)
+            .Include(x => x.StatusHistory)
+            .ThenInclude(x => x.ChangedByUser)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
@@ -623,6 +625,14 @@ public class AdminController : Controller
             {
                 var latestPayment = x.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
                 var remainingAmount = Math.Max(x.TotalAmount - x.PaidAmount, 0m);
+                var paymentConfirmation = x.StatusHistory
+                    .Where(h => h.Notes != null && h.Notes.Contains("Accountant xác nhận"))
+                    .OrderByDescending(h => h.ChangedAt)
+                    .FirstOrDefault();
+                var bookingConfirmation = x.StatusHistory
+                    .Where(h => h.NewStatus == BookingConfirmed)
+                    .OrderByDescending(h => h.ChangedAt)
+                    .FirstOrDefault();
 
                 return new BookingItemViewModel
                 {
@@ -656,7 +666,11 @@ public class AdminController : Controller
                         && !string.IsNullOrWhiteSpace(latestPayment.TransactionReference),
                     CanStaffProcess = x.PaymentStatus is PaymentDepositPaid or PaymentFullyPaid,
                     SpecialRequests = x.SpecialRequests,
-                    CreatedAt = x.CreatedAt
+                    CreatedAt = x.CreatedAt,
+                    PaymentConfirmedByName = paymentConfirmation?.ChangedByUser?.FullName,
+                    PaymentConfirmedAt = paymentConfirmation?.ChangedAt,
+                    BookingConfirmedByName = bookingConfirmation?.ChangedByUser?.FullName,
+                    BookingConfirmedAt = bookingConfirmation?.ChangedAt
                 };
             })
             .ToList();

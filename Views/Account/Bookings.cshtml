@@ -109,6 +109,20 @@
                                 <p class="customer-booking-card__reason">Lý do hủy: @booking.CancellationReason</p>
                             }
 
+                            @if (!string.IsNullOrWhiteSpace(booking.PaymentConfirmedByName) || !string.IsNullOrWhiteSpace(booking.BookingConfirmedByName))
+                            {
+                                <div class="customer-booking-card__audit">
+                                    @if (!string.IsNullOrWhiteSpace(booking.PaymentConfirmedByName))
+                                    {
+                                        <span>Accountant xác nhận thanh toán: <strong>@booking.PaymentConfirmedByName</strong>@(booking.PaymentConfirmedAt.HasValue ? $" • {booking.PaymentConfirmedAt.Value.ToLocalTime():dd/MM/yyyy HH:mm}" : string.Empty)</span>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(booking.BookingConfirmedByName))
+                                    {
+                                        <span>Staff xác nhận booking: <strong>@booking.BookingConfirmedByName</strong>@(booking.BookingConfirmedAt.HasValue ? $" • {booking.BookingConfirmedAt.Value.ToLocalTime():dd/MM/yyyy HH:mm}" : string.Empty)</span>
+                                    }
+                                </div>
+                            }
+
                             <div class="customer-booking-card__footer">
                                 <a asp-controller="Tours" asp-action="Details" asp-route-slug="@booking.TourSlug" class="btn btn-outline-primary">Xem tour</a>
                                 <a asp-controller="Payments" asp-action="Checkout" asp-route-bookingId="@booking.BookingId" class="btn btn-primary">Xem thanh toán</a>

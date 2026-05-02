@@ -16,6 +16,7 @@ namespace ChillTour.Controllers;
 public class AccountController : Controller
 {
     private const byte BookingCancelled = 4;
+    private const byte BookingConfirmed = 3;
     private const byte BookingRefunded = 5;
     private const byte BookingPendingFullPaymentVerification = 7;
     private const byte BookingFullyPaid = 8;
@@ -374,6 +375,26 @@ public class AccountController : Controller
                 PaidAmount = x.PaidAmount,
                 CancellationReason = x.CancellationReason,
                 CreatedAt = x.CreatedAt,
+                PaymentConfirmedByName = x.StatusHistory
+                    .Where(h => h.Notes != null && h.Notes.Contains("Accountant xác nhận"))
+                    .OrderByDescending(h => h.ChangedAt)
+                    .Select(h => h.ChangedByUser != null ? h.ChangedByUser.FullName : null)
+                    .FirstOrDefault(),
+                PaymentConfirmedAt = x.StatusHistory
+                    .Where(h => h.Notes != null && h.Notes.Contains("Accountant xác nhận"))
+                    .OrderByDescending(h => h.ChangedAt)
+                    .Select(h => (DateTime?)h.ChangedAt)
+                    .FirstOrDefault(),
+                BookingConfirmedByName = x.StatusHistory
+                    .Where(h => h.NewStatus == BookingConfirmed)
+                    .OrderByDescending(h => h.ChangedAt)
+                    .Select(h => h.ChangedByUser != null ? h.ChangedByUser.FullName : null)
+                    .FirstOrDefault(),
+                BookingConfirmedAt = x.StatusHistory
+                    .Where(h => h.NewStatus == BookingConfirmed)
+                    .OrderByDescending(h => h.ChangedAt)
+                    .Select(h => (DateTime?)h.ChangedAt)
+                    .FirstOrDefault(),
                 CanCancel = x.BookingStatus != BookingCancelled
                     && x.BookingStatus != BookingRefunded
                     && x.BookingStatus != BookingRefundRequested

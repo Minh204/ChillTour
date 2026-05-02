@@ -330,3 +330,40 @@
     font-size: 2rem;
   }
 }
+
+@media (max-width: 575.98px) {
+  .payment-page {
+    padding-top: 1.25rem;
+  }
+
+  .payment-checkout-card.payment-checkout-card--wide,
+  .payment-result-card {
+    padding: 1rem;
+    border-radius: 22px;
+  }
+
+  .payment-checkout-hero__highlight,
+  .payment-summary-card,
+  .payment-promo-card,
+  .payment-status-box,
+  .payment-qr-card {
+    border-radius: 18px;
+  }
+
+  .payment-promo-card__head,
+  .payment-qr-card__actions,
+  .payment-result-card .hero-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .payment-promo-form .btn,
+  .payment-result-card .hero-actions .btn {
+    width: 100%;
+  }
+
+  .payment-qr-card__image {
+    min-height: 150px;
+    padding: 1rem;
+  }
+}

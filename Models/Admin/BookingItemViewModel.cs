@@ -31,4 +31,8 @@ public class BookingItemViewModel
     public bool CanStaffProcess { get; set; }
     public string? SpecialRequests { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string? PaymentConfirmedByName { get; set; }
+    public DateTime? PaymentConfirmedAt { get; set; }
+    public string? BookingConfirmedByName { get; set; }
+    public DateTime? BookingConfirmedAt { get; set; }
 }
