@@ -6,6 +6,7 @@ using ChillTour.Services.Mail;
 using ChillTour.Security;
 using ChillTour.Services.Reports;
 using ChillTour.Services.Contracts;
+using ChillTour.Services.Chatbot;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using QuestPDF.Infrastructure;
@@ -27,6 +28,7 @@ namespace ChillTour
             builder.Services.Configure<VnPayOptions>(builder.Configuration.GetSection(VnPayOptions.SectionName));
             builder.Services.Configure<GoogleAuthOptions>(builder.Configuration.GetSection(GoogleAuthOptions.SectionName));
             builder.Services.Configure<MailOptions>(builder.Configuration.GetSection(MailOptions.SectionName));
+            builder.Services.Configure<GeminiChatbotOptions>(builder.Configuration.GetSection(GeminiChatbotOptions.SectionName));
             var googleAuthOptions = builder.Configuration.GetSection(GoogleAuthOptions.SectionName).Get<GoogleAuthOptions>() ?? new GoogleAuthOptions();
             var isGoogleAuthConfigured =
                 !string.IsNullOrWhiteSpace(googleAuthOptions.ClientId) &&
@@ -39,6 +41,14 @@ namespace ChillTour
             builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
             builder.Services.AddScoped<IReportService, ReportService>();
             builder.Services.AddScoped<IContractService, ContractService>();
+            builder.Services.AddHttpClient<IChatbotService, GeminiChatbotService>(client =>
+                {
+                    client.Timeout = TimeSpan.FromSeconds(45);
+                })
+                .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+                {
+                    UseProxy = false
+                });
             builder.Services.AddHostedService<BookingBalanceReminderService>();
             var authenticationBuilder = builder.Services.AddAuthentication(AuthSchemeConstants.Application)
                 .AddCookie(options =>

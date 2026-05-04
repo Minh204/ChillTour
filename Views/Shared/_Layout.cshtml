@@ -128,11 +128,38 @@
             </div>
         </div>
     </footer>
-    <div class="floating-contact-stack" aria-label="Liên hệ nhanh">
-        <a class="floating-zalo-link" href="https://id.zalo.me/" target="_blank" rel="noopener noreferrer" aria-label="Mở Zalo">
-            <span>Zalo</span>
-        </a>
+    <div class="floating-contact-stack" data-floating-chat aria-label="Liên hệ nhanh">
+        <div class="floating-contact-options" data-floating-chat-options>
+            <a class="floating-zalo-link floating-contact-option" href="https://id.zalo.me/" target="_blank" rel="noopener noreferrer" aria-label="Mở Zalo">
+                <span>Zalo</span>
+            </a>
+            <button type="button" class="floating-ai-link floating-contact-option" data-chatbot-open aria-label="Mở chatbot ChillTour">
+                <span>AI</span>
+            </button>
+        </div>
+        <button type="button" class="floating-chat-toggle" data-floating-chat-toggle aria-expanded="false" aria-label="Mở liên hệ nhanh">
+            <span>Chat</span>
+        </button>
     </div>
+
+    <section class="chatbot-widget" data-chatbot-widget aria-live="polite" aria-hidden="true">
+        <div class="chatbot-widget__head">
+            <div>
+                <span>ChillTour AI</span>
+                <strong>Tư vấn tour nhanh</strong>
+            </div>
+            <button type="button" data-chatbot-close aria-label="Đóng chatbot">×</button>
+        </div>
+        <div class="chatbot-widget__messages" data-chatbot-messages>
+            <div class="chatbot-message chatbot-message--bot">
+                Xin chào, tôi có thể tư vấn tour theo điểm đến, ngày đi, số người và ngân sách. Bạn muốn đi đâu?
+            </div>
+        </div>
+        <form class="chatbot-widget__form" data-chatbot-form>
+            <input type="text" data-chatbot-input maxlength="600" placeholder="Nhập nhu cầu của bạn..." autocomplete="off" />
+            <button type="submit">Gửi</button>
+        </form>
+    </section>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
