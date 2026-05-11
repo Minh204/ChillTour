@@ -585,7 +585,15 @@ public class PaymentsController : Controller
 
         if (promotion.MaxUsageCount.HasValue)
         {
-            var usageCount = await _dbContext.Bookings.CountAsync(x => x.PromotionId == promotion.PromotionId, cancellationToken);
+            var usageCount = await _dbContext.Bookings.CountAsync(
+                x => x.PromotionId == promotion.PromotionId
+                     && (x.PaidAmount > 0m
+                         || x.PaymentStatus == PaymentDepositPaid
+                         || x.PaymentStatus == PaymentFullyPaid
+                         || (x.PaymentStatus == PaymentPendingVerification
+                             && (x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification)
+                             && x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference)))),
+                cancellationToken);
             if (usageCount >= promotion.MaxUsageCount.Value)
             {
                 return "Mã ưu đãi đã hết lượt sử dụng.";
@@ -595,7 +603,14 @@ public class PaymentsController : Controller
         if (promotion.MaxUsagePerUser.HasValue)
         {
             var userUsageCount = await _dbContext.Bookings.CountAsync(
-                x => x.PromotionId == promotion.PromotionId && x.UserId == userId,
+                x => x.PromotionId == promotion.PromotionId
+                     && x.UserId == userId
+                     && (x.PaidAmount > 0m
+                         || x.PaymentStatus == PaymentDepositPaid
+                         || x.PaymentStatus == PaymentFullyPaid
+                         || (x.PaymentStatus == PaymentPendingVerification
+                             && (x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification)
+                             && x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference)))),
                 cancellationToken);
 
             if (userUsageCount >= promotion.MaxUsagePerUser.Value)

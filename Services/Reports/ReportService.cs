@@ -46,6 +46,7 @@ public sealed class ReportService : IReportService
 
     private const byte BookingCancelled = 4;
     private const byte BookingRefunded = 5;
+    private const byte BookingPendingDepositVerification = 1;
     private const byte BookingDepositPaid = 2;
     private const byte BookingConfirmed = 3;
     private const byte BookingPendingFullPayment = 6;
@@ -232,7 +233,14 @@ public sealed class ReportService : IReportService
         var currentUserId = GetCurrentUserId(user);
 
         var bookings = _dbContext.Bookings.AsNoTracking()
-            .Where(x => x.CreatedAt >= normalized.FromUtc && x.CreatedAt < normalized.ToUtcExclusive);
+            .Where(x => x.CreatedAt >= normalized.FromUtc
+                        && x.CreatedAt < normalized.ToUtcExclusive
+                        && (x.PaidAmount > 0m
+                            || x.PaymentStatus == PaymentDepositPaid
+                            || x.PaymentStatus == PaymentFullyPaid
+                            || (x.PaymentStatus == PaymentPendingVerification
+                                && (x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification)
+                                && x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference)))));
 
         if (isEmployeeOnly)
         {
@@ -493,10 +501,17 @@ public sealed class ReportService : IReportService
                 TourId = x.TourId,
                 TourName = x.TourName,
                 TourCode = x.TourCode,
-                BookingCount = x.Bookings.Count(b => b.CreatedAt >= normalized.FromUtc && b.CreatedAt < normalized.ToUtcExclusive),
-                Revenue = x.Bookings.Where(b => b.CreatedAt >= normalized.FromUtc && b.CreatedAt < normalized.ToUtcExclusive).Sum(b => b.PaidAmount),
+                BookingCount = x.Bookings.Count(b => b.CreatedAt >= normalized.FromUtc
+                    && b.CreatedAt < normalized.ToUtcExclusive
+                    && (b.PaidAmount > 0m || b.PaymentStatus == PaymentDepositPaid || b.PaymentStatus == PaymentFullyPaid || (b.PaymentStatus == PaymentPendingVerification && (b.BookingStatus == BookingPendingDepositVerification || b.BookingStatus == BookingPendingFullPaymentVerification) && b.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference))))),
+                Revenue = x.Bookings.Where(b => b.CreatedAt >= normalized.FromUtc
+                    && b.CreatedAt < normalized.ToUtcExclusive
+                    && (b.PaidAmount > 0m || b.PaymentStatus == PaymentDepositPaid || b.PaymentStatus == PaymentFullyPaid || (b.PaymentStatus == PaymentPendingVerification && (b.BookingStatus == BookingPendingDepositVerification || b.BookingStatus == BookingPendingFullPaymentVerification) && b.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference))))).Sum(b => b.PaidAmount),
                 Rating = x.Reviews.Where(r => r.ModerationStatus == 1).Average(r => (decimal?)r.Rating) ?? 0m,
-                CancelledBookings = x.Bookings.Count(b => b.CreatedAt >= normalized.FromUtc && b.CreatedAt < normalized.ToUtcExclusive && (b.BookingStatus == BookingCancelled || b.BookingStatus == BookingRefunded)),
+                CancelledBookings = x.Bookings.Count(b => b.CreatedAt >= normalized.FromUtc
+                    && b.CreatedAt < normalized.ToUtcExclusive
+                    && (b.PaidAmount > 0m || b.PaymentStatus == PaymentDepositPaid || b.PaymentStatus == PaymentFullyPaid || (b.PaymentStatus == PaymentPendingVerification && (b.BookingStatus == BookingPendingDepositVerification || b.BookingStatus == BookingPendingFullPaymentVerification) && b.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference))))
+                    && (b.BookingStatus == BookingCancelled || b.BookingStatus == BookingRefunded)),
                 FillRate = x.Schedules.Sum(s => s.TotalSeats) <= 0
                     ? 0m
                     : decimal.Round(x.Schedules.Sum(s => s.ReservedSeats) * 100m / x.Schedules.Sum(s => s.TotalSeats), 1)

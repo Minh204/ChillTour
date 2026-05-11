@@ -50,12 +50,9 @@
                     <div class="d-flex align-items-center gap-2">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            <a class="mailbox-link" asp-controller="Account" asp-action="Inbox" aria-label="Hộp thư">
+                            <a class="mailbox-link" asp-controller="Account" asp-action="Inbox" aria-label="Hộp thư" data-notification-link data-notification-count="@unreadNotificationCount">
                                 <span class="mailbox-link__icon">&#9993;</span>
-                                @if (unreadNotificationCount > 0)
-                                {
-                                    <span class="mailbox-link__badge">@unreadNotificationCount</span>
-                                }
+                                <span class="mailbox-link__badge @(unreadNotificationCount > 0 ? string.Empty : "is-hidden")" data-notification-badge>@unreadNotificationCount</span>
                             </a>
                             @if (User.IsInRole(RoleConstants.Customer))
                             {
@@ -162,6 +159,10 @@
     </section>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@@8.0.8/dist/browser/signalr.min.js"></script>
+    }
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

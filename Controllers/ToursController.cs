@@ -517,9 +517,11 @@ public class ToursController : Controller
 
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
 
+        var today = DateOnly.FromDateTime(DateTime.Today);
         var duplicatedBookingExists = await _dbContext.Bookings.AnyAsync(
             x => x.UserId == userId
                  && x.TourId == form.TourId
+                 && x.TourSchedule.DepartureDate >= today
                  && x.BookingStatus != 4
                  && x.BookingStatus != 5
                  && (x.PaymentStatus == 1 || x.PaymentStatus == 2 || x.PaymentStatus == 3),
@@ -550,7 +552,6 @@ public class ToursController : Controller
             return RedirectToAction(nameof(Details), new { slug = tour.Slug });
         }
 
-        var today = DateOnly.FromDateTime(DateTime.Today);
         if (schedule.DepartureDate < today)
         {
             TempData["TourErrorMessage"] = "Ngày khởi hành này đã qua, vui lòng chọn lịch khởi hành mới hơn.";

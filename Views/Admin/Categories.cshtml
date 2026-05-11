@@ -48,7 +48,7 @@
                         <th>Mã</th>
                         <th>Tên danh mục</th>
                         <th>Thứ tự</th>
-                        <th>Tour đang dùng</th>
+                        <th>Đang sử dụng</th>
                         <th>Trạng thái</th>
                         <th>Hành động</th>
                     </tr>
@@ -68,14 +68,29 @@
                                 <td><strong>@item.CategoryCode</strong></td>
                                 <td>@item.CategoryName</td>
                                 <td>@item.DisplayOrder</td>
-                                <td>@item.TourCount</td>
+                                <td>
+                                    <div>@item.TourCount tour</div>
+                                    @if (item.ChildCategoryCount > 0)
+                                    {
+                                        <small class="text-muted">@item.ChildCategoryCount danh mục con</small>
+                                    }
+                                </td>
                                 <td>
                                     <span class="status-pill @(item.IsActive ? "status-pill--success" : "status-pill--danger")">
                                         @(item.IsActive ? "Đang dùng" : "Ngừng dùng")
                                     </span>
                                 </td>
                                 <td>
-                                    <a asp-action="EditCategory" asp-route-id="@item.CategoryId" class="btn btn-outline-primary btn-sm">Sửa</a>
+                                    <div class="admin-row-actions">
+                                        <a asp-action="EditCategory" asp-route-id="@item.CategoryId" class="btn btn-outline-primary btn-sm">Sửa</a>
+                                        <form asp-action="DeleteCategory" asp-route-id="@item.CategoryId" method="post" class="d-inline"
+                                              onsubmit="return confirm('@(item.IsInUse ? "Danh mục này đang được sử dụng nên hệ thống sẽ chỉ vô hiệu hóa. Bạn muốn tiếp tục?" : "Danh mục này chưa được sử dụng và sẽ bị xóa vĩnh viễn. Bạn muốn tiếp tục?")');">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                @(item.IsInUse ? "Vô hiệu hóa" : "Xóa")
+                                            </button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                         }

@@ -67,11 +67,11 @@ public class AccountController : Controller
         var result = await _authService.RegisterAsync(model, cancellationToken);
         if (!result.Succeeded)
         {
-            ModelState.AddModelError(string.Empty, result.Error ?? "ÄÄƒng kÃ½ tháº¥t báº¡i.");
+            ModelState.AddModelError(string.Empty, result.Error ?? "Đăng ký thất bại");
             return View(model);
         }
 
-        TempData["SuccessMessage"] = "ÄÄƒng kÃ½ thÃ nh cÃ´ng. Báº¡n cÃ³ thá»ƒ Ä‘Äƒng nháº­p ngay.";
+        TempData["SuccessMessage"] = "Đăng ký thành công, hãy đăng nhập tài khoản.";
         return RedirectToAction(nameof(Login));
     }
 
@@ -176,7 +176,7 @@ public class AccountController : Controller
         var result = await _authService.LoginAsync(model, cancellationToken);
         if (!result.Succeeded || result.User is null)
         {
-            ModelState.AddModelError(string.Empty, result.Error ?? "ÄÄƒng nháº­p tháº¥t báº¡i.");
+            ModelState.AddModelError(string.Empty, result.Error ?? "Đăng nhập thất bại.");
             return View(model);
         }
         return await RedirectToSignedInDestinationAsync(result, model.RememberMe, model.ReturnUrl);
@@ -703,7 +703,7 @@ public class AccountController : Controller
         user.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-        TempData["ProfileSuccessMessage"] = "ÄÃ£ cáº­p nháº­t thÃ´ng tin tÃ i khoáº£n.";
+        TempData["ProfileSuccessMessage"] = "Đã cập nhật thông tin tài khoản.";
         return RedirectToAction(nameof(Profile));
     }
 
@@ -720,7 +720,7 @@ public class AccountController : Controller
 
         if (!_passwordHasher.VerifyPassword(changePassword.CurrentPassword, user.PasswordHash, user.PasswordSalt))
         {
-            ModelState.AddModelError("ChangePassword.CurrentPassword", "Máº­t kháº©u hiá»‡n táº¡i khÃ´ng Ä‘Ãºng.");
+            ModelState.AddModelError("ChangePassword.CurrentPassword", "Mật khẩu hiện tại không đúng.");
         }
 
         if (!ModelState.IsValid)
@@ -742,7 +742,7 @@ public class AccountController : Controller
         user.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-        TempData["ProfileSuccessMessage"] = "Äá»•i máº­t kháº©u thÃ nh cÃ´ng.";
+        TempData["ProfileSuccessMessage"] = "Đổi mật khẩu thành công.";
         return RedirectToAction(nameof(Profile));
     }
 

@@ -8,4 +8,6 @@ public class AdminCategoryItemViewModel
     public int DisplayOrder { get; set; }
     public bool IsActive { get; set; }
     public int TourCount { get; set; }
+    public int ChildCategoryCount { get; set; }
+    public bool IsInUse => TourCount > 0 || ChildCategoryCount > 0;
 }

@@ -7,6 +7,7 @@ using ChillTour.Security;
 using ChillTour.Services.Reports;
 using ChillTour.Services.Contracts;
 using ChillTour.Services.Chatbot;
+using ChillTour.Hubs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using QuestPDF.Infrastructure;
@@ -23,6 +24,7 @@ namespace ChillTour
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
+            builder.Services.AddSignalR();
             builder.Services.AddDbContext<ChillTourDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
             builder.Services.Configure<VnPayOptions>(builder.Configuration.GetSection(VnPayOptions.SectionName));
@@ -118,6 +120,7 @@ namespace ChillTour
             app.MapControllerRoute(
                 name: "default",
                 pattern: "{controller=Home}/{action=Index}/{id?}");
+            app.MapHub<NotificationHub>("/hubs/notifications");
 
             app.Run();
         }

@@ -75,10 +75,10 @@ public class AdminController : Controller
 
         var totalUsers = await _dbContext.Users.AsNoTracking().CountAsync(cancellationToken);
         var newUsersThisWeek = await _dbContext.Users.AsNoTracking().CountAsync(x => x.CreatedAt >= startOfWeek, cancellationToken);
-        var totalBookings = await _dbContext.Bookings.AsNoTracking().CountAsync(cancellationToken);
-        var pendingBookings = await _dbContext.Bookings.AsNoTracking().CountAsync(x => x.BookingStatus == BookingPendingPayment || x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification || x.BookingStatus == BookingRefundRequested || x.BookingStatus == BookingPendingRefund, cancellationToken);
-        var confirmedBookings = await _dbContext.Bookings.AsNoTracking().CountAsync(x => x.BookingStatus == BookingConfirmed || x.BookingStatus == BookingFullyPaid, cancellationToken);
-        var cancelledBookings = await _dbContext.Bookings.AsNoTracking().CountAsync(x => x.BookingStatus == BookingCancelled || x.BookingStatus == BookingRefunded || x.BookingStatus == BookingRefundRequested || x.BookingStatus == BookingPendingRefund, cancellationToken);
+        var totalBookings = await _dbContext.Bookings.AsNoTracking().CountAsync(x => x.PaidAmount > 0m || x.PaymentStatus == PaymentDepositPaid || x.PaymentStatus == PaymentFullyPaid || (x.PaymentStatus == PaymentPendingVerification && (x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification) && x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference))), cancellationToken);
+        var pendingBookings = await _dbContext.Bookings.AsNoTracking().CountAsync(x => (x.PaidAmount > 0m || x.PaymentStatus == PaymentDepositPaid || x.PaymentStatus == PaymentFullyPaid || (x.PaymentStatus == PaymentPendingVerification && (x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification) && x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference)))) && (x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification || x.BookingStatus == BookingRefundRequested || x.BookingStatus == BookingPendingRefund), cancellationToken);
+        var confirmedBookings = await _dbContext.Bookings.AsNoTracking().CountAsync(x => (x.PaidAmount > 0m || x.PaymentStatus == PaymentDepositPaid || x.PaymentStatus == PaymentFullyPaid || (x.PaymentStatus == PaymentPendingVerification && (x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification) && x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference)))) && (x.BookingStatus == BookingConfirmed || x.BookingStatus == BookingFullyPaid), cancellationToken);
+        var cancelledBookings = await _dbContext.Bookings.AsNoTracking().CountAsync(x => (x.PaidAmount > 0m || x.PaymentStatus == PaymentDepositPaid || x.PaymentStatus == PaymentFullyPaid || (x.PaymentStatus == PaymentPendingVerification && (x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification) && x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference)))) && (x.BookingStatus == BookingCancelled || x.BookingStatus == BookingRefunded || x.BookingStatus == BookingRefundRequested || x.BookingStatus == BookingPendingRefund), cancellationToken);
         var paidBookings = await _dbContext.Bookings.AsNoTracking().CountAsync(x => x.PaymentStatus == PaymentDepositPaid || x.PaymentStatus == PaymentFullyPaid, cancellationToken);
         var publishedTours = await _dbContext.Tours.AsNoTracking().CountAsync(x => x.IsPublished, cancellationToken);
         var upcomingSchedules = await _dbContext.TourSchedules.AsNoTracking().CountAsync(x => x.DepartureDate >= todayOnly && x.Status == 1, cancellationToken);
@@ -94,7 +94,7 @@ public class AdminController : Controller
             var startOfYear = new DateTime(today.Year, 1, 1);
             var bookingMetrics = await _dbContext.Bookings
                 .AsNoTracking()
-                .Where(x => x.CreatedAt >= startOfYear && x.CreatedAt < tomorrow)
+                .Where(x => x.CreatedAt >= startOfYear && x.CreatedAt < tomorrow && (x.PaidAmount > 0m || x.PaymentStatus == PaymentDepositPaid || x.PaymentStatus == PaymentFullyPaid || (x.PaymentStatus == PaymentPendingVerification && (x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification) && x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference)))))
                 .GroupBy(x => new { x.CreatedAt.Year, x.CreatedAt.Month })
                 .Select(x => new { x.Key.Year, x.Key.Month, BookingCount = x.Count() })
                 .ToListAsync(cancellationToken);
@@ -133,7 +133,7 @@ public class AdminController : Controller
             var totalDays = (today.Date - metricStart.Date).Days + 1;
             var bookingMetrics = await _dbContext.Bookings
                 .AsNoTracking()
-                .Where(x => x.CreatedAt >= metricStart && x.CreatedAt < tomorrow)
+                .Where(x => x.CreatedAt >= metricStart && x.CreatedAt < tomorrow && (x.PaidAmount > 0m || x.PaymentStatus == PaymentDepositPaid || x.PaymentStatus == PaymentFullyPaid || (x.PaymentStatus == PaymentPendingVerification && (x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification) && x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference)))))
                 .GroupBy(x => x.CreatedAt.Date)
                 .Select(x => new { Date = x.Key, BookingCount = x.Count() })
                 .ToListAsync(cancellationToken);
@@ -180,6 +180,7 @@ public class AdminController : Controller
             .Include(x => x.User)
             .Include(x => x.Tour)
             .Include(x => x.TourSchedule)
+            .Where(x => x.PaidAmount > 0m || x.PaymentStatus == PaymentDepositPaid || x.PaymentStatus == PaymentFullyPaid || (x.PaymentStatus == PaymentPendingVerification && (x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification) && x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference))))
             .OrderByDescending(x => x.CreatedAt)
             .Take(6)
             .Select(x => new AdminDashboardRecentBookingViewModel
@@ -197,14 +198,14 @@ public class AdminController : Controller
 
         var topTours = await _dbContext.Tours
             .AsNoTracking()
-            .Where(x => x.Bookings.Any())
-            .OrderByDescending(x => x.Bookings.Count)
-            .ThenByDescending(x => x.Bookings.Sum(b => b.TotalAmount))
+            .Where(x => x.Bookings.Any(b => b.PaidAmount > 0m || b.PaymentStatus == PaymentDepositPaid || b.PaymentStatus == PaymentFullyPaid || (b.PaymentStatus == PaymentPendingVerification && (b.BookingStatus == BookingPendingDepositVerification || b.BookingStatus == BookingPendingFullPaymentVerification) && b.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference)))))
+            .OrderByDescending(x => x.Bookings.Count(b => b.PaidAmount > 0m || b.PaymentStatus == PaymentDepositPaid || b.PaymentStatus == PaymentFullyPaid || (b.PaymentStatus == PaymentPendingVerification && (b.BookingStatus == BookingPendingDepositVerification || b.BookingStatus == BookingPendingFullPaymentVerification) && b.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference)))))
+            .ThenByDescending(x => x.Bookings.Where(b => b.PaidAmount > 0m || b.PaymentStatus == PaymentDepositPaid || b.PaymentStatus == PaymentFullyPaid || (b.PaymentStatus == PaymentPendingVerification && (b.BookingStatus == BookingPendingDepositVerification || b.BookingStatus == BookingPendingFullPaymentVerification) && b.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference)))).Sum(b => b.TotalAmount))
             .Take(5)
             .Select(x => new AdminDashboardTopTourViewModel
             {
                 TourName = x.TourName,
-                BookingCount = x.Bookings.Count,
+                BookingCount = x.Bookings.Count(b => b.PaidAmount > 0m || b.PaymentStatus == PaymentDepositPaid || b.PaymentStatus == PaymentFullyPaid || (b.PaymentStatus == PaymentPendingVerification && (b.BookingStatus == BookingPendingDepositVerification || b.BookingStatus == BookingPendingFullPaymentVerification) && b.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference)))),
                 Revenue = x.Bookings.Where(b => b.PaymentStatus == PaymentDepositPaid || b.PaymentStatus == PaymentFullyPaid).Sum(b => b.TotalAmount),
                 Rating = x.Reviews.Where(r => r.ModerationStatus == 1).Average(r => (decimal?)r.Rating) ?? 0m,
                 ReviewCount = x.Reviews.Count(r => r.ModerationStatus == 1)
@@ -570,6 +571,12 @@ public class AdminController : Controller
             .Include(x => x.Payments)
             .Include(x => x.StatusHistory)
             .ThenInclude(x => x.ChangedByUser)
+            .Where(x => x.PaidAmount > 0m
+                        || x.PaymentStatus == PaymentDepositPaid
+                        || x.PaymentStatus == PaymentFullyPaid
+                        || (x.PaymentStatus == PaymentPendingVerification
+                            && (x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification)
+                            && x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference))))
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
@@ -677,6 +684,12 @@ public class AdminController : Controller
 
         var statusCounts = await _dbContext.Bookings
             .AsNoTracking()
+            .Where(x => x.PaidAmount > 0m
+                        || x.PaymentStatus == PaymentDepositPaid
+                        || x.PaymentStatus == PaymentFullyPaid
+                        || (x.PaymentStatus == PaymentPendingVerification
+                            && (x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification)
+                            && x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference))))
             .GroupBy(x => 1)
             .Select(x => new
             {
@@ -1203,7 +1216,8 @@ public class AdminController : Controller
                 CategoryName = x.CategoryName,
                 DisplayOrder = x.DisplayOrder,
                 IsActive = x.IsActive,
-                TourCount = x.Tours.Count
+                TourCount = x.Tours.Count,
+                ChildCategoryCount = x.Children.Count
             })
             .ToListAsync(cancellationToken);
 
@@ -1322,6 +1336,43 @@ public class AdminController : Controller
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         TempData["AdminSuccessMessage"] = "Đã cập nhật danh mục.";
+        return RedirectToAction(nameof(Categories));
+    }
+
+    [Authorize(Policy = PermissionConstants.ManageTours)]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteCategory(int id, CancellationToken cancellationToken)
+    {
+        var category = await _dbContext.Categories.SingleOrDefaultAsync(x => x.CategoryId == id, cancellationToken);
+        if (category is null)
+        {
+            TempData["AdminErrorMessage"] = "Không tìm thấy danh mục.";
+            return RedirectToAction(nameof(Categories));
+        }
+
+        var isUsedByTour = await _dbContext.Tours.AnyAsync(x => x.CategoryId == id, cancellationToken);
+        var isUsedByChildCategory = await _dbContext.Categories.AnyAsync(x => x.ParentCategoryId == id, cancellationToken);
+        if (isUsedByTour || isUsedByChildCategory)
+        {
+            if (category.IsActive)
+            {
+                category.IsActive = false;
+                category.UpdatedAt = DateTime.UtcNow;
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                TempData["AdminSuccessMessage"] = "Danh mục đang được sử dụng nên hệ thống đã vô hiệu hóa thay vì xóa.";
+            }
+            else
+            {
+                TempData["AdminSuccessMessage"] = "Danh mục đang được sử dụng và đã ở trạng thái vô hiệu hóa.";
+            }
+
+            return RedirectToAction(nameof(Categories));
+        }
+
+        _dbContext.Categories.Remove(category);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        TempData["AdminSuccessMessage"] = "Đã xóa danh mục vì chưa được sử dụng ở bất kỳ đâu.";
         return RedirectToAction(nameof(Categories));
     }
 
