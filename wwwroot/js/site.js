@@ -142,6 +142,97 @@ document.addEventListener("DOMContentLoaded", function () {
 
     startNotificationHub();
 
+    const wishlistNav = document.querySelector("[data-wishlist-nav]");
+    const wishlistBadge = document.querySelector("[data-wishlist-badge]");
+    let currentWishlistCount = Number(wishlistNav?.dataset.wishlistCount || wishlistBadge?.textContent || 0);
+
+    const updateWishlistBadge = (count) => {
+        currentWishlistCount = Math.max(0, Number(count) || 0);
+        if (!wishlistBadge) {
+            return;
+        }
+
+        wishlistBadge.textContent = String(currentWishlistCount);
+        wishlistBadge.classList.toggle("is-hidden", currentWishlistCount <= 0);
+        wishlistBadge.classList.remove("is-bumping");
+        void wishlistBadge.offsetWidth;
+        wishlistBadge.classList.add("is-bumping");
+    };
+
+    const showWishlistToast = (message, isSuccess = true) => {
+        const stack = ensureToastStack();
+        const toast = document.createElement("div");
+        toast.className = `notification-toast wishlist-toast ${isSuccess ? "wishlist-toast--success" : "wishlist-toast--error"}`;
+        toast.innerHTML = `
+            <strong>${isSuccess ? "Danh sách yêu thích" : "Không thể cập nhật"}</strong>
+            <p>${escapeHtml(message || "Đã cập nhật danh sách yêu thích.")}</p>
+            <a href="/Account/Wishlist">Xem yêu thích</a>
+        `;
+
+        stack.prepend(toast);
+        window.setTimeout(() => toast.classList.add("is-visible"), 20);
+        window.setTimeout(() => {
+            toast.classList.remove("is-visible");
+            window.setTimeout(() => toast.remove(), 220);
+        }, 4200);
+    };
+
+    const setWishlistButtonState = (button, isWishlisted) => {
+        if (!button) {
+            return;
+        }
+
+        button.classList.toggle("is-active", isWishlisted);
+        button.setAttribute("aria-label", isWishlisted ? "Bỏ lưu tour" : "Lưu tour yêu thích");
+
+        if (button.hasAttribute("data-wishlist-label-button")) {
+            button.textContent = isWishlisted ? "Đã lưu yêu thích" : "Lưu vào yêu thích";
+            button.classList.toggle("btn-primary", isWishlisted);
+            button.classList.toggle("btn-outline-primary", !isWishlisted);
+            return;
+        }
+
+        button.textContent = isWishlisted ? "♥" : "♡";
+    };
+
+    document.querySelectorAll("[data-wishlist-form]").forEach((form) => {
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const button = form.querySelector("[data-wishlist-button]");
+            const tourId = form.getAttribute("data-tour-id");
+            button?.setAttribute("disabled", "disabled");
+
+            try {
+                const response = await fetch(form.action, {
+                    method: "POST",
+                    headers: {
+                        "Accept": "application/json",
+                        "X-Requested-With": "XMLHttpRequest"
+                    },
+                    body: new FormData(form)
+                });
+
+                if (!response.ok) {
+                    throw new Error("Wishlist request failed");
+                }
+
+                const result = await response.json();
+                const relatedButtons = tourId
+                    ? Array.from(document.querySelectorAll("[data-wishlist-button]")).filter((item) => item.getAttribute("data-tour-id") === tourId)
+                    : [button];
+
+                relatedButtons.forEach((item) => setWishlistButtonState(item, Boolean(result.isWishlisted)));
+                updateWishlistBadge(result.wishlistCount);
+                showWishlistToast(result.message, true);
+            } catch {
+                showWishlistToast("Chưa thể cập nhật yêu thích. Vui lòng thử lại.", false);
+            } finally {
+                button?.removeAttribute("disabled");
+            }
+        });
+    });
+
     const floatingChat = document.querySelector("[data-floating-chat]");
     const floatingChatToggle = document.querySelector("[data-floating-chat-toggle]");
     const chatbotWidget = document.querySelector("[data-chatbot-widget]");

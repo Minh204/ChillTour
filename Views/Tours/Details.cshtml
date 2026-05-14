@@ -7,6 +7,7 @@
     var heroImage = Model.ImageUrls.FirstOrDefault();
     var openSchedules = Model.Schedules.Where(x => x.IsOpenForBooking).ToList();
     var hasLongDescription = !string.IsNullOrWhiteSpace(Model.Description) && Model.Description.Length > 320;
+    var currentReturnUrl = Context.Request.Path + Context.Request.QueryString;
 }
 
 @section Styles {
@@ -43,6 +44,23 @@
             {
                 <p class="tour-program-summary">@Model.ShortDescription</p>
             }
+
+            <div class="tour-program-actions">
+                @if (User.Identity?.IsAuthenticated == true && User.IsInRole("Customer"))
+                {
+                    <form asp-controller="Tours" asp-action="ToggleWishlist" asp-route-tourId="@Model.TourId" method="post" class="tour-wishlist-form" data-wishlist-form data-tour-id="@Model.TourId">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="returnUrl" value="@currentReturnUrl" />
+                        <button type="submit" class="btn @(Model.IsWishlisted ? "btn-primary" : "btn-outline-primary")" data-wishlist-button data-wishlist-label-button data-tour-id="@Model.TourId">
+                            @(Model.IsWishlisted ? "Đã lưu yêu thích" : "Lưu vào yêu thích")
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="@currentReturnUrl" class="btn btn-outline-primary">Đăng nhập để lưu tour</a>
+                }
+            </div>
 
             <div class="tour-program-facts">
                 <div><span>Thời gian</span><strong>@Model.DurationDays ngày @Model.DurationNights đêm</strong></div>

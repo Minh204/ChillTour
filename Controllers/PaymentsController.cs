@@ -7,7 +7,10 @@ using ChillTour.Services.Payments;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using System.Globalization;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 
 namespace ChillTour.Controllers;
 
@@ -34,15 +37,18 @@ public class PaymentsController : Controller
     private readonly ChillTourDbContext _dbContext;
     private readonly IVnPayService _vnPayService;
     private readonly INotificationService _notificationService;
+    private readonly SePayOptions _sePayOptions;
 
     public PaymentsController(
         ChillTourDbContext dbContext,
         IVnPayService vnPayService,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        IOptions<SePayOptions> sePayOptions)
     {
         _dbContext = dbContext;
         _vnPayService = vnPayService;
         _notificationService = notificationService;
+        _sePayOptions = sePayOptions.Value;
     }
 
     [Authorize(Roles = RoleConstants.Customer)]
@@ -112,6 +118,9 @@ public class PaymentsController : Controller
             CanPay = canPay,
             CanCancelPendingBooking = canCancelPendingBooking,
             PaymentCode = latestPayment?.PaymentCode ?? string.Empty,
+            BankName = _sePayOptions.BankName,
+            BankAccountNo = _sePayOptions.AccountNumber,
+            BankAccountName = _sePayOptions.AccountName,
             AppliedPromotionCode = booking.Promotion?.PromotionCode,
             AppliedPromotionName = booking.Promotion?.PromotionName,
             AvailablePromotions = await _dbContext.UserPromotions
@@ -339,47 +348,161 @@ public class PaymentsController : Controller
             return RedirectToAction(nameof(Checkout), new { bookingId });
         }
 
-        var pendingPayment = booking.Payments
-            .OrderByDescending(x => x.CreatedAt)
-            .FirstOrDefault(x => x.PaymentGateway == "VNPay" && x.PaymentStatus == PaymentPending && x.TransactionReference == null);
-
-        if (pendingPayment is null)
+        foreach (var stalePayment in booking.Payments
+                     .Where(x => x.PaymentGateway == "VNPay"
+                                 && x.PaymentStatus == PaymentPending
+                                 && x.TransactionReference == null))
         {
-            pendingPayment = new Payment
-            {
-                BookingId = booking.BookingId,
-                PaymentCode = await GeneratePaymentCodeAsync(cancellationToken),
-                PaymentMethod = 1,
-                PaymentGateway = "VNPay",
-                Amount = paymentAmount,
-                CurrencyCode = booking.CurrencyCode,
-                PaymentStatus = PaymentPending,
-                CreatedAt = DateTime.UtcNow
-            };
+            stalePayment.PaymentStatus = PaymentFailed;
+            stalePayment.FailureReason = "Đã tạo giao dịch VNPay mới thay thế giao dịch chưa hoàn tất.";
+            stalePayment.UpdatedAt = DateTime.UtcNow;
+        }
 
-            _dbContext.Payments.Add(pendingPayment);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-        }
-        else
+        var pendingPayment = new Payment
         {
-            pendingPayment.Amount = paymentAmount;
-            pendingPayment.FailureReason = null;
-            pendingPayment.UpdatedAt = DateTime.UtcNow;
-            await _dbContext.SaveChangesAsync(cancellationToken);
-        }
+            BookingId = booking.BookingId,
+            PaymentCode = await GeneratePaymentCodeAsync(cancellationToken),
+            PaymentMethod = 1,
+            PaymentGateway = "VNPay",
+            Amount = paymentAmount,
+            CurrencyCode = booking.CurrencyCode,
+            PaymentStatus = PaymentPending,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _dbContext.Payments.Add(pendingPayment);
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         var paymentUrl = _vnPayService.CreatePaymentUrl(new VnPayRequest
         {
-            TxnRef = pendingPayment.PaymentCode,
+            TxnRef = pendingPayment.PaymentCode.Replace("PAY", string.Empty, StringComparison.OrdinalIgnoreCase),
             Amount = pendingPayment.Amount,
             OrderInfo = paymentMode == FullPaymentMode
                 ? $"Thanh toan toan bo don {booking.BookingCode}"
                 : $"Thanh toan coc don {booking.BookingCode}",
-            IpAddress = GetClientIpAddress(),
-            CreatedAtLocal = DateTime.Now
+            IpAddress = GetClientIpAddress()
         });
 
         return Redirect(paymentUrl);
+    }
+
+    [Authorize(Roles = RoleConstants.Customer)]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> StartSePay(long bookingId, string paymentMode, CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue)
+        {
+            return Challenge();
+        }
+
+        var booking = await _dbContext.Bookings
+            .Include(x => x.Payments)
+            .SingleOrDefaultAsync(x => x.BookingId == bookingId && x.UserId == userId.Value, cancellationToken);
+
+        if (booking is null)
+        {
+            return NotFound();
+        }
+
+        NormalizeBookingPaidAmount(booking);
+        var remainingAmount = CalculateRemainingAmount(booking);
+        if (booking.PaymentStatus == PaymentPendingVerification)
+        {
+            TempData["PaymentInfoMessage"] = "Đơn này đang chờ Accountant xác nhận giao dịch. Bạn chưa cần thanh toán thêm.";
+            return RedirectToAction(nameof(Checkout), new { bookingId });
+        }
+
+        if (remainingAmount <= 0m || booking.PaymentStatus == PaymentFullyPaid)
+        {
+            TempData["PaymentInfoMessage"] = "Đơn này đã được thanh toán toàn bộ.";
+            return RedirectToAction(nameof(Checkout), new { bookingId });
+        }
+
+        var mustPayFull = MustPayFull(booking);
+        paymentMode = mustPayFull ? FullPaymentMode : NormalizePaymentMode(paymentMode);
+        if (paymentMode == DepositPaymentMode && booking.PaidAmount > 0m)
+        {
+            TempData["PaymentErrorMessage"] = "Đơn đã thanh toán cọc. Bạn chỉ có thể thanh toán toàn bộ phần còn lại.";
+            return RedirectToAction(nameof(Checkout), new { bookingId });
+        }
+
+        var paymentAmount = paymentMode == FullPaymentMode
+            ? remainingAmount
+            : Math.Min(CalculateDepositAmount(booking), remainingAmount);
+
+        if (paymentAmount <= 0m)
+        {
+            TempData["PaymentErrorMessage"] = "Số tiền thanh toán không hợp lệ.";
+            return RedirectToAction(nameof(Checkout), new { bookingId });
+        }
+
+        foreach (var stalePayment in booking.Payments
+                     .Where(x => x.PaymentGateway == "SePay"
+                                 && x.PaymentStatus == PaymentPending
+                                 && string.IsNullOrWhiteSpace(x.TransactionReference)))
+        {
+            stalePayment.PaymentStatus = PaymentFailed;
+            stalePayment.FailureReason = "Đã tạo giao dịch SePay mới thay thế giao dịch chưa hoàn tất.";
+            stalePayment.UpdatedAt = DateTime.UtcNow;
+        }
+
+        var pendingPayment = new Payment
+        {
+            BookingId = booking.BookingId,
+            PaymentCode = await GeneratePaymentCodeAsync(cancellationToken),
+            PaymentMethod = 2,
+            PaymentGateway = "SePay",
+            Amount = paymentAmount,
+            CurrencyCode = booking.CurrencyCode,
+            PaymentStatus = PaymentPending,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _dbContext.Payments.Add(pendingPayment);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return RedirectToAction(nameof(SePayPayment), new { paymentId = pendingPayment.PaymentId });
+    }
+
+    [Authorize(Roles = RoleConstants.Customer)]
+    [HttpGet]
+    public async Task<IActionResult> SePayPayment(long paymentId, CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue)
+        {
+            return Challenge();
+        }
+
+        var payment = await _dbContext.Payments
+            .Include(x => x.Booking)
+            .ThenInclude(x => x.Tour)
+            .SingleOrDefaultAsync(x => x.PaymentId == paymentId
+                                       && x.PaymentGateway == "SePay"
+                                       && x.Booking.UserId == userId.Value,
+                cancellationToken);
+
+        if (payment is null)
+        {
+            return NotFound();
+        }
+
+        var transferContent = BuildSePayTransferContent(payment.PaymentCode, payment.Booking.BookingCode);
+        return View(new SePayPaymentViewModel
+        {
+            BookingId = payment.BookingId,
+            BookingCode = payment.Booking.BookingCode,
+            TourName = payment.Booking.Tour.TourName,
+            PaymentCode = payment.PaymentCode,
+            Amount = payment.Amount,
+            TransferContent = transferContent,
+            BankName = _sePayOptions.BankName,
+            BankAccountNo = _sePayOptions.AccountNumber,
+            BankAccountName = _sePayOptions.AccountName,
+            QrImageUrl = BuildSePayQrUrl(payment.Amount, transferContent)
+        });
     }
 
     [AllowAnonymous]
@@ -417,6 +540,81 @@ public class PaymentsController : Controller
         }
 
         return Json(new { RspCode = "00", Message = "Confirm Success" });
+    }
+
+    [AllowAnonymous]
+    [HttpPost]
+    [Route("Payments/SePayWebhook")]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> SePayWebhook([FromBody] SePayWebhookRequest request, CancellationToken cancellationToken)
+    {
+        if (!IsValidSePayRequest())
+        {
+            return Unauthorized(new { success = false, message = "Invalid API key" });
+        }
+
+        if (!string.Equals(request.TransferType, "in", StringComparison.OrdinalIgnoreCase))
+        {
+            return Ok(new { success = true, message = "Ignored non-incoming transaction" });
+        }
+
+        if (!string.Equals(request.AccountNumber, _sePayOptions.AccountNumber, StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { success = false, message = "Invalid receiving account" });
+        }
+
+        var paymentCode = ExtractSePayPaymentCode(request);
+        if (string.IsNullOrWhiteSpace(paymentCode))
+        {
+            return BadRequest(new { success = false, message = "Payment code not found" });
+        }
+
+        var payment = await _dbContext.Payments
+            .Include(x => x.Booking)
+            .SingleOrDefaultAsync(x => x.PaymentCode == paymentCode && x.PaymentGateway == "SePay", cancellationToken);
+
+        if (payment is null)
+        {
+            return NotFound(new { success = false, message = "Payment not found" });
+        }
+
+        if (payment.TransactionReference == request.Id.ToString(CultureInfo.InvariantCulture)
+            || payment.TransactionReference == request.ReferenceCode)
+        {
+            return Ok(new { success = true, message = "Transaction already processed" });
+        }
+
+        if (request.TransferAmount < payment.Amount)
+        {
+            return BadRequest(new { success = false, message = "Transfer amount is less than payment amount" });
+        }
+
+        var processed = await MarkPaymentWaitingForVerificationAsync(
+            payment,
+            request.ReferenceCode,
+            $"SePay đã ghi nhận giao dịch {request.TransferAmount:N0} đ, mã tham chiếu {request.ReferenceCode}.",
+            cancellationToken);
+
+        return Ok(new
+        {
+            success = processed.IsSuccess,
+            bookingId = processed.BookingId,
+            message = processed.Message
+        });
+    }
+
+    [AllowAnonymous]
+    [HttpGet]
+    [Route("Payments/SePayWebhook")]
+    public IActionResult SePayWebhookInfo()
+    {
+        return Json(new
+        {
+            ok = true,
+            endpoint = "/Payments/SePayWebhook",
+            method = "POST",
+            message = "SePay webhook endpoint is available. Send JSON with Authorization Bearer or X-API-KEY."
+        });
     }
 
     [Authorize(Roles = RoleConstants.Customer)]
@@ -473,6 +671,71 @@ public class PaymentsController : Controller
         return string.IsNullOrWhiteSpace(ip) ? "127.0.0.1" : ip;
     }
 
+    private bool IsValidSePayRequest()
+    {
+        if (string.IsNullOrWhiteSpace(_sePayOptions.ApiKey))
+        {
+            return true;
+        }
+
+        var rawAuthorization = Request.Headers.Authorization.ToString();
+        var bearerToken = rawAuthorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+            ? rawAuthorization["Bearer ".Length..].Trim()
+            : rawAuthorization.Trim();
+
+        var apiKey = Request.Headers["X-API-KEY"].FirstOrDefault()
+                     ?? Request.Headers["X-SePay-Api-Key"].FirstOrDefault()
+                     ?? Request.Query["apiKey"].FirstOrDefault()
+                     ?? bearerToken;
+
+        return string.Equals(apiKey, _sePayOptions.ApiKey, StringComparison.Ordinal);
+    }
+
+    private string ExtractSePayPaymentCode(SePayWebhookRequest request)
+    {
+        var prefix = string.IsNullOrWhiteSpace(_sePayOptions.PaymentCodePrefix)
+            ? "PAY"
+            : Regex.Escape(_sePayOptions.PaymentCodePrefix.Trim());
+        var pattern = $@"\b{prefix}[A-Za-z0-9]+\b";
+
+        var candidates = new[]
+        {
+            request.Code,
+            request.Content,
+            request.Description
+        };
+
+        foreach (var candidate in candidates.Where(x => !string.IsNullOrWhiteSpace(x)))
+        {
+            var match = Regex.Match(candidate!, pattern, RegexOptions.IgnoreCase);
+            if (match.Success)
+            {
+                return match.Value.ToUpperInvariant();
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private string BuildSePayTransferContent(string paymentCode, string bookingCode)
+    {
+        return $"SEVQR Thanh toan don hang {paymentCode}";
+    }
+
+    private string BuildSePayQrUrl(decimal amount, string transferContent)
+    {
+        var query = new Dictionary<string, string>
+        {
+            ["bank"] = _sePayOptions.BankName,
+            ["acc"] = _sePayOptions.AccountNumber,
+            ["template"] = _sePayOptions.QrTemplate,
+            ["amount"] = decimal.Round(amount, 0, MidpointRounding.AwayFromZero).ToString("0", CultureInfo.InvariantCulture),
+            ["des"] = transferContent
+        };
+
+        return "https://qr.sepay.vn/img?" + string.Join("&", query.Select(x => $"{Uri.EscapeDataString(x.Key)}={Uri.EscapeDataString(x.Value)}"));
+    }
+
     private async Task<(long BookingId, bool IsSuccess, string Message)> ProcessVnPayResultAsync(VnPayResult result, CancellationToken cancellationToken)
     {
         if (!result.IsValidSignature)
@@ -482,7 +745,7 @@ public class PaymentsController : Controller
 
         var payment = await _dbContext.Payments
             .Include(x => x.Booking)
-            .SingleOrDefaultAsync(x => x.PaymentCode == result.TxnRef && x.PaymentGateway == "VNPay", cancellationToken);
+            .SingleOrDefaultAsync(x => (x.PaymentCode == result.TxnRef || x.PaymentCode == $"PAY{result.TxnRef}") && x.PaymentGateway == "VNPay", cancellationToken);
 
         if (payment is null)
         {
@@ -503,38 +766,11 @@ public class PaymentsController : Controller
 
         if (result.IsSuccess)
         {
-            var willBeFullyPaid = booking.PaidAmount + payment.Amount >= booking.TotalAmount;
-
-            payment.PaymentStatus = PaymentPending;
-            payment.PaidAt = null;
-            payment.FailureReason = null;
-            booking.PaymentStatus = PaymentPendingVerification;
-            booking.BookingStatus = willBeFullyPaid
-                ? BookingPendingFullPaymentVerification
-                : BookingPendingDepositVerification;
-            booking.UpdatedAt = DateTime.UtcNow;
-
-            await _dbContext.SaveChangesAsync(cancellationToken);
-
-            await _notificationService.CreateAsync(
-                booking.UserId,
-                notificationType: 2,
-                title: "Đã nhận giao dịch VNPay",
-                message: $"Đơn {booking.BookingCode} đã ghi nhận giao dịch VNPay {payment.Amount:N0} đ. Accountant sẽ đối soát và xác nhận thanh toán trước khi Staff xử lý booking.",
-                relatedEntityType: "Booking",
-                relatedEntityId: booking.BookingId,
-                cancellationToken: cancellationToken);
-
-            await _notificationService.CreateForRolesAsync(
-                RoleConstants.ManageFinance,
-                notificationType: 12,
-                title: "Giao dịch chờ Accountant xác nhận",
-                message: $"Đơn {booking.BookingCode} có giao dịch VNPay {payment.Amount:N0} đ đang chờ đối soát.",
-                relatedEntityType: "Booking",
-                relatedEntityId: booking.BookingId,
-                cancellationToken: cancellationToken);
-
-            return (booking.BookingId, true, "VNPay đã ghi nhận giao dịch. Đơn đang chờ Accountant xác nhận thanh toán.");
+            return await MarkPaymentWaitingForVerificationAsync(
+                payment,
+                result.TransactionNo,
+                $"VNPay đã ghi nhận giao dịch {payment.Amount:N0} đ.",
+                cancellationToken);
         }
 
         payment.PaymentStatus = PaymentFailed;
@@ -546,6 +782,52 @@ public class PaymentsController : Controller
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         return (booking.BookingId, false, "Thanh toán VNPay chưa thành công.");
+    }
+
+    private async Task<(long BookingId, bool IsSuccess, string Message)> MarkPaymentWaitingForVerificationAsync(
+        Payment payment,
+        string? transactionReference,
+        string notificationMessage,
+        CancellationToken cancellationToken)
+    {
+        var booking = payment.Booking;
+        var willBeFullyPaid = booking.PaidAmount + payment.Amount >= booking.TotalAmount;
+
+        payment.TransactionReference = string.IsNullOrWhiteSpace(transactionReference)
+            ? payment.TransactionReference
+            : transactionReference;
+        payment.PaymentStatus = PaymentPending;
+        payment.PaidAt = null;
+        payment.FailureReason = null;
+        payment.UpdatedAt = DateTime.UtcNow;
+
+        booking.PaymentStatus = PaymentPendingVerification;
+        booking.BookingStatus = willBeFullyPaid
+            ? BookingPendingFullPaymentVerification
+            : BookingPendingDepositVerification;
+        booking.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        await _notificationService.CreateAsync(
+            booking.UserId,
+            notificationType: 2,
+            title: $"Đã nhận giao dịch {payment.PaymentGateway}",
+            message: $"Đơn {booking.BookingCode} đã ghi nhận giao dịch {payment.PaymentGateway} {payment.Amount:N0} đ. Accountant sẽ đối soát và xác nhận thanh toán trước khi Staff xử lý booking.",
+            relatedEntityType: "Booking",
+            relatedEntityId: booking.BookingId,
+            cancellationToken: cancellationToken);
+
+        await _notificationService.CreateForRolesAsync(
+            RoleConstants.ManageFinance,
+            notificationType: 12,
+            title: "Giao dịch chờ Accountant xác nhận",
+            message: $"Đơn {booking.BookingCode} có giao dịch {payment.PaymentGateway} {payment.Amount:N0} đ đang chờ đối soát. {notificationMessage}",
+            relatedEntityType: "Booking",
+            relatedEntityId: booking.BookingId,
+            cancellationToken: cancellationToken);
+
+        return (booking.BookingId, true, $"{payment.PaymentGateway} đã ghi nhận giao dịch. Đơn đang chờ Accountant xác nhận thanh toán.");
     }
 
     private async Task<string> GeneratePaymentCodeAsync(CancellationToken cancellationToken)

@@ -793,7 +793,43 @@ input:focus {
     color: var(--text);
 }
 
+.header-icon-link,
+.header-icon-button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 14px;
+    background: #fff;
+    border: 1px solid var(--line);
+    color: var(--text);
+    text-decoration: none;
+    line-height: 1;
+    transition: color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.header-icon-button {
+    cursor: pointer;
+}
+
+.header-icon-link:hover,
+.header-icon-link:focus,
+.header-icon-button:hover,
+.header-icon-button:focus,
+.header-icon-link--active {
+    color: var(--primary);
+    background: #eef6ff;
+    border-color: rgba(11, 116, 255, 0.18);
+}
+
+.header-icon-link__icon,
 .mailbox-link__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     font-size: 1.05rem;
     line-height: 1;
 }
@@ -817,6 +853,69 @@ input:focus {
 
 .mailbox-link__badge.is-hidden {
     display: none;
+}
+
+.wishlist-nav-link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: #fff;
+    border: 1px solid var(--line);
+    color: #dc2626;
+    text-decoration: none;
+}
+
+.wishlist-nav-link:hover,
+.wishlist-nav-link:focus,
+.wishlist-nav-link--active {
+    color: #b91c1c;
+    background: #fff1f2;
+}
+
+.wishlist-nav-link__icon {
+    font-size: 1.08rem;
+    line-height: 1;
+}
+
+.wishlist-nav-link__badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.wishlist-nav-link__badge.is-hidden {
+    display: none;
+}
+
+.wishlist-nav-link__badge.is-bumping {
+    animation: wishlistBadgeBump 0.32s ease;
+}
+
+@keyframes wishlistBadgeBump {
+    0% {
+        transform: scale(1);
+    }
+    45% {
+        transform: scale(1.28);
+    }
+    100% {
+        transform: scale(1);
+    }
 }
 
 .notification-toast-stack {
@@ -866,6 +965,18 @@ input:focus {
     color: var(--primary);
     font-weight: 700;
     text-decoration: none;
+}
+
+.wishlist-toast {
+    border-color: rgba(220, 38, 38, 0.16);
+}
+
+.wishlist-toast--success strong {
+    color: #107c41;
+}
+
+.wishlist-toast--error strong {
+    color: #b42318;
 }
 
 .travel-home__section-head {

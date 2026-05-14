@@ -31,6 +31,7 @@ public partial class DbSeeder
         await EnsurePromotionBannerColumnsAsync(cancellationToken);
         await EnsureUserPromotionsTableAsync(cancellationToken);
         await EnsureReviewMediaTableAsync(cancellationToken);
+        await EnsureWishlistsTableAsync(cancellationToken);
         await EnsureArticlesTableAsync(cancellationToken);
         await SeedRolesAsync(cancellationToken);
         await SeedDefaultUserAsync(
@@ -487,6 +488,41 @@ public partial class DbSeeder
                                    CreatedAt DATETIME2(0) NOT NULL CONSTRAINT DF_ReviewMedia_CreatedAt DEFAULT (SYSDATETIME()),
                                    CONSTRAINT FK_ReviewMedia_Review FOREIGN KEY (ReviewId) REFERENCES content.Reviews(ReviewId)
                                )');
+                           END;
+                           """;
+
+        await _dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+    }
+
+    private async Task EnsureWishlistsTableAsync(CancellationToken cancellationToken)
+    {
+        const string sql = """
+                           IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'content')
+                           BEGIN
+                               EXEC('CREATE SCHEMA content');
+                           END;
+
+                           IF OBJECT_ID('content.Wishlists', 'U') IS NULL
+                           BEGIN
+                               EXEC('CREATE TABLE content.Wishlists (
+                                   WishlistId BIGINT IDENTITY(1,1) PRIMARY KEY,
+                                   UserId BIGINT NOT NULL,
+                                   TourId BIGINT NOT NULL,
+                                   CreatedAt DATETIME2(0) NOT NULL CONSTRAINT DF_Wishlists_CreatedAt DEFAULT (SYSUTCDATETIME()),
+                                   CONSTRAINT UQ_Wishlists_UserId_TourId UNIQUE (UserId, TourId),
+                                   CONSTRAINT FK_Wishlists_User FOREIGN KEY (UserId) REFERENCES auth.Users(UserId) ON DELETE CASCADE,
+                                   CONSTRAINT FK_Wishlists_Tour FOREIGN KEY (TourId) REFERENCES catalog.Tours(TourId) ON DELETE CASCADE
+                               )');
+                           END;
+
+                           IF NOT EXISTS (
+                               SELECT 1
+                               FROM sys.indexes
+                               WHERE name = 'IX_Wishlists_UserId'
+                                 AND object_id = OBJECT_ID('content.Wishlists')
+                           )
+                           BEGIN
+                               CREATE INDEX IX_Wishlists_UserId ON content.Wishlists(UserId);
                            END;
                            """;
 

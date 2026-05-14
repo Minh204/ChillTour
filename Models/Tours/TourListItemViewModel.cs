@@ -19,4 +19,5 @@ public class TourListItemViewModel
     public int ReviewCount { get; set; }
     public bool IsLastMinute { get; set; }
     public int RemainingSeats { get; set; }
+    public bool IsWishlisted { get; set; }
 }

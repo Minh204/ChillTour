@@ -43,4 +43,5 @@ public class Tour
     public ICollection<TourItineraryDay> ItineraryDays { get; set; } = new List<TourItineraryDay>();
     public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
     public ICollection<Review> Reviews { get; set; } = new List<Review>();
+    public ICollection<Wishlist> Wishlists { get; set; } = new List<Wishlist>();
 }

@@ -30,6 +30,7 @@ public class ChillTourDbContext : DbContext
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<ReviewMedia> ReviewMedia => Set<ReviewMedia>();
+    public DbSet<Wishlist> Wishlists => Set<Wishlist>();
     public DbSet<Article> Articles => Set<Article>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
@@ -338,6 +339,16 @@ public class ChillTourDbContext : DbContext
             entity.HasKey(x => x.ReviewMediaId);
             entity.Property(x => x.MediaUrl).HasMaxLength(500);
             entity.HasOne(x => x.Review).WithMany(x => x.MediaItems).HasForeignKey(x => x.ReviewId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Wishlist>(entity =>
+        {
+            entity.ToTable("Wishlists", "content");
+            entity.HasKey(x => x.WishlistId);
+            entity.HasIndex(x => new { x.UserId, x.TourId }).IsUnique();
+            entity.HasIndex(x => x.UserId);
+            entity.HasOne(x => x.User).WithMany(x => x.Wishlists).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Tour).WithMany(x => x.Wishlists).HasForeignKey(x => x.TourId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Article>(entity =>

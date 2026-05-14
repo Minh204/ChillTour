@@ -1,0 +1,62 @@
+@model ChillTour.Models.Payments.SePayPaymentViewModel
+@{
+    ViewData["Title"] = "Thanh toán SePay";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/pages/payments/payments.css" asp-append-version="true" />
+}
+
+<section class="auth-page payment-page">
+    <div class="container">
+        <div class="auth-card payment-result-card sepay-payment-card">
+            <div class="auth-card__intro">
+                <span class="eyebrow">SePay</span>
+                <h1>Chuyển khoản thanh toán tour</h1>
+                <p>Quét mã QR hoặc chuyển khoản đúng thông tin bên dưới. Sau khi SePay ghi nhận giao dịch, đơn sẽ chuyển sang trạng thái chờ Accountant xác nhận.</p>
+            </div>
+
+            <div class="sepay-payment-layout">
+                <div class="sepay-payment-qr">
+                    <img src="@Model.QrImageUrl" alt="SePay QR" />
+                    <p>Giữ nguyên nội dung chuyển khoản để hệ thống tự động đối chiếu.</p>
+                </div>
+
+                <div class="sepay-payment-info">
+                    <div>
+                        <span>Mã đơn</span>
+                        <strong>@Model.BookingCode</strong>
+                        <p>@Model.TourName</p>
+                    </div>
+                    <div>
+                        <span>Số tiền</span>
+                        <strong>@Model.Amount.ToString("N0") đ</strong>
+                    </div>
+                    <div>
+                        <span>Ngân hàng</span>
+                        <strong>@Model.BankName</strong>
+                    </div>
+                    <div>
+                        <span>Số tài khoản</span>
+                        <strong>@Model.BankAccountNo</strong>
+                    </div>
+                    <div>
+                        <span>Chủ tài khoản</span>
+                        <strong>@Model.BankAccountName</strong>
+                    </div>
+                    <div class="sepay-payment-info__content">
+                        <span>Nội dung chuyển khoản</span>
+                        <strong>@Model.TransferContent</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="auth-alert auth-alert--warning">Nội dung chuyển khoản bắt buộc chứa <strong>SEVQR</strong> và mã thanh toán <strong>@Model.PaymentCode</strong>.</div>
+
+            <div class="hero-actions">
+                <a asp-controller="Payments" asp-action="Checkout" asp-route-bookingId="@Model.BookingId" class="btn btn-outline-primary">Quay lại checkout</a>
+                <a asp-controller="Payments" asp-action="Result" asp-route-bookingId="@Model.BookingId" class="btn btn-primary">Xem trạng thái đơn</a>
+            </div>
+        </div>
+    </div>
+</section>

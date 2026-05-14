@@ -573,6 +573,9 @@
 }
 
 .travel-home__last-minute-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     overflow: hidden;
     border-radius: 24px;
     border: 1px solid rgba(22, 50, 79, 0.08);
@@ -594,7 +597,9 @@
 }
 
 .travel-home__last-minute-body {
-    display: grid;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
     gap: 0.8rem;
     padding: 1rem;
 }
@@ -843,6 +848,10 @@
     padding: 0.85rem;
 }
 
+.travel-home__last-minute-top {
+    min-height: 1.95rem;
+}
+
 .travel-home__tour-meta span,
 .travel-home__tour-facts span,
 .travel-home__last-minute-badge,
@@ -877,6 +886,11 @@
 .travel-home__tour-facts,
 .travel-home__last-minute-facts {
     gap: 0.35rem;
+}
+
+.travel-home__last-minute-facts {
+    min-height: 4.05rem;
+    align-content: flex-start;
 }
 
 .travel-home__tour-facts span:nth-child(2),

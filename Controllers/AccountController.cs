@@ -423,6 +423,100 @@ public class AccountController : Controller
     }
 
     [Authorize(Roles = ChillTour.Security.RoleConstants.Customer)]
+    [HttpGet]
+    public async Task<IActionResult> Wishlist(string? searchTerm = null, CancellationToken cancellationToken = default)
+    {
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue)
+        {
+            return RedirectToAction(nameof(Login));
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var query = _dbContext.Wishlists
+            .AsNoTracking()
+            .Where(x => x.UserId == userId.Value && x.Tour.IsPublished)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var normalizedSearch = searchTerm.Trim();
+            query = query.Where(x =>
+                x.Tour.TourName.Contains(normalizedSearch) ||
+                x.Tour.TourCode.Contains(normalizedSearch) ||
+                x.Tour.Category.CategoryName.Contains(normalizedSearch) ||
+                x.Tour.EndDestination.DestinationName.Contains(normalizedSearch));
+        }
+
+        var tours = await query
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new CustomerWishlistItemViewModel
+            {
+                WishlistId = x.WishlistId,
+                TourId = x.TourId,
+                TourCode = x.Tour.TourCode,
+                TourName = x.Tour.TourName,
+                Slug = x.Tour.Slug,
+                CategoryName = x.Tour.Category.CategoryName,
+                RouteName = x.Tour.StartDestination.DestinationName + " -> " + x.Tour.EndDestination.DestinationName,
+                ImageUrl = x.Tour.MediaItems
+                    .OrderByDescending(m => m.IsPrimary)
+                    .ThenBy(m => m.DisplayOrder)
+                    .Select(m => m.MediaUrl)
+                    .FirstOrDefault() ?? x.Tour.MainImageUrl,
+                BasePrice = x.Tour.Schedules
+                    .Where(s => s.Status == 1 && s.DepartureDate >= today)
+                    .OrderBy(s => s.AdultPrice)
+                    .Select(s => (decimal?)s.AdultPrice)
+                    .FirstOrDefault() ?? x.Tour.BasePrice,
+                DepartureDate = x.Tour.Schedules
+                    .Where(s => s.Status == 1 && s.DepartureDate >= today)
+                    .OrderBy(s => s.DepartureDate)
+                    .Select(s => (DateOnly?)s.DepartureDate)
+                    .FirstOrDefault(),
+                RemainingSeats = x.Tour.Schedules
+                    .Where(s => s.Status == 1 && s.DepartureDate >= today)
+                    .OrderBy(s => s.DepartureDate)
+                    .Select(s => (int?)s.AvailableSeats)
+                    .FirstOrDefault() ?? x.Tour.RemainingSeats,
+                AverageRating = x.Tour.Reviews.Count == 0 ? 0 : x.Tour.Reviews.Average(r => r.Rating),
+                ReviewCount = x.Tour.Reviews.Count,
+                CreatedAt = x.CreatedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        return View(new CustomerWishlistPageViewModel
+        {
+            SearchTerm = searchTerm,
+            Tours = tours
+        });
+    }
+
+    [Authorize(Roles = ChillTour.Security.RoleConstants.Customer)]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveWishlist(long tourId, string? searchTerm, CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue)
+        {
+            return RedirectToAction(nameof(Login));
+        }
+
+        var wishlist = await _dbContext.Wishlists
+            .SingleOrDefaultAsync(x => x.UserId == userId.Value && x.TourId == tourId, cancellationToken);
+
+        if (wishlist is not null)
+        {
+            _dbContext.Wishlists.Remove(wishlist);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            TempData["WishlistSuccessMessage"] = "Đã bỏ tour khỏi danh sách yêu thích.";
+        }
+
+        return RedirectToAction(nameof(Wishlist), new { searchTerm });
+    }
+
+    [Authorize(Roles = ChillTour.Security.RoleConstants.Customer)]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CancelBooking(CancelBookingViewModel model, CancellationToken cancellationToken)

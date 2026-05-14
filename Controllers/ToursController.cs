@@ -39,6 +39,7 @@ public class ToursController : Controller
 
         var today = DateOnly.FromDateTime(DateTime.Today);
         var lastMinuteLimit = today.AddDays(5);
+        var currentUserId = GetCurrentCustomerId();
 
         var query = _dbContext.Tours
             .AsNoTracking()
@@ -152,6 +153,22 @@ public class ToursController : Controller
                     .FirstOrDefault() ?? x.MainImageUrl
             })
             .ToListAsync(cancellationToken);
+
+        if (currentUserId.HasValue && tours.Count > 0)
+        {
+            var tourIds = tours.Select(x => x.TourId).ToList();
+            var wishlistedTourIds = await _dbContext.Wishlists
+                .AsNoTracking()
+                .Where(x => x.UserId == currentUserId.Value && tourIds.Contains(x.TourId))
+                .Select(x => x.TourId)
+                .ToListAsync(cancellationToken);
+            var wishlistedTourIdSet = wishlistedTourIds.ToHashSet();
+
+            foreach (var tour in tours)
+            {
+                tour.IsWishlisted = wishlistedTourIdSet.Contains(tour.TourId);
+            }
+        }
 
         var snapshotTours = await query
             .Select(x => new
@@ -385,6 +402,9 @@ public class ToursController : Controller
                 var hasReviewed = await _dbContext.Reviews.AnyAsync(x => x.UserId == userId && x.TourId == tour.TourId, cancellationToken);
                 viewModel.CanReview = eligibleBooking is not null && !hasReviewed;
                 viewModel.HasReviewed = hasReviewed;
+                viewModel.IsWishlisted = await _dbContext.Wishlists
+                    .AsNoTracking()
+                    .AnyAsync(x => x.UserId == userId && x.TourId == tour.TourId, cancellationToken);
             }
         }
 
@@ -407,6 +427,73 @@ public class ToursController : Controller
         }
 
         return View(viewModel);
+    }
+
+    [Authorize(Roles = RoleConstants.Customer)]
+    [HttpPost("/tours/{tourId:long}/wishlist/toggle")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ToggleWishlist(long tourId, string? returnUrl, CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentCustomerId();
+        if (!userId.HasValue)
+        {
+            return Challenge();
+        }
+
+        var tour = await _dbContext.Tours
+            .AsNoTracking()
+            .Where(x => x.TourId == tourId && x.IsPublished)
+            .Select(x => new { x.TourId, x.TourName })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (tour is null)
+        {
+            TempData["TourErrorMessage"] = "Không tìm thấy tour để lưu vào danh sách yêu thích.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var wishlist = await _dbContext.Wishlists
+            .SingleOrDefaultAsync(x => x.UserId == userId.Value && x.TourId == tourId, cancellationToken);
+
+        var isWishlisted = false;
+        string message;
+        if (wishlist is null)
+        {
+            _dbContext.Wishlists.Add(new Wishlist
+            {
+                UserId = userId.Value,
+                TourId = tourId,
+                CreatedAt = DateTime.UtcNow
+            });
+            isWishlisted = true;
+            message = $"Đã lưu tour {tour.TourName} vào danh sách yêu thích.";
+        }
+        else
+        {
+            _dbContext.Wishlists.Remove(wishlist);
+            message = $"Đã bỏ lưu tour {tour.TourName}.";
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        var wishlistCount = await _dbContext.Wishlists
+            .AsNoTracking()
+            .CountAsync(x => x.UserId == userId.Value, cancellationToken);
+
+        if (WantsJsonResponse())
+        {
+            return Json(new
+            {
+                succeeded = true,
+                tourId,
+                isWishlisted,
+                wishlistCount,
+                message
+            });
+        }
+
+        TempData["TourSuccessMessage"] = message;
+        return RedirectToLocalUrl(returnUrl);
     }
 
     [Authorize(Roles = RoleConstants.Customer)]
@@ -698,6 +785,33 @@ public class ToursController : Controller
                 return code;
             }
         }
+    }
+
+    private long? GetCurrentCustomerId()
+    {
+        if (User.Identity?.IsAuthenticated != true || !User.IsInRole(RoleConstants.Customer))
+        {
+            return null;
+        }
+
+        var rawUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return long.TryParse(rawUserId, out var userId) ? userId : null;
+    }
+
+    private IActionResult RedirectToLocalUrl(string? returnUrl)
+    {
+        if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+        {
+            return Redirect(returnUrl);
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    private bool WantsJsonResponse()
+    {
+        return string.Equals(Request.Headers.XRequestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase)
+            || Request.Headers.Accept.Any(x => x != null && x.Contains("application/json", StringComparison.OrdinalIgnoreCase));
     }
 
     private async Task<Booking?> FindEligibleReviewBookingAsync(long userId, long tourId, CancellationToken cancellationToken)

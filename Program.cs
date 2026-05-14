@@ -28,6 +28,7 @@ namespace ChillTour
             builder.Services.AddDbContext<ChillTourDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
             builder.Services.Configure<VnPayOptions>(builder.Configuration.GetSection(VnPayOptions.SectionName));
+            builder.Services.Configure<SePayOptions>(builder.Configuration.GetSection(SePayOptions.SectionName));
             builder.Services.Configure<GoogleAuthOptions>(builder.Configuration.GetSection(GoogleAuthOptions.SectionName));
             builder.Services.Configure<MailOptions>(builder.Configuration.GetSection(MailOptions.SectionName));
             builder.Services.Configure<GeminiChatbotOptions>(builder.Configuration.GetSection(GeminiChatbotOptions.SectionName));

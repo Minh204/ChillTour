@@ -153,7 +153,7 @@
                     <section class="payment-status-box">
                         <div>
                             <span>Cổng thanh toán</span>
-                            <strong>VNPay Sandbox</strong>
+                            <strong>VNPay / SePay</strong>
                         </div>
                         <div>
                             <span>Mã thanh toán</span>
@@ -187,7 +187,7 @@
                         </div>
                     </div>
 
-                    <p class="payment-qr-card__note">Nhấn nút bên dưới để chuyển sang trang thanh toán VNPay. Sau khi giao dịch hoàn tất, VNPay sẽ chuyển bạn về lại ChillTour.</p>
+                    <p class="payment-qr-card__note">Chọn số tiền cần thanh toán, sau đó chọn VNPay hoặc SePay ở bước tiếp theo. Với SePay, hệ thống sẽ mở trang QR chuyển khoản riêng.</p>
 
                     <div class="payment-qr-card__actions">
                         @if (isCancelled)
@@ -206,22 +206,26 @@
 
                         @if (!isCancelled && Model.CanPayDeposit)
                         {
-                            <form asp-action="StartVnPay" method="post" class="auth-form auth-form--compact">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="bookingId" value="@Model.BookingId" />
-                                <input type="hidden" name="paymentMode" value="deposit" />
-                                <button type="submit" class="btn btn-outline-primary booking-submit payment-cta payment-cta--secondary">Thanh toán cọc 30% - @Model.DepositAmount.ToString("N0") đ</button>
-                            </form>
+                            <button type="button"
+                                    class="btn btn-outline-primary booking-submit payment-cta payment-cta--secondary"
+                                    data-payment-choice
+                                    data-mode="deposit"
+                                    data-title="Thanh toán cọc 30%"
+                                    data-amount="@Model.DepositAmount.ToString("N0") đ">
+                                Thanh toán cọc 30% - @Model.DepositAmount.ToString("N0") đ
+                            </button>
                         }
 
                         @if (!isCancelled && Model.CanPayFull)
                         {
-                            <form asp-action="StartVnPay" method="post" class="auth-form auth-form--compact">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="bookingId" value="@Model.BookingId" />
-                                <input type="hidden" name="paymentMode" value="full" />
-                                <button type="submit" class="btn btn-primary booking-submit payment-cta">Thanh toán toàn bộ - @Model.FullPaymentAmount.ToString("N0") đ</button>
-                            </form>
+                            <button type="button"
+                                    class="btn btn-primary booking-submit payment-cta"
+                                    data-payment-choice
+                                    data-mode="full"
+                                    data-title="Thanh toán toàn bộ"
+                                    data-amount="@Model.FullPaymentAmount.ToString("N0") đ">
+                                Thanh toán toàn bộ - @Model.FullPaymentAmount.ToString("N0") đ
+                            </button>
 
                             @if (!Model.MustPayFull && Model.PaidAmount <= 0m)
                             {
@@ -238,3 +242,85 @@
         </div>
     </div>
 </section>
+
+<div class="payment-method-modal" data-payment-modal hidden>
+    <div class="payment-method-modal__backdrop" data-payment-modal-close></div>
+    <div class="payment-method-modal__panel" role="dialog" aria-modal="true" aria-labelledby="payment-method-title">
+        <button type="button" class="payment-method-modal__close" data-payment-modal-close aria-label="Đóng">×</button>
+        <div class="payment-method-modal__head">
+            <span class="eyebrow">Phương thức thanh toán</span>
+            <h2 id="payment-method-title">Chọn cách thanh toán</h2>
+            <p><span data-payment-modal-title></span> · <strong data-payment-modal-amount></strong></p>
+        </div>
+
+        <div class="payment-method-grid">
+            <form asp-action="StartVnPay" method="post" class="payment-method-option">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="bookingId" value="@Model.BookingId" />
+                <input type="hidden" name="paymentMode" value="" data-payment-mode-input />
+                <div>
+                    <span>VNPay</span>
+                    <strong>Thanh toán qua cổng VNPay</strong>
+                    <p>Chuyển sang trang VNPay sandbox để thanh toán bằng ATM, QR hoặc ví hỗ trợ.</p>
+                </div>
+                <button type="submit" class="btn btn-primary">Chọn VNPay</button>
+            </form>
+
+            <form asp-action="StartSePay" method="post" class="payment-method-option">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="bookingId" value="@Model.BookingId" />
+                <input type="hidden" name="paymentMode" value="" data-payment-mode-input />
+                <div>
+                    <span>SePay</span>
+                    <strong>Chuyển khoản ngân hàng</strong>
+                    <p>Tạo mã QR chuyển khoản. Khi webhook SePay ghi nhận giao dịch, đơn sẽ chờ Accountant xác nhận.</p>
+                </div>
+                <button type="submit" class="btn btn-outline-primary">Tạo QR SePay</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const modal = document.querySelector('[data-payment-modal]');
+            if (!modal) return;
+
+            const title = modal.querySelector('[data-payment-modal-title]');
+            const amount = modal.querySelector('[data-payment-modal-amount]');
+            const modeInputs = modal.querySelectorAll('[data-payment-mode-input]');
+            const openButtons = document.querySelectorAll('[data-payment-choice]');
+            const closeButtons = modal.querySelectorAll('[data-payment-modal-close]');
+
+            const openModal = (button) => {
+                title.textContent = button.dataset.title || '';
+                amount.textContent = button.dataset.amount || '';
+                modeInputs.forEach((input) => {
+                    input.value = button.dataset.mode || '';
+                });
+                modal.hidden = false;
+                document.body.classList.add('payment-modal-open');
+            };
+
+            const closeModal = () => {
+                modal.hidden = true;
+                document.body.classList.remove('payment-modal-open');
+            };
+
+            openButtons.forEach((button) => {
+                button.addEventListener('click', () => openModal(button));
+            });
+
+            closeButtons.forEach((button) => {
+                button.addEventListener('click', closeModal);
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && !modal.hidden) {
+                    closeModal();
+                }
+            });
+        })();
+    </script>
+}

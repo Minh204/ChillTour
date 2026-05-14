@@ -35,6 +35,7 @@ public class TourDetailViewModel
     public int ReviewCount { get; set; }
     public bool CanReview { get; set; }
     public bool HasReviewed { get; set; }
+    public bool IsWishlisted { get; set; }
 
     public bool IsSoldOut => RemainingSeats <= 0;
     public bool IsLowStock => !IsSoldOut && RemainingSeats <= 5;

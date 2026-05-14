@@ -28,6 +28,7 @@ public class User
     public ICollection<UserPromotion> UserPromotions { get; set; } = new List<UserPromotion>();
     public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
     public ICollection<Review> Reviews { get; set; } = new List<Review>();
+    public ICollection<Wishlist> Wishlists { get; set; } = new List<Wishlist>();
     public ICollection<Article> Articles { get; set; } = new List<Article>();
     public ICollection<BookingStatusHistory> BookingStatusChanges { get; set; } = new List<BookingStatusHistory>();
     public ICollection<PasswordResetToken> PasswordResetTokens { get; set; } = new List<PasswordResetToken>();

@@ -6,10 +6,15 @@
     var currentUserIdRaw = User.FindFirstValue(ClaimTypes.NameIdentifier);
     var hasCurrentUserId = long.TryParse(currentUserIdRaw, out var currentUserId);
     var unreadNotificationCount = 0;
+    var wishlistCount = 0;
 
     if (User.Identity?.IsAuthenticated == true && hasCurrentUserId)
     {
         unreadNotificationCount = DbContext.Notifications.Count(x => x.UserId == currentUserId && !x.IsRead);
+        if (User.IsInRole(RoleConstants.Customer))
+        {
+            wishlistCount = DbContext.Wishlists.Count(x => x.UserId == currentUserId);
+        }
     }
 }
 <!DOCTYPE html>
@@ -56,16 +61,28 @@
                             </a>
                             @if (User.IsInRole(RoleConstants.Customer))
                             {
-                                <a class="btn btn-link nav-action @(IsActive("Account", "Bookings") ? "nav-action--active" : string.Empty)" asp-controller="Account" asp-action="Bookings">Đơn của tôi</a>
+                                <a class="header-icon-link @(IsActive("Account", "Bookings") ? "header-icon-link--active" : string.Empty)" asp-controller="Account" asp-action="Bookings" aria-label="Đơn của tôi" title="Đơn của tôi">
+                                    <span class="header-icon-link__icon">▤</span>
+                                </a>
+                                <a class="wishlist-nav-link @(IsActive("Account", "Wishlist") ? "wishlist-nav-link--active" : string.Empty)" asp-controller="Account" asp-action="Wishlist" aria-label="Tour yêu thích" data-wishlist-nav data-wishlist-count="@wishlistCount">
+                                    <span class="wishlist-nav-link__icon">♥</span>
+                                    <span class="wishlist-nav-link__badge @(wishlistCount > 0 ? string.Empty : "is-hidden")" data-wishlist-badge>@wishlistCount</span>
+                                </a>
                             }
                             @if (RoleConstants.BackOffice.Any(User.IsInRole))
                             {
-                                <a class="btn btn-link nav-action @(IsControllerActive("Admin") ? "nav-action--active" : string.Empty)" asp-controller="Admin" asp-action="Index">Quản trị</a>
+                                <a class="header-icon-link @(IsControllerActive("Admin") ? "header-icon-link--active" : string.Empty)" asp-controller="Admin" asp-action="Index" aria-label="Quản trị" title="Quản trị">
+                                    <span class="header-icon-link__icon">⚙</span>
+                                </a>
                             }
-                            <a class="btn btn-link nav-action @(IsActive("Account", "Profile") ? "nav-action--active" : string.Empty)" asp-controller="Account" asp-action="Profile">@User.Identity.Name</a>
+                            <a class="header-icon-link @(IsActive("Account", "Profile") ? "header-icon-link--active" : string.Empty)" asp-controller="Account" asp-action="Profile" aria-label="Tài khoản" title="@User.Identity.Name">
+                                <span class="header-icon-link__icon">👤</span>
+                            </a>
                             <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
                                 @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-primary nav-cta">Đăng xuất</button>
+                                <button type="submit" class="header-icon-link header-icon-button" aria-label="Đăng xuất" title="Đăng xuất">
+                                    <span class="header-icon-link__icon">⏻</span>
+                                </button>
                             </form>
                         }
                         else

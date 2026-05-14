@@ -1,0 +1,97 @@
+@model ChillTour.Models.Account.CustomerWishlistPageViewModel
+@{
+    ViewData["Title"] = "Tour yêu thích";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/pages/tours/tours.css" asp-append-version="true" />
+}
+
+<section class="auth-page">
+    <div class="container">
+        <div class="auth-card booking-history-card booking-history-card--wide">
+            <div class="auth-card__intro booking-history-hero">
+                <span class="eyebrow">Yêu thích</span>
+                <h1>Tour đã lưu</h1>
+                <p>Lưu lại các hành trình bạn đang cân nhắc để quay lại xem lịch khởi hành, giá và số chỗ còn lại nhanh hơn.</p>
+            </div>
+
+            @if (TempData["WishlistSuccessMessage"] is string successMessage)
+            {
+                <div class="auth-alert auth-alert--success">@successMessage</div>
+            }
+
+            <form method="get" class="booking-history-filter wishlist-filter">
+                <label>
+                    Từ khóa
+                    <input type="text" name="searchTerm" value="@Model.SearchTerm" class="form-control" placeholder="Tên tour, mã tour, danh mục, điểm đến..." />
+                </label>
+                <div class="booking-history-filter__actions">
+                    <button type="submit" class="btn btn-primary">Lọc</button>
+                    <a asp-action="Wishlist" class="btn btn-outline-secondary">Xóa lọc</a>
+                </div>
+            </form>
+
+            @if (Model.Tours.Count == 0)
+            {
+                <div class="auth-alert auth-alert--error">
+                    @(string.IsNullOrWhiteSpace(Model.SearchTerm) ? "Bạn chưa lưu tour nào." : "Không có tour yêu thích phù hợp với từ khóa hiện tại.")
+                </div>
+                <a asp-controller="Tours" asp-action="Index" class="btn btn-primary mt-3">Khám phá tour</a>
+            }
+            else
+            {
+                <div class="wishlist-grid">
+                    @foreach (var tour in Model.Tours)
+                    {
+                        <article class="tour-list-card wishlist-card">
+                            <a asp-controller="Tours" asp-action="Details" asp-route-slug="@tour.Slug" class="tour-list-card__media">
+                                @if (!string.IsNullOrWhiteSpace(tour.ImageUrl))
+                                {
+                                    <img src="@tour.ImageUrl" alt="@tour.TourName" class="tour-list-card__image" />
+                                }
+                                else
+                                {
+                                    <div class="tour-list-card__placeholder">ChillTour</div>
+                                }
+                                <div class="tour-list-card__badges">
+                                    <span class="tour-list-card__code">@tour.TourCode</span>
+                                </div>
+                            </a>
+
+                            <div class="tour-list-card__body">
+                                <div class="tour-list-card__meta">@tour.CategoryName</div>
+                                <div class="tour-list-card__rating">
+                                    <span class="tour-list-card__stars">★</span>
+                                    <strong>@(tour.ReviewCount == 0 ? "Mới" : tour.AverageRating.ToString("0.0"))</strong>
+                                    <span>@(tour.ReviewCount == 0 ? "Chưa có đánh giá" : $"{tour.ReviewCount} đánh giá")</span>
+                                </div>
+                                <h2>
+                                    <a asp-controller="Tours" asp-action="Details" asp-route-slug="@tour.Slug">@tour.TourName</a>
+                                </h2>
+                                <p class="tour-list-card__route">@tour.RouteName</p>
+                                <p class="wishlist-card__saved">Đã lưu lúc @tour.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+
+                                <div class="tour-list-card__footer">
+                                    <div>
+                                        <span>@(tour.DepartureDate?.ToString("dd/MM/yyyy") ?? "Lịch đang cập nhật") · còn @tour.RemainingSeats chỗ</span>
+                                        <strong>@tour.BasePrice.ToString("N0") đ</strong>
+                                    </div>
+                                    <div class="tour-list-card__actions">
+                                        <form asp-action="RemoveWishlist" method="post" class="tour-wishlist-form">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="tourId" value="@tour.TourId" />
+                                            <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+                                            <button type="submit" class="tour-wishlist-btn is-active" aria-label="Bỏ lưu tour">♥</button>
+                                        </form>
+                                        <a asp-controller="Tours" asp-action="Details" asp-route-slug="@tour.Slug" class="btn btn-outline-primary">Xem chi tiết</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</section>

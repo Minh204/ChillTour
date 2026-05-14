@@ -35,6 +35,8 @@ public class PaymentCheckoutViewModel
     public string BankAccountNo { get; set; } = string.Empty;
     public string BankAccountName { get; set; } = string.Empty;
     public string QrImageUrl { get; set; } = string.Empty;
+    public bool HasSePayPendingPayment { get; set; }
+    public decimal SePayAmount { get; set; }
     public string PromotionCodeInput { get; set; } = string.Empty;
     public string? AppliedPromotionCode { get; set; }
     public string? AppliedPromotionName { get; set; }

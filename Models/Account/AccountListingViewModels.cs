@@ -17,3 +17,27 @@ public class CustomerInboxPageViewModel
     public bool? IsRead { get; set; }
     public IReadOnlyList<CustomerNotificationItemViewModel> Notifications { get; set; } = Array.Empty<CustomerNotificationItemViewModel>();
 }
+
+public class CustomerWishlistPageViewModel
+{
+    public string? SearchTerm { get; set; }
+    public IReadOnlyList<CustomerWishlistItemViewModel> Tours { get; set; } = Array.Empty<CustomerWishlistItemViewModel>();
+}
+
+public class CustomerWishlistItemViewModel
+{
+    public long WishlistId { get; set; }
+    public long TourId { get; set; }
+    public string TourCode { get; set; } = string.Empty;
+    public string TourName { get; set; } = string.Empty;
+    public string Slug { get; set; } = string.Empty;
+    public string CategoryName { get; set; } = string.Empty;
+    public string RouteName { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
+    public decimal BasePrice { get; set; }
+    public DateOnly? DepartureDate { get; set; }
+    public int RemainingSeats { get; set; }
+    public decimal AverageRating { get; set; }
+    public int ReviewCount { get; set; }
+    public DateTime CreatedAt { get; set; }
+}

@@ -9,4 +9,5 @@ public class VnPayOptions
     public string PaymentUrl { get; set; } = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
     public string ReturnUrl { get; set; } = string.Empty;
     public string IpnUrl { get; set; } = string.Empty;
+    public string TimeZoneId { get; set; } = "SE Asia Standard Time";
 }

@@ -1,5 +1,8 @@
 @model ChillTour.Models.Tours.TourListViewModel
 @{
+    var currentReturnUrl = Context.Request.Path + Context.Request.QueryString;
+}
+@{
     ViewData["Title"] = "Danh sách tour";
 }
 
@@ -206,7 +209,23 @@
                                     <span>@tour.DurationDays ngày @tour.DurationNights đêm</span>
                                     <strong>@tour.BasePrice.ToString("N0") đ</strong>
                                 </div>
-                                <a asp-controller="Tours" asp-action="Details" asp-route-slug="@tour.Slug" class="btn btn-outline-primary">Xem chi tiết</a>
+                                <div class="tour-list-card__actions">
+                                    @if (User.Identity?.IsAuthenticated == true && User.IsInRole("Customer"))
+                                    {
+                                        <form asp-controller="Tours" asp-action="ToggleWishlist" asp-route-tourId="@tour.TourId" method="post" class="tour-wishlist-form" data-wishlist-form data-tour-id="@tour.TourId">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="returnUrl" value="@currentReturnUrl" />
+                                            <button type="submit" class="tour-wishlist-btn @(tour.IsWishlisted ? "is-active" : string.Empty)" aria-label="@(tour.IsWishlisted ? "Bỏ lưu tour" : "Lưu tour yêu thích")" data-wishlist-button data-tour-id="@tour.TourId">
+                                                @(tour.IsWishlisted ? "♥" : "♡")
+                                            </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="@currentReturnUrl" class="tour-wishlist-btn" aria-label="Đăng nhập để lưu tour">♡</a>
+                                    }
+                                    <a asp-controller="Tours" asp-action="Details" asp-route-slug="@tour.Slug" class="btn btn-outline-primary">Xem chi tiết</a>
+                                </div>
                             </div>
                         </div>
                     </article>

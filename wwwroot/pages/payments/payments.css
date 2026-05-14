@@ -246,6 +246,46 @@
   font-weight: 800;
 }
 
+.payment-sepay-box {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid rgba(11, 116, 255, 0.14);
+  border-radius: 18px;
+  background: #f8fbff;
+}
+
+.payment-sepay-box__qr {
+  width: 132px;
+  height: 132px;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.payment-sepay-box__details {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.payment-sepay-box__details span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.payment-sepay-box__details strong {
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.payment-sepay-box__details p {
+  margin: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
 .payment-qr-card__actions {
   display: grid;
   gap: 0.85rem;
@@ -277,6 +317,183 @@
   background: #b42318;
 }
 
+.payment-modal-open {
+  overflow: hidden;
+}
+
+.payment-method-modal[hidden] {
+  display: none;
+}
+
+.payment-method-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.payment-method-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.52);
+  backdrop-filter: blur(5px);
+}
+
+.payment-method-modal__panel {
+  position: relative;
+  z-index: 1;
+  width: min(760px, 100%);
+  max-height: min(720px, calc(100vh - 2rem));
+  overflow: auto;
+  padding: 1.5rem;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 30px 90px rgba(15, 23, 42, 0.28);
+}
+
+.payment-method-modal__close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text);
+  background: #fff;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.payment-method-modal__head {
+  display: grid;
+  gap: 0.45rem;
+  padding-right: 3rem;
+  margin-bottom: 1.1rem;
+}
+
+.payment-method-modal__head h2 {
+  margin: 0;
+  font-size: 1.65rem;
+  font-weight: 800;
+}
+
+.payment-method-modal__head p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.payment-method-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.payment-method-option {
+  display: grid;
+  gap: 1rem;
+  align-content: space-between;
+  min-height: 230px;
+  padding: 1.2rem;
+  border: 1px solid rgba(11, 116, 255, 0.14);
+  border-radius: 18px;
+  background: #f8fbff;
+}
+
+.payment-method-option span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.payment-method-option strong {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.payment-method-option p {
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.sepay-payment-card {
+  max-width: 980px;
+}
+
+.sepay-payment-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.75fr) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: stretch;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.sepay-payment-qr,
+.sepay-payment-info {
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 16px 44px rgba(18, 48, 87, 0.08);
+}
+
+.sepay-payment-qr {
+  display: grid;
+  gap: 0.9rem;
+  place-items: center;
+  align-content: center;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.sepay-payment-qr img {
+  width: min(260px, 100%);
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+
+.sepay-payment-qr p,
+.sepay-payment-info p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.sepay-payment-info {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+}
+
+.sepay-payment-info > div {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem 1.15rem;
+  background: #f8fbff;
+}
+
+.sepay-payment-info span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.sepay-payment-info strong {
+  font-size: 1.12rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.sepay-payment-info__content {
+  background: #fff7ec !important;
+}
+
 .payment-result-card .payment-summary-grid {
   margin-top: 1.5rem;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -305,7 +522,15 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .payment-method-grid {
+    grid-template-columns: 1fr;
+  }
+
   .payment-result-card .payment-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sepay-payment-layout {
     grid-template-columns: 1fr;
   }
 }
@@ -320,6 +545,14 @@
 
   .payment-promo-form {
     grid-template-columns: 1fr;
+  }
+
+  .payment-sepay-box {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-sepay-box__qr {
+    justify-self: center;
   }
 
   .payment-promo-card__head {
@@ -365,5 +598,14 @@
   .payment-qr-card__image {
     min-height: 150px;
     padding: 1rem;
+  }
+
+  .payment-method-modal {
+    padding: 0.75rem;
+  }
+
+  .payment-method-modal__panel {
+    padding: 1.15rem;
+    border-radius: 18px;
   }
 }
