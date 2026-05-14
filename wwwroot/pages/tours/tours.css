@@ -2026,7 +2026,7 @@
     position: relative;
     overflow: hidden;
     display: grid;
-    grid-template-columns: minmax(0, 1.35fr) minmax(330px, 0.9fr) minmax(220px, 0.55fr);
+    grid-template-columns: minmax(0, 1.3fr) minmax(390px, 0.9fr) auto;
     gap: 1.25rem;
     align-items: center;
     padding: 1.4rem 1.55rem;
@@ -2161,7 +2161,7 @@
 .customer-booking-card__meta-grid strong {
     font-size: 1.15rem;
     font-weight: 800;
-    overflow-wrap: anywhere;
+    white-space: nowrap;
 }
 
 .customer-booking-card__reason {
@@ -2200,13 +2200,25 @@
     gap: 0.8rem;
     align-items: stretch;
     align-self: center;
-    justify-self: stretch;
+    justify-self: end;
     min-width: 0;
 }
 
 .customer-booking-card__footer .btn {
-    width: 100%;
+    width: auto;
+    min-width: 112px;
+    padding-inline: 1.15rem;
     white-space: nowrap;
+}
+
+.booking-action-list {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.booking-action-list .btn {
+    width: 100%;
+    min-height: 44px;
 }
 
 .customer-notification-card__actions {

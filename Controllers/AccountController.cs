@@ -15,9 +15,13 @@ namespace ChillTour.Controllers;
 
 public class AccountController : Controller
 {
+    private const byte BookingPendingPayment = 0;
+    private const byte BookingPendingDepositVerification = 1;
+    private const byte BookingDepositPaid = 2;
     private const byte BookingCancelled = 4;
     private const byte BookingConfirmed = 3;
     private const byte BookingRefunded = 5;
+    private const byte BookingPendingFullPayment = 6;
     private const byte BookingPendingFullPaymentVerification = 7;
     private const byte BookingFullyPaid = 8;
     private const byte BookingRefundRequested = 9;
@@ -372,6 +376,14 @@ public class AccountController : Controller
                 TotalAmount = x.TotalAmount,
                 RemainingAmount = Math.Max(x.TotalAmount - x.PaidAmount, 0m),
                 BookingStatus = x.BookingStatus,
+                BookingStatusText = x.TourSchedule.DepartureDate < today
+                    && x.BookingStatus != BookingCancelled
+                    && x.BookingStatus != BookingRefunded
+                    ? "Đã hoàn thành"
+                    : BookingStatusText(x.BookingStatus),
+                IsCompletedByDeparture = x.TourSchedule.DepartureDate < today
+                    && x.BookingStatus != BookingCancelled
+                    && x.BookingStatus != BookingRefunded,
                 PaymentStatus = x.PaymentStatus,
                 PaidAmount = x.PaidAmount,
                 CancellationReason = x.CancellationReason,
@@ -415,6 +427,13 @@ public class AccountController : Controller
                     && x.BookingStatus != BookingRefunded
                     && x.BookingStatus != BookingRefundRequested
                     && x.BookingStatus != BookingPendingRefund
+                    && x.PaidAmount <= 0m
+                    && x.TourSchedule.DepartureDate >= today,
+                CanRequestRefund = x.BookingStatus != BookingCancelled
+                    && x.BookingStatus != BookingRefunded
+                    && x.BookingStatus != BookingRefundRequested
+                    && x.BookingStatus != BookingPendingRefund
+                    && x.PaidAmount > 0m
                     && x.TourSchedule.DepartureDate >= today,
                 RequiresRefundRequest = x.PaidAmount > 0m
                     && x.TourSchedule.DepartureDate >= today,
@@ -878,6 +897,22 @@ public class AccountController : Controller
         return !string.IsNullOrWhiteSpace(_googleAuthOptions.ClientId)
             && !string.IsNullOrWhiteSpace(_googleAuthOptions.ClientSecret);
     }
+
+    private static string BookingStatusText(byte status) => status switch
+    {
+        BookingPendingPayment => "Chờ thanh toán",
+        BookingPendingDepositVerification => "Đã thanh toán thành công, chờ xác nhận thanh toán",
+        BookingDepositPaid => "Đã cọc",
+        BookingConfirmed => "Đã đặt",
+        BookingCancelled => "Đã hủy",
+        BookingRefunded => "Đã hoàn tiền",
+        BookingPendingFullPayment => "Chờ thanh toán còn lại",
+        BookingPendingFullPaymentVerification => "Đã thanh toán thành công, chờ xác nhận thanh toán",
+        BookingFullyPaid => "Đã thanh toán đầy đủ",
+        BookingRefundRequested => "Yêu cầu hoàn tiền",
+        BookingPendingRefund => "Chờ hoàn tiền",
+        _ => "Không xác định"
+    };
 
     private async Task<IActionResult> RedirectToSignedInDestinationAsync(LoginResult result, bool rememberMe, string? returnUrl)
     {

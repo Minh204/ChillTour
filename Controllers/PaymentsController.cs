@@ -699,7 +699,8 @@ public class PaymentsController : Controller
             return NotFound();
         }
 
-        var isSuccess = payment.PaymentStatus is PaymentDepositPaid or PaymentFullyPaid;
+        var isWaitingForStaffConfirmation = payment.PaymentStatus == PaymentPendingVerification;
+        var isSuccess = isWaitingForStaffConfirmation || payment.PaymentStatus is PaymentDepositPaid or PaymentFullyPaid;
         var isFullPayment = payment.Booking.PaymentStatus == PaymentFullyPaid || payment.PaymentStatus == PaymentFullyPaid;
         var gateway = string.IsNullOrWhiteSpace(payment.PaymentGateway) ? "cổng thanh toán" : payment.PaymentGateway;
         return View(new PaymentResultViewModel
@@ -711,7 +712,9 @@ public class PaymentsController : Controller
             PaymentGateway = gateway,
             TransactionReference = payment.TransactionReference,
             Amount = payment.Amount,
-            Message = isSuccess
+            Message = isWaitingForStaffConfirmation
+                ? $"Hệ thống đã nhận giao dịch qua {gateway} thành công. Đơn đang chờ nhân viên kiểm tra và xác nhận thanh toán."
+                : isSuccess
                 ? (isFullPayment
                     ? $"Hệ thống đã ghi nhận thanh toán toàn bộ qua {gateway}. Đơn hiện chờ Staff xử lý."
                     : $"Hệ thống đã ghi nhận thanh toán cọc qua {gateway}. Vui lòng thanh toán phần còn lại trước hạn 5 ngày trước khởi hành.")
