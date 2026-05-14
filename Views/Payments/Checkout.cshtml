@@ -6,19 +6,19 @@
     var paymentStatusText = isCancelled
         ? "Đơn đã hủy"
         : Model.IsFullyPaid
-        ? "Đã thanh toán toàn bộ"
-        : Model.PaymentStatus == 1
-            ? "Chờ Accountant xác nhận thanh toán"
-            : Model.PaidAmount > 0
-                ? "Đã cọc, chờ thanh toán phần còn lại"
-                : "Chờ thanh toán";
+            ? "Đã thanh toán toàn bộ"
+            : Model.PaymentStatus == 1
+                ? "Đã ghi nhận giao dịch"
+                : Model.PaidAmount > 0
+                    ? "Đã cọc, chờ thanh toán phần còn lại"
+                    : "Chờ thanh toán";
     var primaryAmount = isCancelled
         ? 0m
         : Model.CanPayFull && Model.MustPayFull
-        ? Model.FullPaymentAmount
-        : Model.CanPayDeposit
-            ? Model.DepositAmount
-            : Model.RemainingAmount;
+            ? Model.FullPaymentAmount
+            : Model.CanPayDeposit
+                ? Model.DepositAmount
+                : Model.RemainingAmount;
 }
 
 @section Styles {
@@ -39,8 +39,8 @@
 
             <div class="auth-card__intro payment-checkout-hero">
                 <div>
-                    <span class="eyebrow">VNPay</span>
-                    <h1>Thanh toán tour qua cổng VNPay</h1>
+                    <span class="eyebrow">Thanh toán</span>
+                    <h1>Thanh toán tour</h1>
                     <p>Tour thường có thể thanh toán cọc 30% hoặc thanh toán toàn bộ. Phần còn lại cần hoàn tất trước @dueDateText. Tour giờ chót bắt buộc thanh toán toàn bộ ngay khi đặt.</p>
                 </div>
                 <div class="payment-checkout-hero__highlight">
@@ -88,7 +88,7 @@
                         <div class="payment-promo-card__head">
                             <div>
                                 <span class="eyebrow eyebrow--warm">Mã ưu đãi</span>
-                                <h2>Áp dụng trước khi chuyển khoản</h2>
+                                <h2>Áp dụng trước khi thanh toán</h2>
                             </div>
                             <a asp-controller="Promotions" asp-action="Index" class="btn btn-outline-primary">Xem ưu đãi hiện có</a>
                         </div>
@@ -172,8 +172,8 @@
 
                 <aside class="payment-qr-card">
                     <div class="payment-qr-card__image payment-qr-card__image--placeholder">
-                        <strong>VNPay</strong>
-                        <span>Thanh toán an toàn qua cổng thanh toán sandbox</span>
+                        <strong>VNPay / SePay</strong>
+                        <span>Chọn số tiền, sau đó chọn phương thức thanh toán phù hợp</span>
                     </div>
 
                     <div class="payment-qr-card__summary">
@@ -234,7 +234,7 @@
                         }
                         else if (!isCancelled)
                         {
-                            <div class="auth-alert auth-alert--success">Đơn này đã được thanh toán đầy đủ, chờ xác nhận.</div>
+                            <div class="auth-alert auth-alert--success">Đơn này đã được thanh toán đầy đủ, Staff sẽ xử lý booking.</div>
                         }
                     </div>
                 </aside>
@@ -273,7 +273,7 @@
                 <div>
                     <span>SePay</span>
                     <strong>Chuyển khoản ngân hàng</strong>
-                    <p>Tạo mã QR chuyển khoản. Khi webhook SePay ghi nhận giao dịch, đơn sẽ chờ Accountant xác nhận.</p>
+                    <p>Tạo mã QR chuyển khoản. Khi webhook SePay ghi nhận giao dịch, hệ thống sẽ tự cập nhật thanh toán và báo Staff xử lý booking.</p>
                 </div>
                 <button type="submit" class="btn btn-outline-primary">Tạo QR SePay</button>
             </form>

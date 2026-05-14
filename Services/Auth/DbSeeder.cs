@@ -53,12 +53,6 @@ public partial class DbSeeder
             roleCode: RoleConstants.Manager,
             cancellationToken);
         await SeedDefaultUserAsync(
-            email: "accountant@chilltour.local",
-            fullName: "System Accountant",
-            password: "Accountant@123",
-            roleCode: RoleConstants.Accountant,
-            cancellationToken);
-        await SeedDefaultUserAsync(
             email: "employee@chilltour.local",
             fullName: "System Employee",
             password: "Employee@123",

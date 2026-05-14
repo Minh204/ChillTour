@@ -320,7 +320,7 @@ public class PaymentsController : Controller
         var remainingAmount = CalculateRemainingAmount(booking);
         if (booking.PaymentStatus == PaymentPendingVerification)
         {
-            TempData["PaymentInfoMessage"] = "Đơn này đang chờ Accountant xác nhận giao dịch. Bạn chưa cần thanh toán thêm.";
+            TempData["PaymentInfoMessage"] = "Đơn này đã ghi nhận giao dịch thanh toán. Bạn chưa cần thanh toán thêm.";
             return RedirectToAction(nameof(Checkout), new { bookingId });
         }
 
@@ -410,7 +410,7 @@ public class PaymentsController : Controller
         var remainingAmount = CalculateRemainingAmount(booking);
         if (booking.PaymentStatus == PaymentPendingVerification)
         {
-            TempData["PaymentInfoMessage"] = "Đơn này đang chờ Accountant xác nhận giao dịch. Bạn chưa cần thanh toán thêm.";
+            TempData["PaymentInfoMessage"] = "Đơn này đã ghi nhận giao dịch thanh toán. Bạn chưa cần thanh toán thêm.";
             return RedirectToAction(nameof(Checkout), new { bookingId });
         }
 
@@ -571,6 +571,7 @@ public class PaymentsController : Controller
 
         var payment = await _dbContext.Payments
             .Include(x => x.Booking)
+            .ThenInclude(x => x.TourSchedule)
             .SingleOrDefaultAsync(x => x.PaymentCode == paymentCode && x.PaymentGateway == "SePay", cancellationToken);
 
         if (payment is null)
@@ -589,7 +590,7 @@ public class PaymentsController : Controller
             return BadRequest(new { success = false, message = "Transfer amount is less than payment amount" });
         }
 
-        var processed = await MarkPaymentWaitingForVerificationAsync(
+        var processed = await ConfirmGatewayPaymentAsync(
             payment,
             request.ReferenceCode,
             $"SePay đã ghi nhận giao dịch {request.TransferAmount:N0} đ, mã tham chiếu {request.ReferenceCode}.",
@@ -639,23 +640,22 @@ public class PaymentsController : Controller
         }
 
         var isSuccess = payment.PaymentStatus is PaymentDepositPaid or PaymentFullyPaid;
-        var isPendingVerification = payment.PaymentStatus == PaymentPending && !string.IsNullOrWhiteSpace(payment.TransactionReference);
         var isFullPayment = payment.Booking.PaymentStatus == PaymentFullyPaid || payment.PaymentStatus == PaymentFullyPaid;
+        var gateway = string.IsNullOrWhiteSpace(payment.PaymentGateway) ? "cổng thanh toán" : payment.PaymentGateway;
         return View(new PaymentResultViewModel
         {
             BookingId = payment.BookingId,
-            IsSuccess = isSuccess || isPendingVerification,
+            IsSuccess = isSuccess,
             BookingCode = payment.Booking.BookingCode,
             PaymentCode = payment.PaymentCode,
+            PaymentGateway = gateway,
             TransactionReference = payment.TransactionReference,
             Amount = payment.Amount,
             Message = isSuccess
                 ? (isFullPayment
-                    ? "Hệ thống đã ghi nhận thanh toán toàn bộ qua VNPay. Đơn hiện chờ bộ phận vận hành xác nhận."
-                    : "Hệ thống đã ghi nhận thanh toán cọc qua VNPay. Vui lòng thanh toán phần còn lại trước hạn 5 ngày trước khởi hành.")
-                : isPendingVerification
-                    ? "Hệ thống đã nhận giao dịch VNPay và đang chờ Accountant đối soát, xác nhận thanh toán. Staff sẽ xử lý booking sau khi thanh toán được xác nhận."
-                : $"Thanh toán qua VNPay chưa thành công. {(string.IsNullOrWhiteSpace(payment.FailureReason) ? "Bạn có thể quay lại trang checkout để thử lại." : payment.FailureReason)}"
+                    ? $"Hệ thống đã ghi nhận thanh toán toàn bộ qua {gateway}. Đơn hiện chờ Staff xử lý."
+                    : $"Hệ thống đã ghi nhận thanh toán cọc qua {gateway}. Vui lòng thanh toán phần còn lại trước hạn 5 ngày trước khởi hành.")
+                : $"Thanh toán qua {gateway} chưa thành công. {(string.IsNullOrWhiteSpace(payment.FailureReason) ? "Bạn có thể quay lại trang checkout để thử lại." : payment.FailureReason)}"
         });
     }
 
@@ -766,7 +766,7 @@ public class PaymentsController : Controller
 
         if (result.IsSuccess)
         {
-            return await MarkPaymentWaitingForVerificationAsync(
+            return await ConfirmGatewayPaymentAsync(
                 payment,
                 result.TransactionNo,
                 $"VNPay đã ghi nhận giao dịch {payment.Amount:N0} đ.",
@@ -784,50 +784,83 @@ public class PaymentsController : Controller
         return (booking.BookingId, false, "Thanh toán VNPay chưa thành công.");
     }
 
-    private async Task<(long BookingId, bool IsSuccess, string Message)> MarkPaymentWaitingForVerificationAsync(
+    private async Task<(long BookingId, bool IsSuccess, string Message)> ConfirmGatewayPaymentAsync(
         Payment payment,
         string? transactionReference,
         string notificationMessage,
         CancellationToken cancellationToken)
     {
         var booking = payment.Booking;
-        var willBeFullyPaid = booking.PaidAmount + payment.Amount >= booking.TotalAmount;
+        var oldBookingStatus = booking.BookingStatus;
+        var oldPaymentStatus = booking.PaymentStatus;
+        var newPaidAmount = Math.Min(booking.PaidAmount + payment.Amount, booking.TotalAmount);
+        var isFullyPaid = newPaidAmount >= booking.TotalAmount;
 
         payment.TransactionReference = string.IsNullOrWhiteSpace(transactionReference)
             ? payment.TransactionReference
             : transactionReference;
-        payment.PaymentStatus = PaymentPending;
-        payment.PaidAt = null;
+        payment.PaymentStatus = isFullyPaid ? PaymentFullyPaid : PaymentDepositPaid;
+        payment.PaidAt = DateTime.UtcNow;
         payment.FailureReason = null;
         payment.UpdatedAt = DateTime.UtcNow;
 
-        booking.PaymentStatus = PaymentPendingVerification;
-        booking.BookingStatus = willBeFullyPaid
-            ? BookingPendingFullPaymentVerification
-            : BookingPendingDepositVerification;
+        booking.PaidAmount = newPaidAmount;
+        booking.PaymentStatus = isFullyPaid ? PaymentFullyPaid : PaymentDepositPaid;
+        booking.BookingStatus = isFullyPaid ? BookingFullyPaid : BookingDepositPaid;
+        booking.FullyPaidAt = isFullyPaid ? DateTime.UtcNow : booking.FullyPaidAt;
         booking.UpdatedAt = DateTime.UtcNow;
+
+        if (booking.PromotionId.HasValue)
+        {
+            var userPromotion = await _dbContext.UserPromotions
+                .SingleOrDefaultAsync(x => x.UserId == booking.UserId && x.PromotionId == booking.PromotionId.Value, cancellationToken);
+
+            if (userPromotion is not null && userPromotion.UsedAt == null)
+            {
+                userPromotion.UsedAt = DateTime.UtcNow;
+            }
+        }
+
+        _dbContext.BookingStatusHistories.Add(new BookingStatusHistory
+        {
+            BookingId = booking.BookingId,
+            OldStatus = oldBookingStatus,
+            NewStatus = booking.BookingStatus,
+            ChangedByUserId = GetCurrentUserId(),
+            Notes = $"Hệ thống tự ghi nhận thanh toán {payment.PaymentGateway} {payment.Amount:N0} đ. PaymentStatus: {oldPaymentStatus} -> {booking.PaymentStatus}.",
+            ChangedAt = DateTime.UtcNow
+        });
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
+        var remainingAmount = Math.Max(booking.TotalAmount - booking.PaidAmount, 0m);
+        var dueDateText = booking.BalanceDueAt?.ToString("dd/MM/yyyy")
+                          ?? booking.TourSchedule?.DepartureDate.AddDays(-5).ToString("dd/MM/yyyy")
+                          ?? string.Empty;
+
         await _notificationService.CreateAsync(
             booking.UserId,
-            notificationType: 2,
-            title: $"Đã nhận giao dịch {payment.PaymentGateway}",
-            message: $"Đơn {booking.BookingCode} đã ghi nhận giao dịch {payment.PaymentGateway} {payment.Amount:N0} đ. Accountant sẽ đối soát và xác nhận thanh toán trước khi Staff xử lý booking.",
+            notificationType: 3,
+            title: isFullyPaid ? "Đã ghi nhận thanh toán toàn bộ" : "Đã ghi nhận thanh toán cọc",
+            message: isFullyPaid
+                ? $"Hệ thống đã ghi nhận đơn {booking.BookingCode} thanh toán đủ {booking.PaidAmount:N0} đ qua {payment.PaymentGateway}. Staff sẽ xử lý booking."
+                : $"Hệ thống đã ghi nhận đơn {booking.BookingCode} đã cọc {booking.PaidAmount:N0} đ qua {payment.PaymentGateway}. Bạn cần thanh toán phần còn lại {remainingAmount:N0} đ trước {dueDateText}.",
             relatedEntityType: "Booking",
             relatedEntityId: booking.BookingId,
             cancellationToken: cancellationToken);
 
         await _notificationService.CreateForRolesAsync(
-            RoleConstants.ManageFinance,
-            notificationType: 12,
-            title: "Giao dịch chờ Accountant xác nhận",
-            message: $"Đơn {booking.BookingCode} có giao dịch {payment.PaymentGateway} {payment.Amount:N0} đ đang chờ đối soát. {notificationMessage}",
+            RoleConstants.ManageBookings,
+            notificationType: 13,
+            title: isFullyPaid ? "Đơn đã thanh toán đủ, chờ Staff xử lý" : "Đơn đã cọc, chờ Staff xác nhận",
+            message: isFullyPaid
+                ? $"Đơn {booking.BookingCode} đã thanh toán toàn bộ qua {payment.PaymentGateway}. Staff có thể xác nhận booking và chuẩn bị dịch vụ. {notificationMessage}"
+                : $"Đơn {booking.BookingCode} đã thanh toán cọc qua {payment.PaymentGateway}. Staff có thể liên hệ khách, kiểm tra thông tin và giữ chỗ. {notificationMessage}",
             relatedEntityType: "Booking",
             relatedEntityId: booking.BookingId,
             cancellationToken: cancellationToken);
 
-        return (booking.BookingId, true, $"{payment.PaymentGateway} đã ghi nhận giao dịch. Đơn đang chờ Accountant xác nhận thanh toán.");
+        return (booking.BookingId, true, $"{payment.PaymentGateway} đã ghi nhận thanh toán. Staff sẽ xử lý booking.");
     }
 
     private async Task<string> GeneratePaymentCodeAsync(CancellationToken cancellationToken)

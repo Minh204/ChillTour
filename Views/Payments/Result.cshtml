@@ -11,7 +11,7 @@
     <div class="container">
         <div class="auth-card payment-result-card">
             <div class="auth-card__intro">
-                <span class="eyebrow @(Model.IsSuccess ? string.Empty : "eyebrow--warm")">VNPay</span>
+                <span class="eyebrow @(Model.IsSuccess ? string.Empty : "eyebrow--warm")">@Model.PaymentGateway</span>
                 <h1>@(Model.IsSuccess ? "Thanh toán thành công" : "Thanh toán chưa thành công")</h1>
                 <p>@Model.Message</p>
             </div>
@@ -28,7 +28,7 @@
                 <div class="payment-summary-card payment-summary-card--accent">
                     <span>Số tiền thanh toán</span>
                     <strong class="payment-summary-card__value">@Model.Amount.ToString("N0") đ</strong>
-                    <p>@(string.IsNullOrWhiteSpace(Model.TransactionReference) ? "Chưa có mã giao dịch từ VNPay" : $"Mã giao dịch: {Model.TransactionReference}")</p>
+                    <p>@(string.IsNullOrWhiteSpace(Model.TransactionReference) ? $"Chưa có mã giao dịch từ {Model.PaymentGateway}" : $"Mã giao dịch: {Model.TransactionReference}")</p>
                 </div>
             </div>
 

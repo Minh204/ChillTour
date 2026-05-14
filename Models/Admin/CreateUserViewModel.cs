@@ -23,6 +23,6 @@ public class CreateUserViewModel
     public string Password { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Vui lÃ²ng chá»n quyá»n.")]
-    [RegularExpression($"{RoleConstants.Admin}|{RoleConstants.Director}|{RoleConstants.Manager}|{RoleConstants.Accountant}|{RoleConstants.Employee}|{RoleConstants.Customer}", ErrorMessage = "Quyá»n khÃ´ng há»£p lá»‡.")]
+    [RegularExpression($"{RoleConstants.Admin}|{RoleConstants.Director}|{RoleConstants.Manager}|{RoleConstants.Employee}|{RoleConstants.Customer}", ErrorMessage = "Quyá»n khÃ´ng há»£p lá»‡.")]
     public string RoleCode { get; set; } = RoleConstants.Customer;
 }

@@ -633,7 +633,9 @@ public class AdminController : Controller
                 var latestPayment = x.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
                 var remainingAmount = Math.Max(x.TotalAmount - x.PaidAmount, 0m);
                 var paymentConfirmation = x.StatusHistory
-                    .Where(h => h.Notes != null && h.Notes.Contains("Accountant xác nhận"))
+                    .Where(h => h.Notes != null
+                                && (h.Notes.Contains("Accountant xác nhận")
+                                    || h.Notes.Contains("Hệ thống tự ghi nhận thanh toán")))
                     .OrderByDescending(h => h.ChangedAt)
                     .FirstOrDefault();
                 var bookingConfirmation = x.StatusHistory
