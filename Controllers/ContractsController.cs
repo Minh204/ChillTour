@@ -182,8 +182,8 @@ public class ContractsController : Controller
             DepartureDate = contract.Booking.TourSchedule.DepartureDate,
             TotalAmount = contract.Booking.TotalAmount,
             PaidAmount = contract.Booking.PaidAmount,
-            ContractStatus = contract.ContractStatus,
-            StatusText = StatusText(contract.ContractStatus),
+            ContractStatus = IsExpiredUnsignedContract(contract) ? ContractService.Cancelled : contract.ContractStatus,
+            StatusText = IsExpiredUnsignedContract(contract) ? "Đã hủy" : StatusText(contract.ContractStatus),
             ContractHtml = contract.ContractHtml,
             CanSign = CanUserSign(contract, userId),
             IsDirectorSigning = isDirector,
@@ -198,6 +198,11 @@ public class ContractsController : Controller
 
     private bool CanUserSign(ElectronicContract contract, long userId)
     {
+        if (IsExpiredUnsignedContract(contract))
+        {
+            return false;
+        }
+
         if (contract.ContractStatus == ContractService.PendingDirectorSign)
         {
             return IsDirectorSigner(contract, userId);
@@ -208,6 +213,13 @@ public class ContractsController : Controller
 
     private bool IsDirectorSigner(ElectronicContract contract, long userId) =>
         User.IsInRole(RoleConstants.Director);
+
+    private static bool IsExpiredUnsignedContract(ElectronicContract contract)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.ToLocalTime());
+        return contract.Booking.TourSchedule.DepartureDate < today
+               && contract.ContractStatus != ContractService.Signed;
+    }
 
     private static string StatusText(byte status) => status switch
     {

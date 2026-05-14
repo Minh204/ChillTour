@@ -25,7 +25,7 @@
                 <div class="auth-alert auth-alert--error">@bookingErrorMessage</div>
             }
 
-            <form method="get" class="booking-history-filter">
+            <form method="get" class="booking-history-filter app-filter-row">
                 <label>
                     Từ khóa
                     <input type="text" name="searchTerm" value="@Model.SearchTerm" class="form-control" placeholder="Mã đơn hoặc tên tour..." />
@@ -109,23 +109,15 @@
                                 <p class="customer-booking-card__reason">Lý do hủy: @booking.CancellationReason</p>
                             }
 
-                            @if (!string.IsNullOrWhiteSpace(booking.PaymentConfirmedByName) || !string.IsNullOrWhiteSpace(booking.BookingConfirmedByName))
-                            {
-                                <div class="customer-booking-card__audit">
-                                    @if (!string.IsNullOrWhiteSpace(booking.PaymentConfirmedByName))
-                                    {
-                                        <span>Accountant xác nhận thanh toán: <strong>@booking.PaymentConfirmedByName</strong>@(booking.PaymentConfirmedAt.HasValue ? $" • {booking.PaymentConfirmedAt.Value.ToLocalTime():dd/MM/yyyy HH:mm}" : string.Empty)</span>
-                                    }
-                                    @if (!string.IsNullOrWhiteSpace(booking.BookingConfirmedByName))
-                                    {
-                                        <span>Staff xác nhận booking: <strong>@booking.BookingConfirmedByName</strong>@(booking.BookingConfirmedAt.HasValue ? $" • {booking.BookingConfirmedAt.Value.ToLocalTime():dd/MM/yyyy HH:mm}" : string.Empty)</span>
-                                    }
-                                </div>
-                            }
-
                             <div class="customer-booking-card__footer">
                                 <a asp-controller="Tours" asp-action="Details" asp-route-slug="@booking.TourSlug" class="btn btn-outline-primary">Xem tour</a>
                                 <a asp-controller="Payments" asp-action="Checkout" asp-route-bookingId="@booking.BookingId" class="btn btn-primary">Xem thanh toán</a>
+                                @if (booking.ContractId.HasValue)
+                                {
+                                    <a asp-controller="Contracts" asp-action="Details" asp-route-id="@booking.ContractId.Value" class="btn btn-outline-primary">
+                                        Xem hợp đồng
+                                    </a>
+                                }
                                 @if (booking.CanCancel)
                                 {
                                     <button type="button"
@@ -212,14 +204,14 @@
     private static string StatusLabel(int status) => status switch
     {
         0 => "Chờ thanh toán",
-        1 => "Chờ xác nhận cọc",
+        1 => "Chờ xác nhận",
         2 => "Đã cọc",
-        3 => "Đã xác nhận booking",
+        3 => "Đã đặt",
         4 => "Đã hủy",
         5 => "Đã hoàn tiền",
         6 => "Chờ thanh toán còn lại",
-        7 => "Chờ xác nhận thanh toán đủ",
-        8 => "Đã thanh toán đủ",
+        7 => "Chờ xác nhận",
+        8 => "Đã thanh toán đầy đủ",
         9 => "Yêu cầu hoàn tiền",
         10 => "Chờ hoàn tiền",
         _ => "Không xác định"

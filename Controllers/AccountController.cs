@@ -329,6 +329,7 @@ public class AccountController : Controller
             .AsNoTracking()
             .Include(x => x.Tour)
             .Include(x => x.TourSchedule)
+            .Include(x => x.ElectronicContracts)
             .Where(x => x.UserId == userId.Value && (x.PaymentStatus == 1 || x.PaymentStatus == 2 || x.PaymentStatus == 3))
             .AsQueryable();
 
@@ -394,6 +395,21 @@ public class AccountController : Controller
                     .Where(h => h.NewStatus == BookingConfirmed)
                     .OrderByDescending(h => h.ChangedAt)
                     .Select(h => (DateTime?)h.ChangedAt)
+                    .FirstOrDefault(),
+                ContractId = x.ElectronicContracts
+                    .Where(c => c.ContractStatus != 4)
+                    .OrderByDescending(c => c.CreatedAt)
+                    .Select(c => (long?)c.ElectronicContractId)
+                    .FirstOrDefault(),
+                ContractCode = x.ElectronicContracts
+                    .Where(c => c.ContractStatus != 4)
+                    .OrderByDescending(c => c.CreatedAt)
+                    .Select(c => c.ContractCode)
+                    .FirstOrDefault(),
+                ContractStatus = x.ElectronicContracts
+                    .Where(c => c.ContractStatus != 4)
+                    .OrderByDescending(c => c.CreatedAt)
+                    .Select(c => (byte?)c.ContractStatus)
                     .FirstOrDefault(),
                 CanCancel = x.BookingStatus != BookingCancelled
                     && x.BookingStatus != BookingRefunded

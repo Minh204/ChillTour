@@ -20,6 +20,9 @@ public class BookingItemViewModel
     public decimal PaidAmount { get; set; }
     public decimal RemainingAmount { get; set; }
     public byte BookingStatus { get; set; }
+    public string BookingStatusText { get; set; } = string.Empty;
+    public bool IsCompletedByDeparture { get; set; }
+    public bool IsStatusLocked { get; set; }
     public byte PaymentStatus { get; set; }
     public DateTime? BalanceDueAt { get; set; }
     public long? LatestPaymentId { get; set; }

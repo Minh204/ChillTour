@@ -19,6 +19,9 @@ public class CustomerBookingItemViewModel
     public DateTime? PaymentConfirmedAt { get; set; }
     public string? BookingConfirmedByName { get; set; }
     public DateTime? BookingConfirmedAt { get; set; }
+    public long? ContractId { get; set; }
+    public string? ContractCode { get; set; }
+    public byte? ContractStatus { get; set; }
     public bool CanCancel { get; set; }
     public bool RequiresRefundRequest { get; set; }
     public int RefundPercent { get; set; }

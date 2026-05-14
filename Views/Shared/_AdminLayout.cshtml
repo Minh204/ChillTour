@@ -70,6 +70,13 @@
                     </a>
                 }
 
+                @if (User.IsInRole(RoleConstants.Admin) || User.IsInRole(RoleConstants.Director))
+                {
+                    <a asp-controller="Admin" asp-action="Contracts" class="admin-nav__item @(ViewContext.RouteData.Values["action"]?.ToString() == "Contracts" ? "is-active" : "")">
+                        <span>Quản lý hợp đồng</span>
+                    </a>
+                }
+
                 @if (RoleConstants.ViewReports.Any(User.IsInRole))
                 {
                     <a asp-controller="Admin" asp-action="Reports" class="admin-nav__item @(ViewContext.RouteData.Values["action"]?.ToString() == "Reports" ? "is-active" : "")">

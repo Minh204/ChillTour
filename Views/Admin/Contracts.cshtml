@@ -1,0 +1,131 @@
+@model ChillTour.Models.Admin.AdminContractListViewModel
+@{
+    ViewData["Title"] = "Quản lý hợp đồng";
+}
+
+<section class="admin-page-stack">
+    <div class="admin-page-head">
+        <div>
+            <span class="admin-panel__label">Contracts</span>
+            <h2>Quản lý hợp đồng điện tử</h2>
+            <p>Theo dõi hợp đồng được tạo sau khi Staff xác nhận booking và xử lý ký hợp đồng của Giám đốc.</p>
+        </div>
+    </div>
+
+    @if (TempData["ContractInfoMessage"] is string infoMessage)
+    {
+        <div class="auth-alert auth-alert--success">@infoMessage</div>
+    }
+    @if (TempData["ContractErrorMessage"] is string errorMessage)
+    {
+        <div class="auth-alert auth-alert--error">@errorMessage</div>
+    }
+
+    <div class="admin-metrics">
+        <div class="admin-stat-card admin-stat-card--orange">
+            <span>Chờ Giám đốc ký</span>
+            <strong>@Model.PendingDirectorSign</strong>
+            <p>Hợp đồng mới tạo sau khi Staff xác nhận booking.</p>
+        </div>
+        <div class="admin-stat-card admin-stat-card--mint">
+            <span>Chờ khách ký</span>
+            <strong>@Model.PendingCustomerSign</strong>
+            <p>Hợp đồng đã được Giám đốc ký và gửi khách hoàn tất.</p>
+        </div>
+        <div class="admin-stat-card">
+            <span>Đã ký hoàn tất</span>
+            <strong>@Model.SignedContracts</strong>
+            <p>Hợp đồng đã đủ chữ ký hai bên.</p>
+        </div>
+    </div>
+
+    <section class="admin-panel">
+        <div class="admin-panel__header">
+            <div>
+                <span class="admin-panel__label">Contract queue</span>
+                <h3>Danh sách hợp đồng</h3>
+            </div>
+            <div class="admin-topbar__badge">@Model.TotalContracts hợp đồng</div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Hợp đồng</th>
+                        <th>Đơn đặt tour</th>
+                        <th>Khách hàng</th>
+                        <th>Khởi hành</th>
+                        <th>Giá trị</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Contracts.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-4">Chưa có hợp đồng nào.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var contract in Model.Contracts)
+                        {
+                            <tr>
+                                <td>
+                                    <strong>@contract.ContractCode</strong>
+                                    <div class="text-muted small">Tạo lúc @contract.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                                </td>
+                                <td>
+                                    <strong>@contract.BookingCode</strong>
+                                    <div class="text-muted small">@contract.TourName</div>
+                                </td>
+                                <td>@contract.CustomerName</td>
+                                <td>@contract.DepartureDate.ToString("dd/MM/yyyy")</td>
+                                <td>
+                                    <strong>@contract.TotalAmount.ToString("N0") đ</strong>
+                                    <div class="text-muted small">Đã thanh toán: @contract.PaidAmount.ToString("N0") đ</div>
+                                </td>
+                                <td>
+                                    <span class="status-pill @ContractStatusClass(contract.ContractStatus)">@contract.StatusText</span>
+                                    @if (contract.DirectorSignedAt.HasValue)
+                                    {
+                                        <div class="text-muted small">Giám đốc ký: @contract.DirectorSignedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                                    }
+                                    @if (contract.CustomerSignedAt.HasValue)
+                                    {
+                                        <div class="text-muted small">Khách ký: @contract.CustomerSignedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                                    }
+                                    @if (contract.IsExpiredCancelled)
+                                    {
+                                        <div class="text-muted small">Quá ngày khởi hành, không thể ký.</div>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="admin-row-actions">
+                                        <a asp-controller="Contracts" asp-action="Details" asp-route-id="@contract.ContractId" class="btn @(contract.CanDirectorSign ? "btn-primary" : "btn-outline-primary") btn-sm">
+                                            @(contract.CanDirectorSign ? "Ký hợp đồng" : "Xem hợp đồng")
+                                        </a>
+                                        <a asp-controller="Contracts" asp-action="Preview" asp-route-id="@contract.ContractId" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm">Xem PDF</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>
+
+@functions {
+    private static string ContractStatusClass(byte status) => status switch
+    {
+        1 => "status-pill--warning",
+        2 => "status-pill--info",
+        3 => "status-pill--success",
+        4 => "status-pill--danger",
+        _ => "status-pill--muted"
+    };
+}

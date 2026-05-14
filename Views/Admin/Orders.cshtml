@@ -13,6 +13,9 @@
             <span class="admin-panel__label">Operations</span>
             <h2>Xử lý đơn đặt tour</h2>
         </div>
+        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#orderRulesModal">
+            Quy tắc xử lý đơn
+        </button>
     </div>
 
     @if (TempData["AdminSuccessMessage"] is string successMessage)
@@ -51,7 +54,7 @@
             <div class="admin-topbar__badge">@Model.TotalItems đơn</div>
         </div>
 
-        <form method="get" class="admin-form-grid mb-4">
+        <form method="get" class="admin-form-grid admin-order-filter app-filter-row mb-4">
             <input type="hidden" name="page" value="1" />
             <label>
                 Từ khóa
@@ -61,7 +64,7 @@
                 Trạng thái đơn
                 <select name="bookingStatus" class="form-select">
                     <option value="">Tất cả</option>
-                    @for (var status = 0; status <= 10; status++)
+                    @foreach (var status in FilterStatusOptions())
                     {
                         <option value="@status" selected="@(Model.Filter.BookingStatus == status)">@StatusLabel(status)</option>
                     }
@@ -93,14 +96,13 @@
         </form>
 
         <div class="table-responsive">
-            <table class="table align-middle">
+            <table class="table align-middle admin-orders-table">
                 <thead>
                     <tr>
                         <th>Mã đơn</th>
                         <th>Khách hàng</th>
                         <th>Tour</th>
                         <th>Khởi hành</th>
-                        <th>Khách</th>
                         <th>Tổng tiền</th>
                         <th>Trạng thái</th>
                         <th>Thao tác</th>
@@ -110,7 +112,7 @@
                     @if (Model.Bookings.Count == 0)
                     {
                         <tr>
-                            <td colspan="8" class="text-center py-4">Không có đơn phù hợp với bộ lọc hiện tại.</td>
+                            <td colspan="7" class="text-center py-4">Không có đơn phù hợp với bộ lọc hiện tại.</td>
                         </tr>
                     }
                     else
@@ -126,124 +128,21 @@
                                     <strong>@booking.CustomerName</strong>
                                     <div class="text-muted small">@booking.ContactPhone</div>
                                 </td>
-                                <td>
-                                    <strong>@booking.TourName</strong>
+                                <td class="admin-orders-table__tour">
+                                    <strong title="@booking.TourName">@booking.TourName</strong>
                                     <div class="text-muted small">@booking.TourCode</div>
                                 </td>
                                 <td>@booking.DepartureDate.ToString("dd/MM/yyyy")</td>
-                                <td>@booking.Travelers</td>
                                 <td>
                                     <strong>@booking.TotalAmount.ToString("N0") đ</strong>
                                     <div class="text-muted small">Đã trả: @booking.PaidAmount.ToString("N0") đ</div>
                                     <div class="text-muted small">Còn lại: @booking.RemainingAmount.ToString("N0") đ</div>
                                 </td>
                                 <td>
-                                    <div class="d-flex flex-column gap-2">
-                                        <span class="status-pill @StatusClass(booking.BookingStatus)">@StatusLabel(booking.BookingStatus)</span>
-                                        @if (!string.IsNullOrWhiteSpace(booking.PaymentConfirmedByName))
-                                        {
-                                            <span class="admin-audit-line">Thanh toán: <strong>@booking.PaymentConfirmedByName</strong>@(booking.PaymentConfirmedAt.HasValue ? $" • {booking.PaymentConfirmedAt.Value.ToLocalTime():dd/MM/yyyy HH:mm}" : string.Empty)</span>
-                                        }
-                                        @if (!string.IsNullOrWhiteSpace(booking.BookingConfirmedByName))
-                                        {
-                                            <span class="admin-audit-line">Staff: <strong>@booking.BookingConfirmedByName</strong>@(booking.BookingConfirmedAt.HasValue ? $" • {booking.BookingConfirmedAt.Value.ToLocalTime():dd/MM/yyyy HH:mm}" : string.Empty)</span>
-                                        }
-                                        @if (!string.IsNullOrWhiteSpace(booking.LatestPaymentCode))
-                                        {
-                                            <div class="text-muted small">@booking.LatestPaymentCode • @booking.LatestPaymentAmount.ToString("N0") đ</div>
-                                        }
-                                        @if (!string.IsNullOrWhiteSpace(booking.LatestPaymentTransactionReference))
-                                        {
-                                            <div class="text-muted small">Mã GD: @booking.LatestPaymentTransactionReference</div>
-                                        }
-                                        @if (booking.HasPaymentToVerify && canManageFinance && booking.LatestPaymentId.HasValue)
-                                        {
-                                            <form asp-action="VerifyPayment" method="post" class="d-flex gap-2">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="paymentId" value="@booking.LatestPaymentId" />
-                                                <input type="hidden" name="currentPage" value="@Model.CurrentPage" />
-                                                <button type="submit" name="isValid" value="true" class="btn btn-primary btn-sm">Xác nhận tiền</button>
-                                                <button type="submit" name="isValid" value="false" class="btn btn-outline-danger btn-sm" onclick="return confirm('Từ chối giao dịch này?');">Sai giao dịch</button>
-                                            </form>
-                                        }
-                                        @if (canEditBookingStatus)
-                                        {
-                                            <form asp-action="UpdateOrderStatus" method="post" class="admin-status-editor">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="BookingId" value="@booking.BookingId" />
-                                                <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
-                                                <select name="BookingStatus" class="form-select form-select-sm">
-                                                    @for (var status = 0; status <= 10; status++)
-                                                    {
-                                                        <option value="@status" selected="@(booking.BookingStatus == status)">@StatusLabel(status)</option>
-                                                    }
-                                                </select>
-                                                <div class="admin-status-editor__actions">
-                                                    <input type="text" name="Notes" class="form-control form-control-sm" maxlength="500" placeholder="Ghi chú..." />
-                                                    <button type="submit" class="btn btn-primary btn-sm">Lưu</button>
-                                                </div>
-                                            </form>
-                                            @if (booking.CanStaffProcess && booking.BookingStatus != 3 && booking.BookingStatus != 8)
-                                            {
-                                                <form asp-action="UpdateOrderStatus" method="post">
-                                                    @Html.AntiForgeryToken()
-                                                    <input type="hidden" name="BookingId" value="@booking.BookingId" />
-                                                    <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
-                                                    <input type="hidden" name="BookingStatus" value="3" />
-                                                    <input type="hidden" name="Notes" value="Staff xác nhận booking sau khi hệ thống ghi nhận thanh toán." />
-                                                    <button type="submit" class="btn btn-primary btn-sm">Staff xác nhận booking</button>
-                                                </form>
-                                            }
-                                        }
-                                        else if (booking.BookingStatus is 4 or 5)
-                                        {
-                                            <span class="text-muted small">Đơn đã đóng, không thể sửa trạng thái.</span>
-                                        }
-                                        else if (booking.BookingStatus == 9 && canManageBookings)
-                                        {
-                                            <form asp-action="UpdateOrderStatus" method="post">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="BookingId" value="@booking.BookingId" />
-                                                <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
-                                                <input type="hidden" name="BookingStatus" value="10" />
-                                                <button type="submit" class="btn btn-primary btn-sm">Chuyển chờ hoàn tiền</button>
-                                            </form>
-                                        }
-                                        else if (booking.BookingStatus == 9)
-                                        {
-                                            <span class="text-muted small">Chờ Staff kiểm tra yêu cầu hoàn tiền.</span>
-                                        }
-                                        else if (booking.BookingStatus == 10 && canManageFinance)
-                                        {
-                                            <form asp-action="CompleteRefund" method="post" onsubmit="return confirm('Xác nhận đã hoàn tiền cho đơn này?');">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="bookingId" value="@booking.BookingId" />
-                                                <input type="hidden" name="currentPage" value="@Model.CurrentPage" />
-                                                <button type="submit" class="btn btn-primary btn-sm">Đã hoàn tiền</button>
-                                            </form>
-                                        }
-                                        else if (booking.BookingStatus == 10)
-                                        {
-                                            <span class="text-muted small">Chờ quản lý hoàn tiền.</span>
-                                        }
-                                        else if (!booking.CanStaffProcess)
-                                        {
-                                            <span class="text-muted small">Chờ hệ thống ghi nhận thanh toán.</span>
-                                        }
-                                        else if (canManageBookings && booking.BookingStatus != 3)
-                                        {
-                                            <form asp-action="UpdateOrderStatus" method="post">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="BookingId" value="@booking.BookingId" />
-                                                <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
-                                                <input type="hidden" name="BookingStatus" value="3" />
-                                                <button type="submit" class="btn btn-primary btn-sm">Staff xác nhận booking</button>
-                                            </form>
-                                        }
-                                    </div>
+                                    <span class="status-pill @StatusClass(booking.BookingStatus, booking.IsCompletedByDeparture)">@booking.BookingStatusText</span>
                                 </td>
                                 <td>
-                                    @if (canEditBookingStatus)
+                                    @if (canEditBookingStatus && !booking.IsStatusLocked)
                                     {
                                         <button type="button"
                                                 class="btn btn-primary btn-sm"
@@ -252,7 +151,16 @@
                                                 data-booking-id="@booking.BookingId"
                                                 data-booking-code="@booking.BookingCode"
                                                 data-booking-status="@booking.BookingStatus">
-                                            Sửa 
+                                            Sửa
+                                        </button>
+                                    }
+                                    else if (booking.IsStatusLocked)
+                                    {
+                                        <button type="button"
+                                                class="btn btn-primary btn-sm"
+                                                data-locked-edit
+                                                data-locked-reason="@(booking.IsCompletedByDeparture ? "Đơn đã quá ngày khởi hành nên được xem là đã hoàn thành và không thể sửa." : $"Đơn {booking.BookingStatusText.ToLower()} nên không thể sửa trạng thái.")">
+                                            Sửa
                                         </button>
                                     }
                                     @if (booking.HasPaymentToVerify && canManageFinance && booking.LatestPaymentId.HasValue)
@@ -294,7 +202,7 @@
                                             data-total-amount="@booking.TotalAmount.ToString("N0") đ"
                                             data-paid-amount="@booking.PaidAmount.ToString("N0") đ"
                                             data-remaining-amount="@booking.RemainingAmount.ToString("N0") đ"
-                                            data-booking-status="@StatusLabel(booking.BookingStatus)"
+                                            data-booking-status="@booking.BookingStatusText"
                                             data-payment-code="@booking.LatestPaymentCode"
                                             data-payment-transaction="@booking.LatestPaymentTransactionReference"
                                             data-payment-confirmed-by="@(string.IsNullOrWhiteSpace(booking.PaymentConfirmedByName) ? "Chưa có log" : booking.PaymentConfirmedByName)"
@@ -334,6 +242,31 @@
     </section>
 </section>
 
+<div class="modal fade" id="orderRulesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Quy tắc xử lý đơn</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body">
+                <ol class="admin-rule-list">
+                    <li><strong>Khách chuyển tiền thành công:</strong> hệ thống chỉ chuyển đơn sang <b>Chờ xác nhận</b>. Chưa cộng doanh thu và chưa xem là đã cọc.</li>
+                    <li><strong>Nhân viên kiểm tra giao dịch:</strong> đối chiếu số tiền, mã thanh toán và nội dung chuyển khoản. Nếu hợp lệ, cập nhật đơn thành <b>Đã cọc</b> hoặc <b>Đã thanh toán đầy đủ</b>.</li>
+                    <li><strong>Nhân viên liên hệ khách:</strong> xác nhận thông tin khách, số lượng người đi, yêu cầu đặc biệt và lịch khởi hành.</li>
+                    <li><strong>Hoàn tất giữ chỗ:</strong> sau khi đã liên hệ khách, cập nhật đơn thành <b>Đã đặt</b>. Lúc này hệ thống tạo hợp đồng và thông báo Giám đốc ký.</li>
+                    <li><strong>Đơn quá ngày khởi hành:</strong> hệ thống hiển thị là <b>Đã hoàn thành</b> và không cho sửa trạng thái.</li>
+                    <li><strong>Đơn đã hủy hoặc đã hoàn tiền:</strong> trạng thái bị khóa, không thể sửa lại trên trang xử lý đơn.</li>
+                    <li><strong>Hoàn tiền:</strong> đơn yêu cầu hoàn tiền cần được chuyển sang chờ hoàn tiền, sau đó quản lý xác nhận đã hoàn tiền.</li>
+                </ol>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Đã hiểu</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="editOrderStatusModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -350,7 +283,7 @@
                     <label class="w-100">
                         Trạng thái mới
                         <select id="editStatusValue" name="BookingStatus" class="form-select">
-                            @for (var status = 0; status <= 10; status++)
+                            @foreach (var status in EditableStatusOptions())
                             {
                                 <option value="@status">@StatusLabel(status)</option>
                             }
@@ -366,6 +299,15 @@
                     <button type="submit" class="btn btn-primary">Lưu trạng thái</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container position-fixed top-0 end-0 p-3">
+    <div id="lockedOrderToast" class="toast align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" data-locked-toast-message>Không thể sửa trạng thái đơn này.</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Đóng"></button>
         </div>
     </div>
 </div>
@@ -473,6 +415,7 @@
     </div>
 </div>
 
+@section Scripts {
 <script>
     (() => {
         const modal = document.getElementById('editOrderStatusModal');
@@ -529,26 +472,48 @@
             document.getElementById('detailSpecialRequests').value = button.getAttribute('data-special-requests') || '';
         });
     })();
+
+    (() => {
+        const toastElement = document.getElementById('lockedOrderToast');
+        if (!toastElement || !window.bootstrap) {
+            return;
+        }
+
+        const toast = bootstrap.Toast.getOrCreateInstance(toastElement);
+        const message = toastElement.querySelector('[data-locked-toast-message]');
+
+        document.querySelectorAll('[data-locked-edit]').forEach(button => {
+            button.addEventListener('click', () => {
+                message.textContent = button.getAttribute('data-locked-reason') || 'Không thể sửa trạng thái đơn này.';
+                toast.show();
+            });
+        });
+    })();
 </script>
+}
 
 @functions {
+    private static int[] FilterStatusOptions() => [1, 2, 8, 3, 4, 5, 9, 10];
+
+    private static int[] EditableStatusOptions() => [2, 8, 3, 4, 9, 10, 5];
+
     private static string StatusLabel(int status) => status switch
     {
         0 => "Chờ thanh toán",
-        1 => "Đã ghi nhận giao dịch",
+        1 => "Chờ xác nhận",
         2 => "Đã cọc",
-        3 => "Đã xác nhận booking",
+        3 => "Đã đặt",
         4 => "Đã hủy",
         5 => "Đã hoàn tiền",
         6 => "Chờ thanh toán còn lại",
-        7 => "Đã ghi nhận thanh toán đủ",
-        8 => "Đã thanh toán",
+        7 => "Chờ xác nhận",
+        8 => "Đã thanh toán đầy đủ",
         9 => "Yêu cầu hoàn tiền",
         10 => "Chờ hoàn tiền",
         _ => "Không xác định"
     };
 
-    private static string StatusClass(int status) => status switch
+    private static string StatusClass(int status, bool isCompleted = false) => isCompleted ? "status-pill--success" : status switch
     {
         2 or 3 or 8 => "status-pill--success",
         4 or 5 => "status-pill--danger",

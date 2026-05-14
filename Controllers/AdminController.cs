@@ -633,9 +633,11 @@ public class AdminController : Controller
                 var latestPayment = x.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
                 var remainingAmount = Math.Max(x.TotalAmount - x.PaidAmount, 0m);
                 var paymentConfirmation = x.StatusHistory
-                    .Where(h => h.Notes != null
-                                && (h.Notes.Contains("Accountant xác nhận")
-                                    || h.Notes.Contains("Hệ thống tự ghi nhận thanh toán")))
+                    .Where(h => h.NewStatus == BookingDepositPaid
+                                || h.NewStatus == BookingFullyPaid
+                                || (h.Notes != null
+                                    && (h.Notes.Contains("Accountant xác nhận")
+                                        || h.Notes.Contains("Hệ thống tự ghi nhận thanh toán"))))
                     .OrderByDescending(h => h.ChangedAt)
                     .FirstOrDefault();
                 var bookingConfirmation = x.StatusHistory
@@ -663,6 +665,9 @@ public class AdminController : Controller
                     PaidAmount = x.PaidAmount,
                     RemainingAmount = remainingAmount,
                     BookingStatus = x.BookingStatus,
+                    BookingStatusText = IsCompletedByDeparture(x) ? "Đã hoàn thành" : OrderStatusText(x.BookingStatus),
+                    IsCompletedByDeparture = IsCompletedByDeparture(x),
+                    IsStatusLocked = IsStatusLocked(x),
                     PaymentStatus = x.PaymentStatus,
                     BalanceDueAt = x.BalanceDueAt,
                     LatestPaymentId = latestPayment?.PaymentId,
@@ -714,6 +719,59 @@ public class AdminController : Controller
             PageSize = OrderPageSize,
             Filter = filter,
             Bookings = bookings
+        });
+    }
+
+    [Authorize(Roles = $"{RoleConstants.Admin},{RoleConstants.Director}")]
+    [HttpGet]
+    public async Task<IActionResult> Contracts(CancellationToken cancellationToken = default)
+    {
+        var contractEntities = await _dbContext.ElectronicContracts
+            .AsNoTracking()
+            .Include(x => x.Booking).ThenInclude(x => x.Tour)
+            .Include(x => x.Booking).ThenInclude(x => x.TourSchedule)
+            .OrderBy(x => x.ContractStatus == ContractService.PendingDirectorSign ? 0
+                : x.ContractStatus == ContractService.PendingCustomerSign ? 1
+                : x.ContractStatus == ContractService.Signed ? 2
+                : 3)
+            .ThenByDescending(x => x.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.ToLocalTime());
+        var contracts = contractEntities
+            .Select(x =>
+            {
+                var isExpiredCancelled = x.Booking.TourSchedule.DepartureDate < today
+                                         && x.ContractStatus != ContractService.Signed;
+
+                return new AdminContractItemViewModel
+                {
+                    ContractId = x.ElectronicContractId,
+                    ContractCode = x.ContractCode,
+                    ContractStatus = isExpiredCancelled ? ContractService.Cancelled : x.ContractStatus,
+                    StatusText = isExpiredCancelled ? "Đã hủy" : ContractStatusText(x.ContractStatus),
+                    BookingCode = x.Booking.BookingCode,
+                    TourName = x.Booking.Tour.TourName,
+                    CustomerName = x.Booking.ContactName,
+                    DepartureDate = x.Booking.TourSchedule.DepartureDate,
+                    TotalAmount = x.Booking.TotalAmount,
+                    PaidAmount = x.Booking.PaidAmount,
+                    CreatedAt = x.CreatedAt,
+                    DirectorSignedAt = x.DirectorSignedAt,
+                    CustomerSignedAt = x.CustomerSignedAt,
+                    CanDirectorSign = x.ContractStatus == ContractService.PendingDirectorSign && !isExpiredCancelled,
+                    IsExpiredCancelled = isExpiredCancelled
+                };
+            })
+            .ToList();
+
+        return View(new AdminContractListViewModel
+        {
+            TotalContracts = contracts.Count,
+            PendingDirectorSign = contracts.Count(x => x.ContractStatus == ContractService.PendingDirectorSign),
+            PendingCustomerSign = contracts.Count(x => x.ContractStatus == ContractService.PendingCustomerSign),
+            SignedContracts = contracts.Count(x => x.ContractStatus == ContractService.Signed),
+            Contracts = contracts
         });
     }
 
@@ -2183,6 +2241,7 @@ public class AdminController : Controller
         var booking = await _dbContext.Bookings
             .Include(x => x.Tour)
             .Include(x => x.TourSchedule)
+            .Include(x => x.Payments)
             .SingleOrDefaultAsync(x => x.BookingId == model.BookingId, cancellationToken);
         if (booking is null)
         {
@@ -2192,6 +2251,20 @@ public class AdminController : Controller
 
         var oldStatus = booking.BookingStatus;
         var bookedSeats = booking.AdultCount + booking.ChildCount;
+
+        if (IsStatusLocked(booking))
+        {
+            TempData["AdminErrorMessage"] = IsCompletedByDeparture(booking)
+                ? $"Đơn {booking.BookingCode} đã quá ngày khởi hành nên được xem là đã hoàn thành và không thể sửa trạng thái."
+                : $"Đơn {booking.BookingCode} đã đóng nên không thể sửa trạng thái.";
+            return RedirectToAction(nameof(Orders), new { page = model.CurrentPage <= 0 ? 1 : model.CurrentPage });
+        }
+
+        if (model.BookingStatus == BookingConfirmed && booking.PaymentStatus is not (PaymentDepositPaid or PaymentFullyPaid))
+        {
+            TempData["AdminErrorMessage"] = "Chỉ có thể chuyển sang Đã đặt sau khi đơn đã được xác nhận cọc hoặc thanh toán đầy đủ.";
+            return RedirectToAction(nameof(Orders), new { page = model.CurrentPage <= 0 ? 1 : model.CurrentPage });
+        }
 
         if (!IsCancelledStatus(oldStatus) && IsCancelledStatus(model.BookingStatus))
         {
@@ -2217,6 +2290,47 @@ public class AdminController : Controller
         booking.Tour.UpdatedAt = DateTime.UtcNow;
         booking.TourSchedule.UpdatedAt = DateTime.UtcNow;
 
+        if (model.BookingStatus is BookingDepositPaid or BookingFullyPaid)
+        {
+            var paymentToConfirm = booking.Payments
+                .Where(x => x.PaymentStatus == PaymentPendingVerification
+                            || (x.PaymentStatus == PaymentPending && !string.IsNullOrWhiteSpace(x.TransactionReference)))
+                .OrderByDescending(x => x.CreatedAt)
+                .FirstOrDefault();
+
+            if (paymentToConfirm is null && booking.PaymentStatus is not (PaymentDepositPaid or PaymentFullyPaid))
+            {
+                TempData["AdminErrorMessage"] = "Chưa có giao dịch chờ xác nhận để cập nhật trạng thái thanh toán.";
+                return RedirectToAction(nameof(Orders), new { page = model.CurrentPage <= 0 ? 1 : model.CurrentPage });
+            }
+
+            if (paymentToConfirm is not null)
+            {
+                paymentToConfirm.PaymentStatus = model.BookingStatus == BookingFullyPaid ? PaymentFullyPaid : PaymentDepositPaid;
+                paymentToConfirm.PaidAt = DateTime.UtcNow;
+                paymentToConfirm.FailureReason = null;
+                paymentToConfirm.UpdatedAt = DateTime.UtcNow;
+
+                booking.PaidAmount = model.BookingStatus == BookingFullyPaid
+                    ? booking.TotalAmount
+                    : Math.Min(booking.PaidAmount + paymentToConfirm.Amount, booking.TotalAmount);
+            }
+
+            booking.PaymentStatus = model.BookingStatus == BookingFullyPaid ? PaymentFullyPaid : PaymentDepositPaid;
+            booking.FullyPaidAt = model.BookingStatus == BookingFullyPaid ? DateTime.UtcNow : booking.FullyPaidAt;
+
+            if (booking.PromotionId.HasValue)
+            {
+                var userPromotion = await _dbContext.UserPromotions
+                    .SingleOrDefaultAsync(x => x.UserId == booking.UserId && x.PromotionId == booking.PromotionId.Value, cancellationToken);
+
+                if (userPromotion is not null && userPromotion.UsedAt == null)
+                {
+                    userPromotion.UsedAt = DateTime.UtcNow;
+                }
+            }
+        }
+
         if (model.BookingStatus == BookingConfirmed)
         {
             booking.ConfirmedAt ??= DateTime.UtcNow;
@@ -2241,6 +2355,21 @@ public class AdminController : Controller
         });
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+
+        if (model.BookingStatus is BookingDepositPaid or BookingFullyPaid)
+        {
+            var remainingAmount = Math.Max(booking.TotalAmount - booking.PaidAmount, 0m);
+            await _notificationService.CreateAsync(
+                booking.UserId,
+                notificationType: 3,
+                title: model.BookingStatus == BookingFullyPaid ? "Đã xác nhận thanh toán đầy đủ" : "Đã xác nhận thanh toán cọc",
+                message: model.BookingStatus == BookingFullyPaid
+                    ? $"Nhân viên đã xác nhận đơn {booking.BookingCode} thanh toán đầy đủ. Staff sẽ liên hệ lại để xác nhận booking."
+                    : $"Nhân viên đã xác nhận đơn {booking.BookingCode} đã cọc {booking.PaidAmount:N0} đ. Số tiền còn lại cần thanh toán là {remainingAmount:N0} đ.",
+                relatedEntityType: "Booking",
+                relatedEntityId: booking.BookingId,
+                cancellationToken: cancellationToken);
+        }
 
         if (model.BookingStatus == BookingConfirmed)
         {
@@ -2898,6 +3027,40 @@ public class AdminController : Controller
     {
         return status is 4 or 5 or 10;
     }
+
+    private static bool IsCompletedByDeparture(Booking booking)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.ToLocalTime());
+        return booking.TourSchedule.DepartureDate < today
+               && booking.BookingStatus is not (BookingCancelled or BookingRefunded or BookingRefundRequested or BookingPendingRefund);
+    }
+
+    private static bool IsStatusLocked(Booking booking) =>
+        booking.BookingStatus is BookingCancelled or BookingRefunded || IsCompletedByDeparture(booking);
+
+    private static string OrderStatusText(byte status) => status switch
+    {
+        BookingPendingDepositVerification or BookingPendingFullPaymentVerification => "Chờ xác nhận",
+        BookingDepositPaid => "Đã cọc",
+        BookingFullyPaid => "Đã thanh toán đầy đủ",
+        BookingConfirmed => "Đã đặt",
+        BookingCancelled => "Đã hủy",
+        BookingRefunded => "Đã hoàn tiền",
+        BookingRefundRequested => "Yêu cầu hoàn tiền",
+        BookingPendingRefund => "Chờ hoàn tiền",
+        BookingPendingPayment or BookingPendingFullPayment => "Chờ thanh toán",
+        _ => "Không xác định"
+    };
+
+    private static string ContractStatusText(byte status) => status switch
+    {
+        ContractService.Draft => "Nháp",
+        ContractService.PendingCustomerSign => "Chờ khách ký",
+        ContractService.PendingDirectorSign => "Chờ Giám đốc ký",
+        ContractService.Signed => "Đã ký hoàn tất",
+        ContractService.Cancelled => "Đã hủy",
+        _ => "Không xác định"
+    };
 
     private async Task<string> EnsureUniqueTourSlugAsync(string tourName, long? excludedTourId, CancellationToken cancellationToken)
     {
