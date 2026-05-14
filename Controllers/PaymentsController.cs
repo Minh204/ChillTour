@@ -492,6 +492,7 @@ public class PaymentsController : Controller
         var transferContent = BuildSePayTransferContent(payment.PaymentCode, payment.Booking.BookingCode);
         return View(new SePayPaymentViewModel
         {
+            PaymentId = payment.PaymentId,
             BookingId = payment.BookingId,
             BookingCode = payment.Booking.BookingCode,
             TourName = payment.Booking.Tour.TourName,
@@ -501,7 +502,59 @@ public class PaymentsController : Controller
             BankName = _sePayOptions.BankName,
             BankAccountNo = _sePayOptions.AccountNumber,
             BankAccountName = _sePayOptions.AccountName,
-            QrImageUrl = BuildSePayQrUrl(payment.Amount, transferContent)
+            QrImageUrl = BuildSePayQrUrl(payment.Amount, transferContent),
+            PaymentStatus = payment.PaymentStatus,
+            PaymentStatusLabel = PaymentStatusLabel(payment.PaymentStatus),
+            FailureReason = payment.FailureReason,
+            TransactionReference = payment.TransactionReference
+        });
+    }
+
+    [Authorize(Roles = RoleConstants.Customer)]
+    [HttpGet]
+    public async Task<IActionResult> SePayPaymentStatus(long paymentId, CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue)
+        {
+            return Challenge();
+        }
+
+        var payment = await _dbContext.Payments
+            .Include(x => x.Booking)
+            .SingleOrDefaultAsync(x => x.PaymentId == paymentId
+                                       && x.PaymentGateway == "SePay"
+                                       && x.Booking.UserId == userId.Value,
+                cancellationToken);
+
+        if (payment is null)
+        {
+            return NotFound(new { success = false, message = "Không tìm thấy giao dịch SePay." });
+        }
+
+        var isSuccess = payment.PaymentStatus is PaymentDepositPaid or PaymentFullyPaid;
+        var isFailed = payment.PaymentStatus == PaymentFailed;
+        var message = payment.PaymentStatus switch
+        {
+            PaymentDepositPaid => "Hệ thống đã ghi nhận thanh toán cọc thành công. Staff sẽ xử lý booking.",
+            PaymentFullyPaid => "Hệ thống đã ghi nhận thanh toán toàn bộ thành công. Staff sẽ xử lý booking.",
+            PaymentFailed => string.IsNullOrWhiteSpace(payment.FailureReason)
+                ? "Giao dịch SePay chưa hợp lệ. Vui lòng kiểm tra lại thông tin chuyển khoản."
+                : payment.FailureReason,
+            _ => "Đang chờ SePay gửi webhook giao dịch. Bạn không cần tải lại trang."
+        };
+
+        return Json(new
+        {
+            success = isSuccess,
+            failed = isFailed,
+            pending = payment.PaymentStatus == PaymentPending,
+            status = payment.PaymentStatus,
+            statusLabel = PaymentStatusLabel(payment.PaymentStatus),
+            message,
+            transactionReference = payment.TransactionReference,
+            paidAt = payment.PaidAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture),
+            resultUrl = Url.Action(nameof(Result), new { bookingId = payment.BookingId })
         });
     }
 
@@ -587,6 +640,12 @@ public class PaymentsController : Controller
 
         if (request.TransferAmount < payment.Amount)
         {
+            await MarkSePayPaymentFailedAsync(
+                payment,
+                request.ReferenceCode,
+                $"Số tiền chuyển khoản {request.TransferAmount:N0} đ thấp hơn số tiền cần thanh toán {payment.Amount:N0} đ.",
+                cancellationToken);
+
             return BadRequest(new { success = false, message = "Transfer amount is less than payment amount" });
         }
 
@@ -862,6 +921,36 @@ public class PaymentsController : Controller
 
         return (booking.BookingId, true, $"{payment.PaymentGateway} đã ghi nhận thanh toán. Staff sẽ xử lý booking.");
     }
+
+    private async Task MarkSePayPaymentFailedAsync(
+        Payment payment,
+        string? transactionReference,
+        string failureReason,
+        CancellationToken cancellationToken)
+    {
+        payment.TransactionReference = string.IsNullOrWhiteSpace(transactionReference)
+            ? payment.TransactionReference
+            : transactionReference;
+        payment.PaymentStatus = PaymentFailed;
+        payment.PaidAt = null;
+        payment.FailureReason = failureReason;
+        payment.UpdatedAt = DateTime.UtcNow;
+
+        payment.Booking.PaymentStatus = payment.Booking.PaidAmount > 0m ? PaymentDepositPaid : PaymentFailed;
+        payment.Booking.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static string PaymentStatusLabel(byte status) => status switch
+    {
+        PaymentPending => "Đang chờ thanh toán",
+        PaymentPendingVerification => "Đã ghi nhận giao dịch",
+        PaymentDepositPaid => "Đã thanh toán cọc",
+        PaymentFullyPaid => "Đã thanh toán đủ",
+        PaymentFailed => "Thanh toán lỗi",
+        _ => "Không xác định"
+    };
 
     private async Task<string> GeneratePaymentCodeAsync(CancellationToken cancellationToken)
     {

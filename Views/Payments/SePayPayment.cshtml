@@ -1,6 +1,8 @@
 @model ChillTour.Models.Payments.SePayPaymentViewModel
 @{
     ViewData["Title"] = "Thanh toán SePay";
+    var isSuccess = Model.PaymentStatus is 2 or 3;
+    var isFailed = Model.PaymentStatus == 4;
 }
 
 @section Styles {
@@ -9,17 +11,43 @@
 
 <section class="auth-page payment-page">
     <div class="container">
-        <div class="auth-card payment-result-card sepay-payment-card">
+        <div class="auth-card payment-result-card sepay-payment-card"
+             data-sepay-watch
+             data-status-url="@Url.Action("SePayPaymentStatus", "Payments", new { paymentId = Model.PaymentId })"
+             data-result-url="@Url.Action("Result", "Payments", new { bookingId = Model.BookingId })">
             <div class="auth-card__intro">
                 <span class="eyebrow">SePay</span>
                 <h1>Chuyển khoản thanh toán tour</h1>
-                <p>Quét mã QR hoặc chuyển khoản đúng thông tin bên dưới. Sau khi SePay ghi nhận giao dịch, hệ thống sẽ tự cập nhật thanh toán và báo Staff xử lý booking.</p>
+                <p>Quét mã QR hoặc chuyển khoản đúng thông tin bên dưới. Khi SePay ghi nhận giao dịch, hệ thống sẽ tự cập nhật trạng thái thanh toán mà không cần tải lại trang.</p>
+            </div>
+
+            <div class="sepay-status-banner @(isSuccess ? "sepay-status-banner--success" : isFailed ? "sepay-status-banner--error" : "sepay-status-banner--pending")" data-sepay-status-banner>
+                <div>
+                    <span data-sepay-status-label>@Model.PaymentStatusLabel</span>
+                    <strong data-sepay-status-message>
+                        @(isSuccess
+                            ? "Hệ thống đã ghi nhận thanh toán thành công."
+                            : isFailed
+                                ? (Model.FailureReason ?? "Giao dịch SePay chưa hợp lệ.")
+                                : "Đang chờ SePay gửi webhook giao dịch. Trang này sẽ tự cập nhật.")
+                    </strong>
+                    <p data-sepay-status-reference>
+                        @if (!string.IsNullOrWhiteSpace(Model.TransactionReference))
+                        {
+                            <text>Mã tham chiếu: @Model.TransactionReference</text>
+                        }
+                    </p>
+                </div>
+                <a href="@Url.Action("Result", "Payments", new { bookingId = Model.BookingId })"
+                   class="btn btn-outline-primary"
+                   data-sepay-result-link
+                   hidden="@(!isSuccess && !isFailed)">Xem kết quả</a>
             </div>
 
             <div class="sepay-payment-layout">
-                <div class="sepay-payment-qr">
+                <div id="sepay-qr" class="sepay-payment-qr">
                     <img src="@Model.QrImageUrl" alt="SePay QR" />
-                    <p>Giữ nguyên nội dung chuyển khoản để hệ thống tự động đối chiếu.</p>
+                    <p>Quét mã để thanh toán đúng số tiền và nội dung.</p>
                 </div>
 
                 <div class="sepay-payment-info">
@@ -51,7 +79,7 @@
                 </div>
             </div>
 
-            <div class="auth-alert auth-alert--warning">Nội dung chuyển khoản bắt buộc chứa <strong>SEVQR</strong> và mã thanh toán <strong>@Model.PaymentCode</strong>.</div>
+            <div class="auth-alert auth-alert--warning">Nội dung chuyển khoản bắt buộc chứa <strong>SEVQR</strong> và mã thanh toán <strong>@Model.PaymentCode</strong>. Sai số tiền hoặc sai nội dung sẽ được báo ngay khi webhook trả về.</div>
 
             <div class="hero-actions">
                 <a asp-controller="Payments" asp-action="Checkout" asp-route-bookingId="@Model.BookingId" class="btn btn-outline-primary">Quay lại checkout</a>
@@ -60,3 +88,72 @@
         </div>
     </div>
 </section>
+
+@section Scripts {
+    <script>
+        (() => {
+            const watch = document.querySelector('[data-sepay-watch]');
+            if (!watch) return;
+
+            const statusUrl = watch.dataset.statusUrl;
+            const banner = watch.querySelector('[data-sepay-status-banner]');
+            const label = watch.querySelector('[data-sepay-status-label]');
+            const message = watch.querySelector('[data-sepay-status-message]');
+            const reference = watch.querySelector('[data-sepay-status-reference]');
+            const resultLink = watch.querySelector('[data-sepay-result-link]');
+            let stopped = false;
+
+            const setBannerClass = (state) => {
+                banner.classList.remove('sepay-status-banner--pending', 'sepay-status-banner--success', 'sepay-status-banner--error');
+                banner.classList.add(`sepay-status-banner--${state}`);
+            };
+
+            const updateStatus = async () => {
+                if (stopped || !statusUrl) return;
+
+                try {
+                    const response = await fetch(statusUrl, {
+                        headers: { 'Accept': 'application/json' },
+                        cache: 'no-store'
+                    });
+
+                    if (!response.ok) {
+                        setBannerClass('error');
+                        label.textContent = 'Không đọc được trạng thái';
+                        message.textContent = 'Không thể kiểm tra trạng thái giao dịch. Vui lòng thử lại sau.';
+                        return;
+                    }
+
+                    const data = await response.json();
+                    label.textContent = data.statusLabel || 'Đang kiểm tra';
+                    message.textContent = data.message || 'Đang chờ SePay gửi webhook giao dịch.';
+                    reference.textContent = data.transactionReference ? `Mã tham chiếu: ${data.transactionReference}` : '';
+
+                    if (data.success) {
+                        setBannerClass('success');
+                        resultLink.hidden = false;
+                        stopped = true;
+                        return;
+                    }
+
+                    if (data.failed) {
+                        setBannerClass('error');
+                        resultLink.hidden = false;
+                        stopped = true;
+                        return;
+                    }
+
+                    setBannerClass('pending');
+                    window.setTimeout(updateStatus, 3000);
+                } catch {
+                    setBannerClass('error');
+                    label.textContent = 'Mất kết nối';
+                    message.textContent = 'Chưa kiểm tra được trạng thái. Hệ thống sẽ thử lại.';
+                    window.setTimeout(updateStatus, 5000);
+                }
+            };
+
+            window.setTimeout(updateStatus, 1500);
+        })();
+    </script>
+}

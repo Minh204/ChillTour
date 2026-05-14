@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using ChillTour.Data;
 using ChillTour.Models.Account;
 using ChillTour.Security;
@@ -531,7 +531,7 @@ public class AccountController : Controller
 
         if (!ModelState.IsValid)
         {
-            TempData["BookingErrorMessage"] = "Vui lÃ²ng nháº­p lÃ½ do há»§y Ä‘Æ¡n.";
+            TempData["BookingErrorMessage"] = "Vui lòng nhập lý do hủy đơn.";
             return RedirectToAction(nameof(Bookings));
         }
 

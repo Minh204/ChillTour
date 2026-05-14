@@ -427,6 +427,50 @@
   max-width: 980px;
 }
 
+.sepay-status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #f8fbff;
+}
+
+.sepay-status-banner span {
+  display: inline-flex;
+  margin-bottom: 0.25rem;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.sepay-status-banner strong,
+.sepay-status-banner p {
+  display: block;
+  margin: 0;
+}
+
+.sepay-status-banner p {
+  color: var(--muted);
+}
+
+.sepay-status-banner--pending {
+  border-color: rgba(11, 116, 255, 0.18);
+  background: #eef6ff;
+}
+
+.sepay-status-banner--success {
+  border-color: rgba(22, 163, 74, 0.22);
+  background: #ecfdf5;
+}
+
+.sepay-status-banner--error {
+  border-color: rgba(220, 38, 38, 0.22);
+  background: #fff1f2;
+}
+
 .sepay-payment-layout {
   display: grid;
   grid-template-columns: minmax(260px, 0.75fr) minmax(0, 1fr);
@@ -533,6 +577,7 @@
   .sepay-payment-layout {
     grid-template-columns: 1fr;
   }
+
 }
 
 @media (max-width: 767.98px) {
@@ -607,5 +652,9 @@
   .payment-method-modal__panel {
     padding: 1.15rem;
     border-radius: 18px;
+  }
+
+  .sepay-status-banner {
+    display: grid;
   }
 }

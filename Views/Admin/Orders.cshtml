@@ -1,7 +1,7 @@
-﻿@model ChillTour.Models.Admin.EmployeeOrdersViewModel
+@model ChillTour.Models.Admin.EmployeeOrdersViewModel
 @using ChillTour.Security
 @{
-    ViewData["Title"] = "Xá»­ lÃ½ Ä‘Æ¡n";
+    ViewData["Title"] = "Xử lý đơn";
     var canManageBookings = RoleConstants.ManageBookings.Any(User.IsInRole);
     var canManageFinance = RoleConstants.ManageFinance.Any(User.IsInRole);
     var canEditBookingStatus = canManageBookings;
@@ -11,7 +11,7 @@
     <div class="admin-page-head">
         <div>
             <span class="admin-panel__label">Operations</span>
-            <h2>Xá»­ lÃ½ Ä‘Æ¡n Ä‘áº·t tour</h2>
+            <h2>Xử lý đơn đặt tour</h2>
         </div>
     </div>
 
@@ -26,19 +26,19 @@
 
     <div class="admin-metrics">
         <div class="admin-stat-card admin-stat-card--orange">
-            <span>ÄÆ¡n chá» xá»­ lÃ½</span>
+            <span>Đơn chờ xử lý</span>
             <strong>@Model.PendingOrders</strong>
-            <p>Bao gá»“m Ä‘Æ¡n chá» thanh toÃ¡n hoáº·c chá» Ä‘á»‘i soÃ¡t.</p>
+            <p>Bao gồm đơn chờ thanh toán hoặc cần Staff xử lý.</p>
         </div>
         <div class="admin-stat-card admin-stat-card--mint">
-            <span>ÄÆ¡n Ä‘Ã£ xÃ¡c nháº­n</span>
+            <span>Đơn đã xác nhận</span>
             <strong>@Model.ConfirmedOrders</strong>
-            <p>Äang váº­n hÃ nh hoáº·c Ä‘Ã£ hoÃ n táº¥t.</p>
+            <p>Đang vận hành hoặc đã hoàn tất.</p>
         </div>
         <div class="admin-stat-card">
-            <span>ÄÆ¡n há»§y/hoÃ n tiá»n</span>
+            <span>Đơn hủy/hoàn tiền</span>
             <strong>@Model.CancelledOrders</strong>
-            <p>CÃ¡c Ä‘Æ¡n Ä‘Ã£ Ä‘Ã³ng hoáº·c há»§y.</p>
+            <p>Các đơn đã đóng hoặc hủy.</p>
         </div>
     </div>
 
@@ -46,21 +46,21 @@
         <div class="admin-panel__header">
             <div>
                 <span class="admin-panel__label">Bookings</span>
-                <h3>Danh sÃ¡ch Ä‘Æ¡n</h3>
+                <h3>Danh sách đơn</h3>
             </div>
-            <div class="admin-topbar__badge">@Model.TotalItems Ä‘Æ¡n</div>
+            <div class="admin-topbar__badge">@Model.TotalItems đơn</div>
         </div>
 
         <form method="get" class="admin-form-grid mb-4">
             <input type="hidden" name="page" value="1" />
             <label>
-                Tá»« khÃ³a
-                <input type="text" name="searchTerm" value="@Model.Filter.SearchTerm" class="form-control" placeholder="MÃ£ Ä‘Æ¡n, khÃ¡ch hÃ ng, tour..." />
+                Từ khóa
+                <input type="text" name="searchTerm" value="@Model.Filter.SearchTerm" class="form-control" placeholder="Mã đơn, khách hàng, tour..." />
             </label>
             <label>
-                Tráº¡ng thÃ¡i Ä‘Æ¡n
+                Trạng thái đơn
                 <select name="bookingStatus" class="form-select">
-                    <option value="">Táº¥t cáº£</option>
+                    <option value="">Tất cả</option>
                     @for (var status = 0; status <= 10; status++)
                     {
                         <option value="@status" selected="@(Model.Filter.BookingStatus == status)">@StatusLabel(status)</option>
@@ -68,27 +68,27 @@
                 </select>
             </label>
             <label>
-                Tráº¡ng thÃ¡i thanh toÃ¡n
+                Trạng thái thanh toán
                 <select name="paymentStatus" class="form-select">
-                    <option value="">Táº¥t cáº£</option>
-                    <option value="0" selected="@(Model.Filter.PaymentStatus == 0)">ChÆ°a thanh toÃ¡n</option>
-                    <option value="1" selected="@(Model.Filter.PaymentStatus == 1)">Chá» Ä‘á»‘i soÃ¡t</option>
-                    <option value="2" selected="@(Model.Filter.PaymentStatus == 2)">ÄÃ£ cá»c</option>
-                    <option value="3" selected="@(Model.Filter.PaymentStatus == 3)">ÄÃ£ thanh toÃ¡n Ä‘á»§</option>
-                    <option value="4" selected="@(Model.Filter.PaymentStatus == 4)">Thanh toÃ¡n lá»—i</option>
+                    <option value="">Tất cả</option>
+                    <option value="0" selected="@(Model.Filter.PaymentStatus == 0)">Chưa thanh toán</option>
+                    <option value="1" selected="@(Model.Filter.PaymentStatus == 1)">Đã ghi nhận giao dịch</option>
+                    <option value="2" selected="@(Model.Filter.PaymentStatus == 2)">Đã cọc</option>
+                    <option value="3" selected="@(Model.Filter.PaymentStatus == 3)">Đã thanh toán đủ</option>
+                    <option value="4" selected="@(Model.Filter.PaymentStatus == 4)">Thanh toán lỗi</option>
                 </select>
             </label>
             <label>
-                Tá»« ngÃ y khá»Ÿi hÃ nh
+                Từ ngày khởi hành
                 <input type="date" name="departureFrom" value="@(Model.Filter.DepartureFrom?.ToString("yyyy-MM-dd"))" class="form-control" />
             </label>
             <label>
-                Äáº¿n ngÃ y khá»Ÿi hÃ nh
+                Đến ngày khởi hành
                 <input type="date" name="departureTo" value="@(Model.Filter.DepartureTo?.ToString("yyyy-MM-dd"))" class="form-control" />
             </label>
             <div class="hero-actions align-items-end">
-                <button type="submit" class="btn btn-primary">Lá»c Ä‘Æ¡n</button>
-                <a asp-action="Orders" class="btn btn-outline-secondary">XÃ³a lá»c</a>
+                <button type="submit" class="btn btn-primary">Lọc đơn</button>
+                <a asp-action="Orders" class="btn btn-outline-secondary">Xóa lọc</a>
             </div>
         </form>
 
@@ -96,21 +96,21 @@
             <table class="table align-middle">
                 <thead>
                     <tr>
-                        <th>MÃ£ Ä‘Æ¡n</th>
-                        <th>KhÃ¡ch hÃ ng</th>
+                        <th>Mã đơn</th>
+                        <th>Khách hàng</th>
                         <th>Tour</th>
-                        <th>Khá»Ÿi hÃ nh</th>
-                        <th>KhÃ¡ch</th>
-                        <th>Tá»•ng tiá»n</th>
-                        <th>Tráº¡ng thÃ¡i</th>
-                        <th>Thao tÃ¡c</th>
+                        <th>Khởi hành</th>
+                        <th>Khách</th>
+                        <th>Tổng tiền</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (Model.Bookings.Count == 0)
                     {
                         <tr>
-                            <td colspan="8" class="text-center py-4">KhÃ´ng cÃ³ Ä‘Æ¡n phÃ¹ há»£p vá»›i bá»™ lá»c hiá»‡n táº¡i.</td>
+                            <td colspan="8" class="text-center py-4">Không có đơn phù hợp với bộ lọc hiện tại.</td>
                         </tr>
                     }
                     else
@@ -133,28 +133,28 @@
                                 <td>@booking.DepartureDate.ToString("dd/MM/yyyy")</td>
                                 <td>@booking.Travelers</td>
                                 <td>
-                                    <strong>@booking.TotalAmount.ToString("N0") Ä‘</strong>
-                                    <div class="text-muted small">ÄÃ£ tráº£: @booking.PaidAmount.ToString("N0") Ä‘</div>
-                                    <div class="text-muted small">CÃ²n láº¡i: @booking.RemainingAmount.ToString("N0") Ä‘</div>
+                                    <strong>@booking.TotalAmount.ToString("N0") đ</strong>
+                                    <div class="text-muted small">Đã trả: @booking.PaidAmount.ToString("N0") đ</div>
+                                    <div class="text-muted small">Còn lại: @booking.RemainingAmount.ToString("N0") đ</div>
                                 </td>
                                 <td>
                                     <div class="d-flex flex-column gap-2">
                                         <span class="status-pill @StatusClass(booking.BookingStatus)">@StatusLabel(booking.BookingStatus)</span>
                                         @if (!string.IsNullOrWhiteSpace(booking.PaymentConfirmedByName))
                                         {
-                                            <span class="admin-audit-line">Accountant: <strong>@booking.PaymentConfirmedByName</strong>@(booking.PaymentConfirmedAt.HasValue ? $" â€¢ {booking.PaymentConfirmedAt.Value.ToLocalTime():dd/MM/yyyy HH:mm}" : string.Empty)</span>
+                                            <span class="admin-audit-line">Thanh toán: <strong>@booking.PaymentConfirmedByName</strong>@(booking.PaymentConfirmedAt.HasValue ? $" • {booking.PaymentConfirmedAt.Value.ToLocalTime():dd/MM/yyyy HH:mm}" : string.Empty)</span>
                                         }
                                         @if (!string.IsNullOrWhiteSpace(booking.BookingConfirmedByName))
                                         {
-                                            <span class="admin-audit-line">Staff: <strong>@booking.BookingConfirmedByName</strong>@(booking.BookingConfirmedAt.HasValue ? $" â€¢ {booking.BookingConfirmedAt.Value.ToLocalTime():dd/MM/yyyy HH:mm}" : string.Empty)</span>
+                                            <span class="admin-audit-line">Staff: <strong>@booking.BookingConfirmedByName</strong>@(booking.BookingConfirmedAt.HasValue ? $" • {booking.BookingConfirmedAt.Value.ToLocalTime():dd/MM/yyyy HH:mm}" : string.Empty)</span>
                                         }
                                         @if (!string.IsNullOrWhiteSpace(booking.LatestPaymentCode))
                                         {
-                                            <div class="text-muted small">@booking.LatestPaymentCode â€¢ @booking.LatestPaymentAmount.ToString("N0") Ä‘</div>
+                                            <div class="text-muted small">@booking.LatestPaymentCode • @booking.LatestPaymentAmount.ToString("N0") đ</div>
                                         }
                                         @if (!string.IsNullOrWhiteSpace(booking.LatestPaymentTransactionReference))
                                         {
-                                            <div class="text-muted small">MÃ£ GD: @booking.LatestPaymentTransactionReference</div>
+                                            <div class="text-muted small">Mã GD: @booking.LatestPaymentTransactionReference</div>
                                         }
                                         @if (booking.HasPaymentToVerify && canManageFinance && booking.LatestPaymentId.HasValue)
                                         {
@@ -162,8 +162,8 @@
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="paymentId" value="@booking.LatestPaymentId" />
                                                 <input type="hidden" name="currentPage" value="@Model.CurrentPage" />
-                                                <button type="submit" name="isValid" value="true" class="btn btn-primary btn-sm">XÃ¡c nháº­n tiá»n</button>
-                                                <button type="submit" name="isValid" value="false" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tá»« chá»‘i giao dá»‹ch nÃ y?');">Sai giao dá»‹ch</button>
+                                                <button type="submit" name="isValid" value="true" class="btn btn-primary btn-sm">Xác nhận tiền</button>
+                                                <button type="submit" name="isValid" value="false" class="btn btn-outline-danger btn-sm" onclick="return confirm('Từ chối giao dịch này?');">Sai giao dịch</button>
                                             </form>
                                         }
                                         @if (canEditBookingStatus)
@@ -179,8 +179,8 @@
                                                     }
                                                 </select>
                                                 <div class="admin-status-editor__actions">
-                                                    <input type="text" name="Notes" class="form-control form-control-sm" maxlength="500" placeholder="Ghi chÃº..." />
-                                                    <button type="submit" class="btn btn-primary btn-sm">LÆ°u</button>
+                                                    <input type="text" name="Notes" class="form-control form-control-sm" maxlength="500" placeholder="Ghi chú..." />
+                                                    <button type="submit" class="btn btn-primary btn-sm">Lưu</button>
                                                 </div>
                                             </form>
                                             @if (booking.CanStaffProcess && booking.BookingStatus != 3 && booking.BookingStatus != 8)
@@ -197,7 +197,7 @@
                                         }
                                         else if (booking.BookingStatus is 4 or 5)
                                         {
-                                            <span class="text-muted small">ÄÆ¡n Ä‘Ã£ Ä‘Ã³ng, khÃ´ng thá»ƒ sá»­a tráº¡ng thÃ¡i.</span>
+                                            <span class="text-muted small">Đơn đã đóng, không thể sửa trạng thái.</span>
                                         }
                                         else if (booking.BookingStatus == 9 && canManageBookings)
                                         {
@@ -206,29 +206,29 @@
                                                 <input type="hidden" name="BookingId" value="@booking.BookingId" />
                                                 <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
                                                 <input type="hidden" name="BookingStatus" value="10" />
-                                                <button type="submit" class="btn btn-primary btn-sm">Chuyá»ƒn chá» hoÃ n tiá»n</button>
+                                                <button type="submit" class="btn btn-primary btn-sm">Chuyển chờ hoàn tiền</button>
                                             </form>
                                         }
                                         else if (booking.BookingStatus == 9)
                                         {
-                                            <span class="text-muted small">Chá» Staff kiá»ƒm tra yÃªu cáº§u hoÃ n tiá»n.</span>
+                                            <span class="text-muted small">Chờ Staff kiểm tra yêu cầu hoàn tiền.</span>
                                         }
                                         else if (booking.BookingStatus == 10 && canManageFinance)
                                         {
-                                            <form asp-action="CompleteRefund" method="post" onsubmit="return confirm('XÃ¡c nháº­n Ä‘Ã£ hoÃ n tiá»n cho Ä‘Æ¡n nÃ y?');">
+                                            <form asp-action="CompleteRefund" method="post" onsubmit="return confirm('Xác nhận đã hoàn tiền cho đơn này?');">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="bookingId" value="@booking.BookingId" />
                                                 <input type="hidden" name="currentPage" value="@Model.CurrentPage" />
-                                                <button type="submit" class="btn btn-primary btn-sm">ÄÃ£ hoÃ n tiá»n</button>
+                                                <button type="submit" class="btn btn-primary btn-sm">Đã hoàn tiền</button>
                                             </form>
                                         }
                                         else if (booking.BookingStatus == 10)
                                         {
-                                            <span class="text-muted small">Chá» Accountant hoÃ n tiá»n.</span>
+                                            <span class="text-muted small">Chờ quản lý hoàn tiền.</span>
                                         }
                                         else if (!booking.CanStaffProcess)
                                         {
-                                            <span class="text-muted small">Chá» Accountant xÃ¡c nháº­n tiá»n.</span>
+                                            <span class="text-muted small">Chờ hệ thống ghi nhận thanh toán.</span>
                                         }
                                         else if (canManageBookings && booking.BookingStatus != 3)
                                         {
@@ -237,7 +237,7 @@
                                                 <input type="hidden" name="BookingId" value="@booking.BookingId" />
                                                 <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
                                                 <input type="hidden" name="BookingStatus" value="3" />
-                                                <button type="submit" class="btn btn-primary btn-sm">Staff xÃ¡c nháº­n booking</button>
+                                                <button type="submit" class="btn btn-primary btn-sm">Staff xác nhận booking</button>
                                             </form>
                                         }
                                     </div>
@@ -252,7 +252,7 @@
                                                 data-booking-id="@booking.BookingId"
                                                 data-booking-code="@booking.BookingCode"
                                                 data-booking-status="@booking.BookingStatus">
-                                            Sá»­a 
+                                            Sửa 
                                         </button>
                                     }
                                     @if (booking.HasPaymentToVerify && canManageFinance && booking.LatestPaymentId.HasValue)
@@ -261,17 +261,17 @@
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="paymentId" value="@booking.LatestPaymentId" />
                                             <input type="hidden" name="currentPage" value="@Model.CurrentPage" />
-                                            <button type="submit" name="isValid" value="true" class="btn btn-success btn-sm">XÃ¡c nháº­n tiá»n</button>
-                                            <button type="submit" name="isValid" value="false" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tá»« chá»‘i giao dá»‹ch nÃ y?');">Sai giao dá»‹ch</button>
+                                            <button type="submit" name="isValid" value="true" class="btn btn-success btn-sm">Xác nhận tiền</button>
+                                            <button type="submit" name="isValid" value="false" class="btn btn-outline-danger btn-sm" onclick="return confirm('Từ chối giao dịch này?');">Sai giao dịch</button>
                                         </form>
                                     }
                                     @if (booking.BookingStatus == 10 && canManageFinance)
                                     {
-                                        <form asp-action="CompleteRefund" method="post" class="admin-row-action-form" onsubmit="return confirm('XÃ¡c nháº­n Ä‘Ã£ hoÃ n tiá»n cho Ä‘Æ¡n nÃ y?');">
+                                        <form asp-action="CompleteRefund" method="post" class="admin-row-action-form" onsubmit="return confirm('Xác nhận đã hoàn tiền cho đơn này?');">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="bookingId" value="@booking.BookingId" />
                                             <input type="hidden" name="currentPage" value="@Model.CurrentPage" />
-                                            <button type="submit" class="btn btn-success btn-sm">ÄÃ£ hoÃ n tiá»n</button>
+                                            <button type="submit" class="btn btn-success btn-sm">Đã hoàn tiền</button>
                                         </form>
                                     }
                                     <button type="button"
@@ -291,18 +291,18 @@
                                             data-child-count="@booking.ChildCount"
                                             data-infant-count="@booking.InfantCount"
                                             data-travelers="@booking.Travelers"
-                                            data-total-amount="@booking.TotalAmount.ToString("N0") Ä‘"
-                                            data-paid-amount="@booking.PaidAmount.ToString("N0") Ä‘"
-                                            data-remaining-amount="@booking.RemainingAmount.ToString("N0") Ä‘"
+                                            data-total-amount="@booking.TotalAmount.ToString("N0") đ"
+                                            data-paid-amount="@booking.PaidAmount.ToString("N0") đ"
+                                            data-remaining-amount="@booking.RemainingAmount.ToString("N0") đ"
                                             data-booking-status="@StatusLabel(booking.BookingStatus)"
                                             data-payment-code="@booking.LatestPaymentCode"
                                             data-payment-transaction="@booking.LatestPaymentTransactionReference"
-                                            data-payment-confirmed-by="@(string.IsNullOrWhiteSpace(booking.PaymentConfirmedByName) ? "ChÆ°a cÃ³ log" : booking.PaymentConfirmedByName)"
-                                            data-payment-confirmed-at="@(booking.PaymentConfirmedAt.HasValue ? booking.PaymentConfirmedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "ChÆ°a cÃ³ log")"
-                                            data-booking-confirmed-by="@(string.IsNullOrWhiteSpace(booking.BookingConfirmedByName) ? "ChÆ°a cÃ³ log" : booking.BookingConfirmedByName)"
-                                            data-booking-confirmed-at="@(booking.BookingConfirmedAt.HasValue ? booking.BookingConfirmedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "ChÆ°a cÃ³ log")"
-                                            data-special-requests="@(string.IsNullOrWhiteSpace(booking.SpecialRequests) ? "KhÃ´ng cÃ³" : booking.SpecialRequests)">
-                                        Chi tiáº¿t
+                                            data-payment-confirmed-by="@(string.IsNullOrWhiteSpace(booking.PaymentConfirmedByName) ? "Chưa có log" : booking.PaymentConfirmedByName)"
+                                            data-payment-confirmed-at="@(booking.PaymentConfirmedAt.HasValue ? booking.PaymentConfirmedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "Chưa có log")"
+                                            data-booking-confirmed-by="@(string.IsNullOrWhiteSpace(booking.BookingConfirmedByName) ? "Chưa có log" : booking.BookingConfirmedByName)"
+                                            data-booking-confirmed-at="@(booking.BookingConfirmedAt.HasValue ? booking.BookingConfirmedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "Chưa có log")"
+                                            data-special-requests="@(string.IsNullOrWhiteSpace(booking.SpecialRequests) ? "Không có" : booking.SpecialRequests)">
+                                        Chi tiết
                                     </button>
                                 </td>
                             </tr>
@@ -314,10 +314,10 @@
 
         @if (Model.TotalPages > 1)
         {
-            <nav aria-label="PhÃ¢n trang Ä‘Æ¡n">
+            <nav aria-label="Phân trang đơn">
                 <ul class="pagination justify-content-end mb-0">
                     <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : string.Empty)">
-                        <a class="page-link" asp-action="Orders" asp-route-page="@(Model.CurrentPage - 1)" asp-route-searchTerm="@Model.Filter.SearchTerm" asp-route-bookingStatus="@Model.Filter.BookingStatus" asp-route-paymentStatus="@Model.Filter.PaymentStatus" asp-route-departureFrom="@(Model.Filter.DepartureFrom?.ToString("yyyy-MM-dd"))" asp-route-departureTo="@(Model.Filter.DepartureTo?.ToString("yyyy-MM-dd"))">TrÆ°á»›c</a>
+                        <a class="page-link" asp-action="Orders" asp-route-page="@(Model.CurrentPage - 1)" asp-route-searchTerm="@Model.Filter.SearchTerm" asp-route-bookingStatus="@Model.Filter.BookingStatus" asp-route-paymentStatus="@Model.Filter.PaymentStatus" asp-route-departureFrom="@(Model.Filter.DepartureFrom?.ToString("yyyy-MM-dd"))" asp-route-departureTo="@(Model.Filter.DepartureTo?.ToString("yyyy-MM-dd"))">Trước</a>
                     </li>
                     @for (var pageNumber = 1; pageNumber <= Model.TotalPages; pageNumber++)
                     {
@@ -342,13 +342,13 @@
                 <input type="hidden" id="editStatusBookingId" name="BookingId" />
                 <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
                 <div class="modal-header">
-                    <h5 class="modal-title">Sá»­a tráº¡ng thÃ¡i Ä‘Æ¡n</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ÄÃ³ng"></button>
+                    <h5 class="modal-title">Sửa trạng thái đơn</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
                 </div>
                 <div class="modal-body">
                     <p id="editStatusBookingCode" class="text-muted mb-3"></p>
                     <label class="w-100">
-                        Tráº¡ng thÃ¡i má»›i
+                        Trạng thái mới
                         <select id="editStatusValue" name="BookingStatus" class="form-select">
                             @for (var status = 0; status <= 10; status++)
                             {
@@ -357,13 +357,13 @@
                         </select>
                     </label>
                     <label class="w-100 mt-3">
-                        Ghi chÃº
-                        <textarea name="Notes" class="form-control admin-textarea" maxlength="500" placeholder="Nháº­p lÃ½ do hoáº·c ghi chÃº xá»­ lÃ½..."></textarea>
+                        Ghi chú
+                        <textarea name="Notes" class="form-control admin-textarea" maxlength="500" placeholder="Nhập lý do hoặc ghi chú xử lý..."></textarea>
                     </label>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ÄÃ³ng</button>
-                    <button type="submit" class="btn btn-primary">LÆ°u tráº¡ng thÃ¡i</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-primary">Lưu trạng thái</button>
                 </div>
             </form>
         </div>
@@ -374,33 +374,33 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Chi tiáº¿t Ä‘Æ¡n</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ÄÃ³ng"></button>
+                <h5 class="modal-title">Chi tiết đơn</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
             <div class="modal-body">
                 <div class="admin-form-grid">
                     <label>
-                        MÃ£ Ä‘Æ¡n
+                        Mã đơn
                         <input id="detailBookingCode" class="form-control" readonly />
                     </label>
                     <label>
-                        Tráº¡ng thÃ¡i
+                        Trạng thái
                         <input id="detailBookingStatus" class="form-control" readonly />
                     </label>
                     <label>
-                        KhÃ¡ch hÃ ng
+                        Khách hàng
                         <input id="detailCustomerName" class="form-control" readonly />
                     </label>
                     <label>
-                        NgÆ°á»i liÃªn há»‡
+                        Người liên hệ
                         <input id="detailContactName" class="form-control" readonly />
                     </label>
                     <label>
-                        Email liÃªn há»‡
+                        Email liên hệ
                         <input id="detailContactEmail" class="form-control" readonly />
                     </label>
                     <label>
-                        Sá»‘ Ä‘iá»‡n thoáº¡i
+                        Số điện thoại
                         <input id="detailContactPhone" class="form-control" readonly />
                     </label>
                     <label>
@@ -408,66 +408,66 @@
                         <input id="detailTourName" class="form-control" readonly />
                     </label>
                     <label>
-                        MÃ£ tour
+                        Mã tour
                         <input id="detailTourCode" class="form-control" readonly />
                     </label>
                     <label>
-                        Khá»Ÿi hÃ nh
+                        Khởi hành
                         <input id="detailDepartureDate" class="form-control" readonly />
                     </label>
                     <label>
-                        Káº¿t thÃºc
+                        Kết thúc
                         <input id="detailReturnDate" class="form-control" readonly />
                     </label>
                     <label>
-                        Sá»‘ lÆ°á»£ng khÃ¡ch
+                        Số lượng khách
                         <input id="detailTravelers" class="form-control" readonly />
                     </label>
                     <label>
-                        Tá»•ng tiá»n
+                        Tổng tiền
                         <input id="detailTotalAmount" class="form-control" readonly />
                     </label>
                     <label>
-                        ÄÃ£ thanh toÃ¡n
+                        Đã thanh toán
                         <input id="detailPaidAmount" class="form-control" readonly />
                     </label>
                     <label>
-                        CÃ²n láº¡i
+                        Còn lại
                         <input id="detailRemainingAmount" class="form-control" readonly />
                     </label>
                     <label>
-                        MÃ£ thanh toÃ¡n
+                        Mã thanh toán
                         <input id="detailPaymentCode" class="form-control" readonly />
                     </label>
                     <label>
-                        MÃ£ giao dá»‹ch VNPay
+                        Mã giao dịch VNPay
                         <input id="detailPaymentTransaction" class="form-control" readonly />
                     </label>
                     <label>
-                        Accountant xÃ¡c nháº­n
+                        Ghi nhận thanh toán
                         <input id="detailPaymentConfirmedBy" class="form-control" readonly />
                     </label>
                     <label>
-                        Thá»i Ä‘iá»ƒm xÃ¡c nháº­n tiá»n
+                        Thời điểm xác nhận tiền
                         <input id="detailPaymentConfirmedAt" class="form-control" readonly />
                     </label>
                     <label>
-                        Staff xÃ¡c nháº­n booking
+                        Staff xác nhận booking
                         <input id="detailBookingConfirmedBy" class="form-control" readonly />
                     </label>
                     <label>
-                        Thá»i Ä‘iá»ƒm xÃ¡c nháº­n booking
+                        Thời điểm xác nhận booking
                         <input id="detailBookingConfirmedAt" class="form-control" readonly />
                     </label>
                 </div>
 
                 <label class="mt-3">
-                    YÃªu cáº§u Ä‘áº·c biá»‡t
+                    Yêu cầu đặc biệt
                     <textarea id="detailSpecialRequests" class="form-control admin-textarea" readonly></textarea>
                 </label>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ÄÃ³ng</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
             </div>
         </div>
     </div>
@@ -488,7 +488,7 @@
 
             document.getElementById('editStatusBookingId').value = button.getAttribute('data-booking-id') || '';
             document.getElementById('editStatusValue').value = button.getAttribute('data-booking-status') || '0';
-            document.getElementById('editStatusBookingCode').textContent = `ÄÆ¡n ${button.getAttribute('data-booking-code') || ''}`;
+            document.getElementById('editStatusBookingCode').textContent = `Đơn ${button.getAttribute('data-booking-code') || ''}`;
         });
     })();
 
@@ -504,7 +504,7 @@
                 return;
             }
 
-            const travelers = `${button.getAttribute('data-travelers')} khÃ¡ch (${button.getAttribute('data-adult-count')} NL, ${button.getAttribute('data-child-count')} TE, ${button.getAttribute('data-infant-count')} EB)`;
+            const travelers = `${button.getAttribute('data-travelers')} khách (${button.getAttribute('data-adult-count')} NL, ${button.getAttribute('data-child-count')} TE, ${button.getAttribute('data-infant-count')} EB)`;
 
             document.getElementById('detailBookingCode').value = button.getAttribute('data-booking-code') || '';
             document.getElementById('detailBookingStatus').value = button.getAttribute('data-booking-status') || '';
@@ -534,18 +534,18 @@
 @functions {
     private static string StatusLabel(int status) => status switch
     {
-        0 => "Chá» thanh toÃ¡n",
-        1 => "Chá» xÃ¡c nháº­n thanh toÃ¡n",
-        2 => "ÄÃ£ cá»c",
-        3 => "ÄÃ£ xÃ¡c nháº­n booking",
-        4 => "ÄÃ£ há»§y",
-        5 => "ÄÃ£ hoÃ n tiá»n",
-        6 => "Chá» thanh toÃ¡n cÃ²n láº¡i",
-        7 => "Chá» xÃ¡c nháº­n thanh toÃ¡n Ä‘á»§",
-        8 => "ÄÃ£ thanh toÃ¡n",
-        9 => "YÃªu cáº§u hoÃ n tiá»n",
-        10 => "Chá» hoÃ n tiá»n",
-        _ => "KhÃ´ng xÃ¡c Ä‘á»‹nh"
+        0 => "Chờ thanh toán",
+        1 => "Đã ghi nhận giao dịch",
+        2 => "Đã cọc",
+        3 => "Đã xác nhận booking",
+        4 => "Đã hủy",
+        5 => "Đã hoàn tiền",
+        6 => "Chờ thanh toán còn lại",
+        7 => "Đã ghi nhận thanh toán đủ",
+        8 => "Đã thanh toán",
+        9 => "Yêu cầu hoàn tiền",
+        10 => "Chờ hoàn tiền",
+        _ => "Không xác định"
     };
 
     private static string StatusClass(int status) => status switch
