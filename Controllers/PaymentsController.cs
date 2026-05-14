@@ -738,15 +738,21 @@ public class PaymentsController : Controller
             return true;
         }
 
-        var rawAuthorization = Request.Headers.Authorization.ToString();
-        var bearerToken = rawAuthorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
-            ? rawAuthorization["Bearer ".Length..].Trim()
-            : rawAuthorization.Trim();
+        var rawAuthorization = Request.Headers.Authorization.ToString().Trim();
+        var authorizationKey = rawAuthorization;
+        if (rawAuthorization.StartsWith("Apikey ", StringComparison.OrdinalIgnoreCase))
+        {
+            authorizationKey = rawAuthorization["Apikey ".Length..].Trim();
+        }
+        else if (rawAuthorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            authorizationKey = rawAuthorization["Bearer ".Length..].Trim();
+        }
 
         var apiKey = Request.Headers["X-API-KEY"].FirstOrDefault()
                      ?? Request.Headers["X-SePay-Api-Key"].FirstOrDefault()
                      ?? Request.Query["apiKey"].FirstOrDefault()
-                     ?? bearerToken;
+                     ?? authorizationKey;
 
         return string.Equals(apiKey, _sePayOptions.ApiKey, StringComparison.Ordinal);
     }
