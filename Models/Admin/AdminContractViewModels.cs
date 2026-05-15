@@ -6,6 +6,9 @@ public class AdminContractListViewModel
     public int PendingDirectorSign { get; set; }
     public int PendingCustomerSign { get; set; }
     public int SignedContracts { get; set; }
+    public int CurrentPage { get; set; } = 1;
+    public int TotalPages { get; set; } = 1;
+    public int TotalItems { get; set; }
     public IReadOnlyList<AdminContractItemViewModel> Contracts { get; set; } = [];
 }
 

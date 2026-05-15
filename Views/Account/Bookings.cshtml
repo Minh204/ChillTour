@@ -1,20 +1,52 @@
 @model ChillTour.Models.Account.CustomerBookingsPageViewModel
 @{
-    ViewData["Title"] = "Lịch sử đơn hàng";
+    ViewData["Title"] = "Profile khách hàng";
+    var customerName = User.Identity?.Name ?? "Khách hàng";
+    var totalBookings = Model.TotalItems;
+    var completedBookings = Model.Bookings.Count(x => x.IsCompletedByDeparture || x.BookingStatus is 3 or 8);
+    var waitingPayment = Model.Bookings.Count(x => x.RemainingAmount > 0m && x.BookingStatus is not 4 and not 5);
+    var upcomingBookings = Model.Bookings.Count(x => x.DepartureDate >= DateOnly.FromDateTime(DateTime.Today) && x.BookingStatus is not 4 and not 5);
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/pages/tours/tours.css" asp-append-version="true" />
 }
 
-<section class="auth-page">
-    <div class="container">
-        <div class="auth-card booking-history-card booking-history-card--wide">
-            <div class="auth-card__intro booking-history-hero">
-                <span class="eyebrow">Đơn hàng</span>
-                <h1>Lịch sử đặt tour</h1>
-                <p>Theo dõi trạng thái đơn, thanh toán và hoàn tiền trên một luồng xử lý thống nhất. Các đơn đã cọc nhưng không thanh toán đủ trước 3 ngày khởi hành sẽ tự động hủy và không còn đủ điều kiện hoàn tiền.</p>
-            </div>
+<section class="customer-profile-page">
+    <div class="container customer-profile-shell">
+        <main class="customer-profile-main">
+            <section class="customer-profile-hero">
+                <div>
+                    <h1>Xin chào, @customerName! <span>👋</span></h1>
+                    <p>Cùng nhìn lại những chuyến đi tuyệt vời của bạn</p>
+                </div>
+                <div class="customer-stats-grid">
+                    <div class="customer-stat-card">
+                        <span class="customer-stat-card__icon">▣</span>
+                        <small>Tổng đơn hàng</small>
+                        <strong>@totalBookings</strong>
+                        <em>Đơn phù hợp bộ lọc</em>
+                    </div>
+                    <div class="customer-stat-card">
+                        <span class="customer-stat-card__icon is-success">✓</span>
+                        <small>Đã hoàn thành</small>
+                        <strong>@completedBookings</strong>
+                        <em>Đơn đã đi hoặc đã xác nhận</em>
+                    </div>
+                    <div class="customer-stat-card">
+                        <span class="customer-stat-card__icon is-warning">◷</span>
+                        <small>Chờ thanh toán</small>
+                        <strong>@waitingPayment</strong>
+                        <em>Đơn còn phải thanh toán</em>
+                    </div>
+                    <div class="customer-stat-card">
+                        <span class="customer-stat-card__icon is-purple">▣</span>
+                        <small>Sắp tới</small>
+                        <strong>@upcomingBookings</strong>
+                        <em>Lịch chưa khởi hành</em>
+                    </div>
+                </div>
+            </section>
 
             @if (TempData["BookingSuccessMessage"] is string bookingSuccessMessage)
             {
@@ -25,10 +57,11 @@
                 <div class="auth-alert auth-alert--error">@bookingErrorMessage</div>
             }
 
-            <form method="get" class="booking-history-filter app-filter-row">
+            <form method="get" class="customer-profile-filter">
+                <input type="hidden" name="sortOrder" value="@Model.SortOrder" />
                 <label>
                     Từ khóa
-                    <input type="text" name="searchTerm" value="@Model.SearchTerm" class="form-control" placeholder="Mã đơn hoặc tên tour..." />
+                    <input type="text" name="searchTerm" value="@Model.SearchTerm" class="form-control" placeholder="Mã đơn, tên tour..." />
                 </label>
                 <label>
                     Trạng thái đơn
@@ -44,24 +77,40 @@
                     Trạng thái thanh toán
                     <select name="paymentStatus" class="form-select">
                         <option value="">Tất cả</option>
-                        <option value="1" selected="@(Model.PaymentStatus == 1)">Đã thanh toán, chờ xác nhận</option>
+                        <option value="1" selected="@(Model.PaymentStatus == 1)">Chờ xác nhận</option>
                         <option value="2" selected="@(Model.PaymentStatus == 2)">Đã cọc</option>
                         <option value="3" selected="@(Model.PaymentStatus == 3)">Đã thanh toán đủ</option>
                     </select>
                 </label>
                 <label>
-                    Từ ngày khởi hành
+                    Từ ngày
                     <input type="date" name="departureFrom" value="@(Model.DepartureFrom?.ToString("yyyy-MM-dd"))" class="form-control" />
                 </label>
                 <label>
-                    Đến ngày khởi hành
+                    Đến ngày
                     <input type="date" name="departureTo" value="@(Model.DepartureTo?.ToString("yyyy-MM-dd"))" class="form-control" />
                 </label>
-                <div class="booking-history-filter__actions">
-                    <button type="submit" class="btn btn-primary">Lọc đơn</button>
+                <div class="customer-profile-filter__actions">
+                    <button type="submit" class="btn btn-primary">Lọc</button>
                     <a asp-action="Bookings" class="btn btn-outline-secondary">Xóa lọc</a>
                 </div>
             </form>
+
+            <div class="customer-order-head">
+                <h2>Danh sách đơn hàng (@totalBookings)</h2>
+                <form method="get" class="customer-sort-form">
+                    <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+                    <input type="hidden" name="bookingStatus" value="@Model.BookingStatus" />
+                    <input type="hidden" name="paymentStatus" value="@Model.PaymentStatus" />
+                    <input type="hidden" name="departureFrom" value="@(Model.DepartureFrom?.ToString("yyyy-MM-dd"))" />
+                    <input type="hidden" name="departureTo" value="@(Model.DepartureTo?.ToString("yyyy-MM-dd"))" />
+                    <select name="sortOrder" class="form-select" aria-label="Sắp xếp" onchange="this.form.submit()">
+                        <option value="newest" selected="@(Model.SortOrder == "newest")">Sắp xếp: Mới nhất</option>
+                        <option value="departure" selected="@(Model.SortOrder == "departure")">Sắp xếp: Khởi hành gần nhất</option>
+                        <option value="amount_desc" selected="@(Model.SortOrder == "amount_desc")">Sắp xếp: Tổng tiền cao nhất</option>
+                    </select>
+                </form>
+            </div>
 
             @if (Model.Bookings.Count == 0)
             {
@@ -69,49 +118,64 @@
             }
             else
             {
-                <div class="customer-booking-list customer-booking-list--spacious">
+                <div class="customer-order-list">
                     @foreach (var booking in Model.Bookings)
                     {
-                        <article class="customer-booking-card customer-booking-card--timeline">
-                            <div class="customer-booking-card__top">
-                                <div class="customer-booking-card__identity">
-                                    <span class="tour-tag">@booking.BookingCode</span>
-                                    <h3>@booking.TourName</h3>
-                                    <p>Khởi hành @booking.DepartureDate.ToString("dd/MM/yyyy") • @booking.Travelers khách • Tạo lúc @booking.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+                        var paidPercent = booking.TotalAmount > 0m
+                            ? Math.Clamp((int)Math.Round(booking.PaidAmount / booking.TotalAmount * 100m), 0, 100)
+                            : 0;
+                        var progressClass = paidPercent >= 100 ? "is-complete" : paidPercent >= 60 ? "is-good" : paidPercent > 0 ? "is-partial" : string.Empty;
+
+                        <article class="customer-order-card">
+                            <div class="customer-order-card__image">
+                                @if (!string.IsNullOrWhiteSpace(booking.ImageUrl))
+                                {
+                                    <img src="@booking.ImageUrl" alt="@booking.TourName" />
+                                }
+                                else
+                                {
+                                    <span>ChillTour</span>
+                                }
+                            </div>
+
+                            <div class="customer-order-card__content">
+                                <span class="customer-order-status @StatusClass(booking.BookingStatus, booking.IsCompletedByDeparture)">@booking.BookingStatusText</span>
+                                <h3>@booking.TourName</h3>
+                                <div class="customer-order-meta">
+                                    <span>@booking.DepartureDate.ToString("dd/MM/yyyy")</span>
+                                    <span>@booking.Travelers khách</span>
+                                    <span>Tạo lúc @booking.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
                                 </div>
-                                <div class="customer-booking-card__status">
-                                    <span class="status-pill @StatusClass(booking.BookingStatus, booking.IsCompletedByDeparture)">
-                                        @booking.BookingStatusText
-                                    </span>
-                                    <span class="status-pill @ContractStatusClass(booking.ContractStatus)">
-                                        @ContractStatusLabel(booking.ContractStatus)
-                                    </span>
+                                <p>Mã đơn: <strong>@booking.BookingCode</strong></p>
+                            </div>
+
+                            <div class="customer-order-payment">
+                                <div class="customer-order-progress__label">
+                                    <strong>Thanh toán @paidPercent%</strong>
+                                    <span>@paidPercent%</span>
+                                </div>
+                                <div class="customer-order-progress">
+                                    <span class="@progressClass" style="width: @paidPercent%"></span>
+                                </div>
+                                <div class="customer-order-money">
+                                    <div>
+                                        <span>Tổng tiền</span>
+                                        <strong>@booking.TotalAmount.ToString("N0")đ</strong>
+                                    </div>
+                                    <div>
+                                        <span>Đã thanh toán</span>
+                                        <strong class="is-paid">@booking.PaidAmount.ToString("N0")đ</strong>
+                                    </div>
+                                    <div>
+                                        <span>Còn lại</span>
+                                        <strong class="is-due">@booking.RemainingAmount.ToString("N0")đ</strong>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="customer-booking-card__meta-grid">
-                                <div>
-                                    <span>Tổng tiền</span>
-                                    <strong>@booking.TotalAmount.ToString("N0") đ</strong>
-                                </div>
-                                <div>
-                                    <span>Đã thanh toán</span>
-                                    <strong>@booking.PaidAmount.ToString("N0") đ</strong>
-                                </div>
-                                <div>
-                                    <span>Còn lại</span>
-                                    <strong>@booking.RemainingAmount.ToString("N0") đ</strong>
-                                </div>
-                            </div>
-
-                            @if (!string.IsNullOrWhiteSpace(booking.CancellationReason))
-                            {
-                                <p class="customer-booking-card__reason">Lý do hủy: @booking.CancellationReason</p>
-                            }
-
-                            <div class="customer-booking-card__footer">
+                            <div class="customer-order-action">
                                 <button type="button"
-                                        class="btn btn-primary"
+                                        class="btn btn-outline-primary"
                                         data-bs-toggle="modal"
                                         data-bs-target="#bookingActionModal"
                                         data-booking-id="@booking.BookingId"
@@ -124,14 +188,42 @@
                                         data-refund-request="@booking.RequiresRefundRequest.ToString().ToLowerInvariant()"
                                         data-refund-percent="@booking.RefundPercent"
                                         data-refund-amount="@booking.EstimatedRefundAmount.ToString("N0")">
-                                    Chi tiết
+                                    Xem chi tiết
                                 </button>
                             </div>
                         </article>
                     }
                 </div>
+
+                @if (Model.TotalPages > 1)
+                {
+                    <div class="customer-pagination">
+                        @if (Model.CurrentPage > 1)
+                        {
+                            <a asp-action="Bookings" asp-route-page="@(Model.CurrentPage - 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-bookingStatus="@Model.BookingStatus" asp-route-paymentStatus="@Model.PaymentStatus" asp-route-departureFrom="@(Model.DepartureFrom?.ToString("yyyy-MM-dd"))" asp-route-departureTo="@(Model.DepartureTo?.ToString("yyyy-MM-dd"))" asp-route-sortOrder="@Model.SortOrder" class="customer-pagination__link">Trước</a>
+                        }
+                        else
+                        {
+                            <span class="customer-pagination__link is-disabled">Trước</span>
+                        }
+
+                        @for (var pageNumber = 1; pageNumber <= Model.TotalPages; pageNumber++)
+                        {
+                            <a asp-action="Bookings" asp-route-page="@pageNumber" asp-route-searchTerm="@Model.SearchTerm" asp-route-bookingStatus="@Model.BookingStatus" asp-route-paymentStatus="@Model.PaymentStatus" asp-route-departureFrom="@(Model.DepartureFrom?.ToString("yyyy-MM-dd"))" asp-route-departureTo="@(Model.DepartureTo?.ToString("yyyy-MM-dd"))" asp-route-sortOrder="@Model.SortOrder" class="customer-pagination__link @(pageNumber == Model.CurrentPage ? "is-active" : "")">@pageNumber</a>
+                        }
+
+                        @if (Model.CurrentPage < Model.TotalPages)
+                        {
+                            <a asp-action="Bookings" asp-route-page="@(Model.CurrentPage + 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-bookingStatus="@Model.BookingStatus" asp-route-paymentStatus="@Model.PaymentStatus" asp-route-departureFrom="@(Model.DepartureFrom?.ToString("yyyy-MM-dd"))" asp-route-departureTo="@(Model.DepartureTo?.ToString("yyyy-MM-dd"))" asp-route-sortOrder="@Model.SortOrder" class="customer-pagination__link">Sau</a>
+                        }
+                        else
+                        {
+                            <span class="customer-pagination__link is-disabled">Sau</span>
+                        }
+                    </div>
+                }
             }
-        </div>
+        </main>
     </div>
 </section>
 
@@ -186,9 +278,7 @@
 <script>
     (() => {
         const cancelModal = document.getElementById('cancelBookingModal');
-        if (!cancelModal) {
-            return;
-        }
+        if (!cancelModal) return;
 
         const fillCancelModal = button => {
             document.getElementById('cancelBookingId').value = button?.getAttribute('data-booking-id') || button?.dataset.bookingId || '';
@@ -201,11 +291,8 @@
             document.getElementById('cancelBookingTitle').textContent = isRefundRequest ? 'Yêu cầu hoàn tiền' : 'Xác nhận hủy đơn';
             document.getElementById('cancelBookingSubmit').textContent = isRefundRequest ? 'Gửi yêu cầu hoàn tiền' : 'Xác nhận hủy';
             document.getElementById('cancelBookingText').textContent = isRefundRequest
-                ? `Bạn muốn gửi yêu cầu hoàn tiền cho đơn ${bookingCode} của tour "${tourName}"? Nhân viên sẽ kiểm tra trước khi xử lý hoàn tiền.`
+                ? `Bạn muốn gửi yêu cầu hoàn tiền cho đơn ${bookingCode} của tour "${tourName}"? Chính sách hoàn tiền dự kiến: ${refundPercent}% số tiền đã thanh toán (${refundAmount} đ). Nhân viên sẽ kiểm tra trước khi xử lý hoàn tiền.`
                 : `Bạn có chắc muốn hủy đơn ${bookingCode} của tour "${tourName}" không?`;
-            if (isRefundRequest) {
-                document.getElementById('cancelBookingText').textContent = `Bạn muốn gửi yêu cầu hoàn tiền cho đơn ${bookingCode} của tour "${tourName}"? Chính sách hoàn tiền dự kiến: ${refundPercent}% số tiền đã thanh toán (${refundAmount} đ). Nhân viên sẽ kiểm tra trước khi xử lý hoàn tiền.`;
-            }
         };
 
         cancelModal.addEventListener('show.bs.modal', event => {
@@ -215,16 +302,12 @@
         });
 
         const actionModal = document.getElementById('bookingActionModal');
-        if (!actionModal) {
-            return;
-        }
+        if (!actionModal) return;
 
         const actionCancel = document.getElementById('bookingActionCancel');
         actionModal.addEventListener('show.bs.modal', event => {
             const button = event.relatedTarget;
-            if (!button) {
-                return;
-            }
+            if (!button) return;
 
             document.getElementById('bookingActionTitle').textContent = `Đơn ${button.getAttribute('data-booking-code') || ''}`;
             document.getElementById('bookingActionSubtitle').textContent = button.getAttribute('data-tour-name') || '';
@@ -262,28 +345,24 @@
     private static string StatusLabel(int status) => status switch
     {
         0 => "Chờ thanh toán",
-        1 => "Đã thanh toán thành công, chờ xác nhận thanh toán",
+        1 => "Chờ xác nhận thanh toán",
         2 => "Đã cọc",
         3 => "Đã đặt",
         4 => "Đã hủy",
         5 => "Đã hoàn tiền",
         6 => "Chờ thanh toán còn lại",
-        7 => "Đã thanh toán thành công, chờ xác nhận thanh toán",
+        7 => "Chờ xác nhận thanh toán",
         8 => "Đã thanh toán đầy đủ",
         9 => "Yêu cầu hoàn tiền",
         10 => "Chờ hoàn tiền",
         _ => "Không xác định"
     };
 
-    private static string StatusClass(int status, bool isCompleted = false) => isCompleted ? "status-pill--success" : status switch
+    private static string StatusClass(int status, bool isCompleted = false) => isCompleted ? "is-success" : status switch
     {
-        2 or 3 or 8 => "status-pill--success",
-        4 or 5 => "status-pill--danger",
-        9 or 10 => "status-pill--warning",
-        _ => "status-pill--info"
+        2 or 3 or 8 => "is-success",
+        4 or 5 => "is-danger",
+        9 or 10 => "is-warning",
+        _ => "is-info"
     };
-
-    private static string ContractStatusLabel(byte? status) => status == 3 ? "Đã ký" : "Chưa ký";
-
-    private static string ContractStatusClass(byte? status) => status == 3 ? "status-pill--success" : "status-pill--warning";
 }

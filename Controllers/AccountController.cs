@@ -29,6 +29,7 @@ public class AccountController : Controller
     private const byte PaymentDepositPaid = 2;
     private const byte PaymentFullyPaid = 3;
     private const int BalanceAutoCancelDaysBeforeDeparture = 3;
+    private const int CustomerPageSize = 6;
 
     private readonly IAuthService _authService;
     private readonly ChillTourDbContext _dbContext;
@@ -317,7 +318,7 @@ public class AccountController : Controller
 
     [Authorize(Roles = ChillTour.Security.RoleConstants.Customer)]
     [HttpGet]
-    public async Task<IActionResult> Bookings(string? searchTerm = null, byte? bookingStatus = null, byte? paymentStatus = null, DateOnly? departureFrom = null, DateOnly? departureTo = null, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Bookings(string? searchTerm = null, byte? bookingStatus = null, byte? paymentStatus = null, DateOnly? departureFrom = null, DateOnly? departureTo = null, string? sortOrder = null, int page = 1, CancellationToken cancellationToken = default)
     {
         var userId = GetCurrentUserId();
         if (!userId.HasValue)
@@ -363,14 +364,40 @@ public class AccountController : Controller
             query = query.Where(x => x.TourSchedule.DepartureDate <= departureTo.Value);
         }
 
+        sortOrder = string.IsNullOrWhiteSpace(sortOrder) ? "newest" : sortOrder;
+        query = sortOrder switch
+        {
+            "departure" => query.OrderBy(x => x.TourSchedule.DepartureDate).ThenByDescending(x => x.CreatedAt),
+            "amount_desc" => query.OrderByDescending(x => x.TotalAmount).ThenByDescending(x => x.CreatedAt),
+            _ => query.OrderByDescending(x => x.CreatedAt)
+        };
+
+        if (page < 1)
+        {
+            page = 1;
+        }
+
+        var totalItems = await query.CountAsync(cancellationToken);
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalItems / (double)CustomerPageSize));
+        if (page > totalPages)
+        {
+            page = totalPages;
+        }
+
         var bookings = await query
-            .OrderByDescending(x => x.CreatedAt)
+            .Skip((page - 1) * CustomerPageSize)
+            .Take(CustomerPageSize)
             .Select(x => new CustomerBookingItemViewModel
             {
                 BookingId = x.BookingId,
                 BookingCode = x.BookingCode,
                 TourName = x.Tour.TourName,
                 TourSlug = x.Tour.Slug,
+                ImageUrl = x.Tour.MediaItems
+                    .OrderByDescending(m => m.IsPrimary)
+                    .ThenBy(m => m.DisplayOrder)
+                    .Select(m => m.MediaUrl)
+                    .FirstOrDefault() ?? x.Tour.MainImageUrl,
                 DepartureDate = x.TourSchedule.DepartureDate,
                 Travelers = x.AdultCount + x.ChildCount + x.InfantCount,
                 TotalAmount = x.TotalAmount,
@@ -453,13 +480,17 @@ public class AccountController : Controller
             PaymentStatus = paymentStatus,
             DepartureFrom = departureFrom,
             DepartureTo = departureTo,
+            SortOrder = sortOrder,
+            CurrentPage = page,
+            TotalPages = totalPages,
+            TotalItems = totalItems,
             Bookings = bookings
         });
     }
 
     [Authorize(Roles = ChillTour.Security.RoleConstants.Customer)]
     [HttpGet]
-    public async Task<IActionResult> Wishlist(string? searchTerm = null, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Wishlist(string? searchTerm = null, int page = 1, CancellationToken cancellationToken = default)
     {
         var userId = GetCurrentUserId();
         if (!userId.HasValue)
@@ -483,8 +514,22 @@ public class AccountController : Controller
                 x.Tour.EndDestination.DestinationName.Contains(normalizedSearch));
         }
 
+        if (page < 1)
+        {
+            page = 1;
+        }
+
+        var totalItems = await query.CountAsync(cancellationToken);
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalItems / (double)CustomerPageSize));
+        if (page > totalPages)
+        {
+            page = totalPages;
+        }
+
         var tours = await query
             .OrderByDescending(x => x.CreatedAt)
+            .Skip((page - 1) * CustomerPageSize)
+            .Take(CustomerPageSize)
             .Select(x => new CustomerWishlistItemViewModel
             {
                 WishlistId = x.WishlistId,
@@ -523,6 +568,9 @@ public class AccountController : Controller
         return View(new CustomerWishlistPageViewModel
         {
             SearchTerm = searchTerm,
+            CurrentPage = page,
+            TotalPages = totalPages,
+            TotalItems = totalItems,
             Tours = tours
         });
     }
@@ -716,7 +764,7 @@ public class AccountController : Controller
 
     [Authorize]
     [HttpGet]
-    public async Task<IActionResult> Inbox(string? searchTerm = null, string? relatedEntityType = null, bool? isRead = null, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Inbox(string? searchTerm = null, string? relatedEntityType = null, bool? isRead = null, int page = 1, CancellationToken cancellationToken = default)
     {
         var userId = GetCurrentUserId();
         if (!userId.HasValue)
@@ -744,19 +792,33 @@ public class AccountController : Controller
             query = query.Where(x => x.IsRead == isRead.Value);
         }
 
-          var notifications = await query
-              .OrderByDescending(x => x.CreatedAt)
-              .Select(x => new CustomerNotificationItemViewModel
+        if (page < 1)
+        {
+            page = 1;
+        }
+
+        var totalItems = await query.CountAsync(cancellationToken);
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalItems / (double)CustomerPageSize));
+        if (page > totalPages)
+        {
+            page = totalPages;
+        }
+
+        var notifications = await query
+            .OrderByDescending(x => x.CreatedAt)
+            .Skip((page - 1) * CustomerPageSize)
+            .Take(CustomerPageSize)
+            .Select(x => new CustomerNotificationItemViewModel
             {
                 NotificationId = x.NotificationId,
                 Title = x.Title,
                 Message = x.Message,
                 IsRead = x.IsRead,
                 CreatedAt = x.CreatedAt,
-                  RelatedEntityType = x.RelatedEntityType,
-                  RelatedEntityId = x.RelatedEntityId
-              })
-              .ToListAsync(cancellationToken);
+                RelatedEntityType = x.RelatedEntityType,
+                RelatedEntityId = x.RelatedEntityId
+            })
+            .ToListAsync(cancellationToken);
 
           var relatedBookingIds = notifications
               .Where(x => x.RelatedEntityType == "Booking" && x.RelatedEntityId.HasValue)
@@ -803,6 +865,9 @@ public class AccountController : Controller
             SearchTerm = searchTerm,
             RelatedEntityType = relatedEntityType,
             IsRead = isRead,
+            CurrentPage = page,
+            TotalPages = totalPages,
+            TotalItems = totalItems,
             Notifications = notifications
         });
     }

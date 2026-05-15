@@ -5,6 +5,9 @@ public class AdminPromotionListViewModel
     public int TotalPromotions { get; set; }
     public int ActivePromotions { get; set; }
     public int ExpiredPromotions { get; set; }
+    public int CurrentPage { get; set; } = 1;
+    public int TotalPages { get; set; } = 1;
+    public int TotalItems { get; set; }
     public AdminPromotionsFilterViewModel Filter { get; set; } = new();
     public IReadOnlyList<AdminPromotionItemViewModel> Promotions { get; set; } = [];
 }

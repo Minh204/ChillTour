@@ -6,6 +6,7 @@ public class CustomerBookingItemViewModel
     public string BookingCode { get; set; } = string.Empty;
     public string TourName { get; set; } = string.Empty;
     public string TourSlug { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
     public DateOnly DepartureDate { get; set; }
     public int Travelers { get; set; }
     public decimal TotalAmount { get; set; }

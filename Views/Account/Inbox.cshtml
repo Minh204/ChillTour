@@ -1,23 +1,30 @@
 @using ChillTour.Security
 @model ChillTour.Models.Account.CustomerInboxPageViewModel
 @{
-    ViewData["Title"] = "Hộp thư";
+    ViewData["Title"] = "Thông báo";
+    var unreadCount = Model.Notifications.Count(x => !x.IsRead);
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/pages/tours/tours.css" asp-append-version="true" />
 }
 
-<section class="auth-page">
-    <div class="container">
-        <div class="auth-card booking-history-card booking-history-card--wide">
-            <div class="auth-card__intro booking-history-hero">
-                <span class="eyebrow eyebrow--warm">Hộp thư</span>
-                <h1>Thông báo của bạn</h1>
-                <p>Theo dõi các cập nhật quan trọng về đơn đặt tour, thanh toán, hoàn tiền và nhắc việc vận hành.</p>
-            </div>
+<section class="customer-profile-page">
+    <div class="container customer-profile-shell">
+        <main class="customer-profile-main">
+            <section class="customer-notification-hero">
+                <div>
+                    <span class="eyebrow eyebrow--warm">Hộp thư</span>
+                    <h1>Thông báo của bạn</h1>
+                    <p>Theo dõi các cập nhật quan trọng về đơn đặt tour, thanh toán, hợp đồng, hoàn tiền và nhắc việc vận hành.</p>
+                </div>
+                <div class="customer-notification-hero__art">
+                    <span>✉</span>
+                    <strong>@unreadCount</strong>
+                </div>
+            </section>
 
-            <form method="get" class="booking-history-filter notification-filter app-filter-row">
+            <form method="get" class="customer-profile-filter customer-notification-filter">
                 <label>
                     Từ khóa
                     <input type="text" name="searchTerm" value="@Model.SearchTerm" class="form-control" placeholder="Tiêu đề hoặc nội dung..." />
@@ -26,7 +33,8 @@
                     Loại liên quan
                     <select name="relatedEntityType" class="form-select">
                         <option value="">Tất cả</option>
-                        <option value="Booking" selected="@(Model.RelatedEntityType == "Booking")">Booking</option>
+                        <option value="Booking" selected="@(Model.RelatedEntityType == "Booking")">Đơn đặt tour</option>
+                        <option value="Contract" selected="@(Model.RelatedEntityType == "Contract")">Hợp đồng</option>
                     </select>
                 </label>
                 <label>
@@ -37,11 +45,15 @@
                         <option value="true" selected="@(Model.IsRead == true)">Đã đọc</option>
                     </select>
                 </label>
-                <div class="booking-history-filter__actions">
+                <div class="customer-profile-filter__actions">
                     <button type="submit" class="btn btn-primary">Lọc thông báo</button>
                     <a asp-action="Inbox" class="btn btn-outline-secondary">Xóa lọc</a>
                 </div>
             </form>
+
+            <div class="customer-order-head">
+                <h2>Danh sách thông báo (@Model.TotalItems)</h2>
+            </div>
 
             @if (Model.Notifications.Count == 0)
             {
@@ -49,22 +61,26 @@
             }
             else
             {
-                <div class="customer-notification-list customer-notification-list--spacious">
+                <div class="customer-notification-list">
                     @foreach (var notification in Model.Notifications)
                     {
-                        <article class="customer-notification-card customer-notification-card--wide @(notification.IsRead ? string.Empty : "is-unread")">
-                            <div class="customer-notification-card__main">
-                                <div class="customer-notification-card__head">
-                                    <div>
-                                        <span class="notification-dot @(notification.IsRead ? string.Empty : "is-unread")"></span>
-                                        <h3>@notification.Title</h3>
-                                    </div>
-                                    <span>@notification.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                        var iconClass = NotificationIconClass(notification.RelatedEntityType, notification.IsRelatedBookingCancelled);
+                        <article class="customer-notification-row @(notification.IsRead ? string.Empty : "is-unread")">
+                            <span class="notification-dot @(notification.IsRead ? string.Empty : "is-unread")"></span>
+                            <div class="customer-notification-row__icon @iconClass">
+                                @NotificationIcon(notification.RelatedEntityType, notification.IsRelatedBookingCancelled)
+                            </div>
+                            <div class="customer-notification-row__content">
+                                <div class="customer-notification-row__head">
+                                    <h3>@notification.Title</h3>
+                                    <span class="customer-order-status @(notification.IsRead ? "is-info" : "is-warning")">
+                                        @(notification.IsRead ? "Đã đọc" : "Mới")
+                                    </span>
                                 </div>
                                 <p>@notification.Message</p>
                             </div>
-
-                            <div class="customer-notification-card__actions">
+                            <time>@notification.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</time>
+                            <div class="customer-notification-row__action">
                                 @if (notification.RelatedEntityType == "Booking" && notification.RelatedEntityId.HasValue)
                                 {
                                     if (User.IsInRole(RoleConstants.Customer))
@@ -84,13 +100,57 @@
                                 }
                                 else
                                 {
-                                    <span class="status-pill status-pill--info">Thông báo hệ thống</span>
+                                    <span class="status-pill status-pill--info">Hệ thống</span>
                                 }
                             </div>
                         </article>
                     }
                 </div>
+
+                @if (Model.TotalPages > 1)
+                {
+                    <div class="customer-pagination">
+                        @if (Model.CurrentPage > 1)
+                        {
+                            <a asp-action="Inbox" asp-route-page="@(Model.CurrentPage - 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-relatedEntityType="@Model.RelatedEntityType" asp-route-isRead="@Model.IsRead" class="customer-pagination__link">Trước</a>
+                        }
+                        else
+                        {
+                            <span class="customer-pagination__link is-disabled">Trước</span>
+                        }
+
+                        @for (var pageNumber = 1; pageNumber <= Model.TotalPages; pageNumber++)
+                        {
+                            <a asp-action="Inbox" asp-route-page="@pageNumber" asp-route-searchTerm="@Model.SearchTerm" asp-route-relatedEntityType="@Model.RelatedEntityType" asp-route-isRead="@Model.IsRead" class="customer-pagination__link @(pageNumber == Model.CurrentPage ? "is-active" : "")">@pageNumber</a>
+                        }
+
+                        @if (Model.CurrentPage < Model.TotalPages)
+                        {
+                            <a asp-action="Inbox" asp-route-page="@(Model.CurrentPage + 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-relatedEntityType="@Model.RelatedEntityType" asp-route-isRead="@Model.IsRead" class="customer-pagination__link">Sau</a>
+                        }
+                        else
+                        {
+                            <span class="customer-pagination__link is-disabled">Sau</span>
+                        }
+                    </div>
+                }
             }
-        </div>
+        </main>
     </div>
 </section>
+
+@functions {
+    private static string NotificationIcon(string? relatedType, bool isCancelled) => isCancelled ? "!" : relatedType switch
+    {
+        "Booking" => "□",
+        "Contract" => "§",
+        _ => "i"
+    };
+
+    private static string NotificationIconClass(string? relatedType, bool isCancelled) => isCancelled ? "is-danger" : relatedType switch
+    {
+        "Booking" => "is-info",
+        "Contract" => "is-success",
+        _ => "is-warning"
+    };
+}

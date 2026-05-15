@@ -22,6 +22,7 @@ public class AdminController : Controller
 {
     private const int TourPageSize = 10;
     private const int OrderPageSize = 10;
+    private const int AdminListPageSize = 10;
     private const byte BookingPendingPayment = 0;
     private const byte BookingPendingDepositVerification = 1;
     private const byte BookingDepositPaid = 2;
@@ -288,8 +289,9 @@ public class AdminController : Controller
 
     [Authorize(Policy = PermissionConstants.ManageUsers)]
     [HttpGet]
-    public async Task<IActionResult> Users([FromQuery] AdminUsersFilterViewModel filter, CancellationToken cancellationToken)
+    public async Task<IActionResult> Users(int page = 1, [FromQuery] AdminUsersFilterViewModel filter = null!, CancellationToken cancellationToken = default)
     {
+        filter ??= new AdminUsersFilterViewModel();
         var query = _dbContext.Users
             .Include(x => x.UserRoles)
             .ThenInclude(x => x.Role)
@@ -315,8 +317,25 @@ public class AdminController : Controller
             query = query.Where(x => (x.Status == 2) == filter.IsLocked.Value);
         }
 
+        if (page < 1)
+        {
+            page = 1;
+        }
+
+        var totalItems = await query.CountAsync(cancellationToken);
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalItems / (double)AdminListPageSize));
+        if (page > totalPages)
+        {
+            page = totalPages;
+        }
+
+        var activeUsers = await query.CountAsync(x => x.Status != 2, cancellationToken);
+        var lockedUsers = await query.CountAsync(x => x.Status == 2, cancellationToken);
+
         var users = await query
             .OrderByDescending(x => x.CreatedAt)
+            .Skip((page - 1) * AdminListPageSize)
+            .Take(AdminListPageSize)
             .Select(x => new AdminUserItemViewModel
             {
                 UserId = x.UserId,
@@ -338,9 +357,12 @@ public class AdminController : Controller
 
         return View(new AdminUsersViewModel
         {
-            TotalUsers = users.Count,
-            ActiveUsers = users.Count(x => !x.IsLocked),
-            LockedUsers = users.Count(x => x.IsLocked),
+            TotalUsers = totalItems,
+            ActiveUsers = activeUsers,
+            LockedUsers = lockedUsers,
+            CurrentPage = page,
+            TotalPages = totalPages,
+            TotalItems = totalItems,
             Filter = filter,
             Users = users
         });
@@ -724,7 +746,7 @@ public class AdminController : Controller
 
     [Authorize(Roles = $"{RoleConstants.Admin},{RoleConstants.Director}")]
     [HttpGet]
-    public async Task<IActionResult> Contracts(CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Contracts(int page = 1, CancellationToken cancellationToken = default)
     {
         var contractEntities = await _dbContext.ElectronicContracts
             .AsNoTracking()
@@ -765,20 +787,41 @@ public class AdminController : Controller
             })
             .ToList();
 
+        if (page < 1)
+        {
+            page = 1;
+        }
+
+        var totalItems = contracts.Count;
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalItems / (double)AdminListPageSize));
+        if (page > totalPages)
+        {
+            page = totalPages;
+        }
+
+        var pagedContracts = contracts
+            .Skip((page - 1) * AdminListPageSize)
+            .Take(AdminListPageSize)
+            .ToList();
+
         return View(new AdminContractListViewModel
         {
             TotalContracts = contracts.Count,
             PendingDirectorSign = contracts.Count(x => x.ContractStatus == ContractService.PendingDirectorSign),
             PendingCustomerSign = contracts.Count(x => x.ContractStatus == ContractService.PendingCustomerSign),
             SignedContracts = contracts.Count(x => x.ContractStatus == ContractService.Signed),
-            Contracts = contracts
+            CurrentPage = page,
+            TotalPages = totalPages,
+            TotalItems = totalItems,
+            Contracts = pagedContracts
         });
     }
 
     [Authorize(Policy = PermissionConstants.ManagePromotions)]
     [HttpGet]
-    public async Task<IActionResult> Promotions([FromQuery] AdminPromotionsFilterViewModel filter, CancellationToken cancellationToken)
+    public async Task<IActionResult> Promotions(int page = 1, [FromQuery] AdminPromotionsFilterViewModel filter = null!, CancellationToken cancellationToken = default)
     {
+        filter ??= new AdminPromotionsFilterViewModel();
         var now = DateTime.UtcNow;
         var query = _dbContext.Promotions
             .AsNoTracking()
@@ -805,9 +848,26 @@ public class AdminController : Controller
             query = query.Where(x => x.IsAutoApply == filter.IsAutoApply.Value);
         }
 
+        if (page < 1)
+        {
+            page = 1;
+        }
+
+        var totalItems = await query.CountAsync(cancellationToken);
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalItems / (double)AdminListPageSize));
+        if (page > totalPages)
+        {
+            page = totalPages;
+        }
+
+        var activePromotions = await query.CountAsync(x => x.IsActive && x.EndAt >= now, cancellationToken);
+        var expiredPromotions = await query.CountAsync(x => x.EndAt < now || !x.IsActive, cancellationToken);
+
         var items = await query
             .OrderByDescending(x => x.IsActive)
             .ThenByDescending(x => x.EndAt)
+            .Skip((page - 1) * AdminListPageSize)
+            .Take(AdminListPageSize)
             .Select(x => new AdminPromotionItemViewModel
             {
                 PromotionId = x.PromotionId,
@@ -827,9 +887,12 @@ public class AdminController : Controller
 
         return View(new AdminPromotionListViewModel
         {
-            TotalPromotions = items.Count,
-            ActivePromotions = items.Count(x => x.IsActive && x.EndAt >= now),
-            ExpiredPromotions = items.Count(x => x.EndAt < now || !x.IsActive),
+            TotalPromotions = totalItems,
+            ActivePromotions = activePromotions,
+            ExpiredPromotions = expiredPromotions,
+            CurrentPage = page,
+            TotalPages = totalPages,
+            TotalItems = totalItems,
             Filter = filter,
             Promotions = items
         });
@@ -837,8 +900,9 @@ public class AdminController : Controller
 
     [Authorize(Policy = PermissionConstants.ManageContent)]
     [HttpGet]
-    public async Task<IActionResult> Articles([FromQuery] AdminArticlesFilterViewModel filter, CancellationToken cancellationToken)
+    public async Task<IActionResult> Articles(int page = 1, [FromQuery] AdminArticlesFilterViewModel filter = null!, CancellationToken cancellationToken = default)
     {
+        filter ??= new AdminArticlesFilterViewModel();
         var query = _dbContext.Articles
             .AsNoTracking()
             .Include(x => x.AuthorUser)
@@ -860,9 +924,26 @@ public class AdminController : Controller
             query = query.Where(x => x.Status == status);
         }
 
+        if (page < 1)
+        {
+            page = 1;
+        }
+
+        var totalItems = await query.CountAsync(cancellationToken);
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalItems / (double)AdminListPageSize));
+        if (page > totalPages)
+        {
+            page = totalPages;
+        }
+
+        var publishedArticles = await query.CountAsync(x => x.Status == 1, cancellationToken);
+        var draftArticles = await query.CountAsync(x => x.Status == 0, cancellationToken);
+
         var items = await query
             .OrderByDescending(x => x.PublishedAt ?? x.CreatedAt)
             .ThenByDescending(x => x.CreatedAt)
+            .Skip((page - 1) * AdminListPageSize)
+            .Take(AdminListPageSize)
             .Select(x => new AdminArticleItemViewModel
             {
                 ArticleId = x.ArticleId,
@@ -878,9 +959,12 @@ public class AdminController : Controller
 
         return View(new AdminArticleListViewModel
         {
-            TotalArticles = items.Count,
-            PublishedArticles = items.Count(x => x.IsPublished),
-            DraftArticles = items.Count(x => !x.IsPublished),
+            TotalArticles = totalItems,
+            PublishedArticles = publishedArticles,
+            DraftArticles = draftArticles,
+            CurrentPage = page,
+            TotalPages = totalPages,
+            TotalItems = totalItems,
             Filter = filter,
             Articles = items
         });
@@ -1246,8 +1330,9 @@ public class AdminController : Controller
 
     [Authorize(Policy = PermissionConstants.ManageTours)]
     [HttpGet]
-    public async Task<IActionResult> Categories([FromQuery] AdminCategoriesFilterViewModel filter, CancellationToken cancellationToken)
+    public async Task<IActionResult> Categories(int page = 1, [FromQuery] AdminCategoriesFilterViewModel filter = null!, CancellationToken cancellationToken = default)
     {
+        filter ??= new AdminCategoriesFilterViewModel();
         var query = _dbContext.Categories
             .AsNoTracking()
             .AsQueryable();
@@ -1266,9 +1351,23 @@ public class AdminController : Controller
             query = query.Where(x => x.IsActive == filter.IsActive.Value);
         }
 
+        if (page < 1)
+        {
+            page = 1;
+        }
+
+        var totalItems = await query.CountAsync(cancellationToken);
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalItems / (double)AdminListPageSize));
+        if (page > totalPages)
+        {
+            page = totalPages;
+        }
+
         var items = await query
             .OrderBy(x => x.DisplayOrder)
             .ThenBy(x => x.CategoryName)
+            .Skip((page - 1) * AdminListPageSize)
+            .Take(AdminListPageSize)
             .Select(x => new AdminCategoryItemViewModel
             {
                 CategoryId = x.CategoryId,
@@ -1283,6 +1382,9 @@ public class AdminController : Controller
 
         return View(new AdminCategoryListViewModel
         {
+            CurrentPage = page,
+            TotalPages = totalPages,
+            TotalItems = totalItems,
             Filter = filter,
             Categories = items
         });
@@ -1438,8 +1540,9 @@ public class AdminController : Controller
 
     [Authorize(Policy = PermissionConstants.ManageTours)]
     [HttpGet]
-    public async Task<IActionResult> Destinations([FromQuery] AdminDestinationsFilterViewModel filter, CancellationToken cancellationToken)
+    public async Task<IActionResult> Destinations(int page = 1, [FromQuery] AdminDestinationsFilterViewModel filter = null!, CancellationToken cancellationToken = default)
     {
+        filter ??= new AdminDestinationsFilterViewModel();
         var query = _dbContext.Destinations
             .AsNoTracking()
             .AsQueryable();
@@ -1475,8 +1578,22 @@ public class AdminController : Controller
             query = query.Where(x => x.IsActive == filter.IsActive.Value);
         }
 
+        if (page < 1)
+        {
+            page = 1;
+        }
+
+        var totalItems = await query.CountAsync(cancellationToken);
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalItems / (double)AdminListPageSize));
+        if (page > totalPages)
+        {
+            page = totalPages;
+        }
+
         var items = await query
             .OrderBy(x => x.DestinationName)
+            .Skip((page - 1) * AdminListPageSize)
+            .Take(AdminListPageSize)
             .Select(x => new AdminDestinationItemViewModel
             {
                 DestinationId = x.DestinationId,
@@ -1492,6 +1609,9 @@ public class AdminController : Controller
 
         return View(new AdminDestinationListViewModel
         {
+            CurrentPage = page,
+            TotalPages = totalPages,
+            TotalItems = totalItems,
             Filter = filter,
             Destinations = items
         });

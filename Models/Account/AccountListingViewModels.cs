@@ -7,6 +7,10 @@ public class CustomerBookingsPageViewModel
     public byte? PaymentStatus { get; set; }
     public DateOnly? DepartureFrom { get; set; }
     public DateOnly? DepartureTo { get; set; }
+    public string SortOrder { get; set; } = "newest";
+    public int CurrentPage { get; set; } = 1;
+    public int TotalPages { get; set; } = 1;
+    public int TotalItems { get; set; }
     public IReadOnlyList<CustomerBookingItemViewModel> Bookings { get; set; } = Array.Empty<CustomerBookingItemViewModel>();
 }
 
@@ -15,12 +19,18 @@ public class CustomerInboxPageViewModel
     public string? SearchTerm { get; set; }
     public string? RelatedEntityType { get; set; }
     public bool? IsRead { get; set; }
+    public int CurrentPage { get; set; } = 1;
+    public int TotalPages { get; set; } = 1;
+    public int TotalItems { get; set; }
     public IReadOnlyList<CustomerNotificationItemViewModel> Notifications { get; set; } = Array.Empty<CustomerNotificationItemViewModel>();
 }
 
 public class CustomerWishlistPageViewModel
 {
     public string? SearchTerm { get; set; }
+    public int CurrentPage { get; set; } = 1;
+    public int TotalPages { get; set; } = 1;
+    public int TotalItems { get; set; }
     public IReadOnlyList<CustomerWishlistItemViewModel> Tours { get; set; } = Array.Empty<CustomerWishlistItemViewModel>();
 }
 
