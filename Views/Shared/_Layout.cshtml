@@ -55,35 +55,102 @@
                     <div class="d-flex align-items-center gap-2">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            <a class="mailbox-link" asp-controller="Account" asp-action="Inbox" aria-label="Hộp thư" data-notification-link data-notification-count="@unreadNotificationCount">
-                                <span class="mailbox-link__icon">&#9993;</span>
+                            <a class="mailbox-link" asp-controller="Account" asp-action="Inbox" aria-label="Thông báo" title="Thông báo" data-notification-link data-notification-count="@unreadNotificationCount">
+                                <span class="mailbox-link__icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" focusable="false">
+                                        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+                                        <path d="M10 21h4" />
+                                    </svg>
+                                </span>
                                 <span class="mailbox-link__badge @(unreadNotificationCount > 0 ? string.Empty : "is-hidden")" data-notification-badge>@unreadNotificationCount</span>
                             </a>
                             @if (User.IsInRole(RoleConstants.Customer))
                             {
-                                <a class="header-icon-link @(IsActive("Account", "Bookings") ? "header-icon-link--active" : string.Empty)" asp-controller="Account" asp-action="Bookings" aria-label="Đơn của tôi" title="Đơn của tôi">
-                                    <span class="header-icon-link__icon">▤</span>
-                                </a>
                                 <a class="wishlist-nav-link @(IsActive("Account", "Wishlist") ? "wishlist-nav-link--active" : string.Empty)" asp-controller="Account" asp-action="Wishlist" aria-label="Tour yêu thích" data-wishlist-nav data-wishlist-count="@wishlistCount">
-                                    <span class="wishlist-nav-link__icon">♥</span>
+                                    <span class="wishlist-nav-link__icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" focusable="false">
+                                            <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z" />
+                                        </svg>
+                                    </span>
                                     <span class="wishlist-nav-link__badge @(wishlistCount > 0 ? string.Empty : "is-hidden")" data-wishlist-badge>@wishlistCount</span>
                                 </a>
                             }
-                            @if (RoleConstants.BackOffice.Any(User.IsInRole))
-                            {
-                                <a class="header-icon-link @(IsControllerActive("Admin") ? "header-icon-link--active" : string.Empty)" asp-controller="Admin" asp-action="Index" aria-label="Quản trị" title="Quản trị">
-                                    <span class="header-icon-link__icon">⚙</span>
-                                </a>
-                            }
-                            <a class="header-icon-link @(IsActive("Account", "Profile") ? "header-icon-link--active" : string.Empty)" asp-controller="Account" asp-action="Profile" aria-label="Tài khoản" title="@User.Identity.Name">
-                                <span class="header-icon-link__icon">👤</span>
-                            </a>
-                            <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="header-icon-link header-icon-button" aria-label="Đăng xuất" title="Đăng xuất">
-                                    <span class="header-icon-link__icon">⏻</span>
+                            <div class="dropdown account-menu">
+                                <button class="account-menu__toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <span class="account-menu__avatar">@(string.IsNullOrWhiteSpace(User.Identity.Name) ? "U" : User.Identity.Name[..1].ToUpperInvariant())</span>
+                                    <span class="account-menu__name">@User.Identity.Name</span>
+                                    <span class="account-menu__chevron" aria-hidden="true">⌄</span>
                                 </button>
-                            </form>
+                                <div class="dropdown-menu dropdown-menu-end account-dropdown">
+                                    @if (User.IsInRole(RoleConstants.Customer))
+                                    {
+                                        <a class="account-dropdown__item" asp-controller="Account" asp-action="Bookings">
+                                            <span class="account-dropdown__icon" aria-hidden="true">
+                                                <svg viewBox="0 0 24 24" focusable="false">
+                                                    <path d="M8 6h13" />
+                                                    <path d="M8 12h13" />
+                                                    <path d="M8 18h13" />
+                                                    <path d="M3 6h.01" />
+                                                    <path d="M3 12h.01" />
+                                                    <path d="M3 18h.01" />
+                                                </svg>
+                                            </span>
+                                            <span>
+                                                <strong>Đơn của tôi</strong>
+                                                <small>Theo dõi booking, thanh toán và hợp đồng</small>
+                                            </span>
+                                        </a>
+                                    }
+                                    @if (RoleConstants.BackOffice.Any(User.IsInRole))
+                                    {
+                                        <a class="account-dropdown__item" asp-controller="Admin" asp-action="Index">
+                                            <span class="account-dropdown__icon" aria-hidden="true">
+                                                <svg viewBox="0 0 24 24" focusable="false">
+                                                    <path d="M4 13h6V4H4v9Z" />
+                                                    <path d="M14 20h6V4h-6v16Z" />
+                                                    <path d="M4 20h6v-3H4v3Z" />
+                                                </svg>
+                                            </span>
+                                            <span>
+                                                <strong>Quản trị</strong>
+                                                <small>Mở trang quản lý hệ thống</small>
+                                            </span>
+                                        </a>
+                                    }
+                                    <a class="account-dropdown__item" asp-controller="Account" asp-action="Profile">
+                                        <span class="account-dropdown__icon" aria-hidden="true">
+                                            <svg viewBox="0 0 24 24" focusable="false">
+                                                <path d="M20 21a8 8 0 0 0-16 0" />
+                                                <path d="M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z" />
+                                            </svg>
+                                        </span>
+                                        <span>
+                                            <strong>Profile</strong>
+                                            <small>Cập nhật thông tin và đổi mật khẩu</small>
+                                        </span>
+                                    </a>
+                                    <form asp-controller="Account" asp-action="Logout" method="post" class="account-dropdown__form">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="account-dropdown__item account-dropdown__button">
+                                            <span class="account-dropdown__icon" aria-hidden="true">
+                                                <svg viewBox="0 0 24 24" focusable="false">
+                                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                                    <path d="M16 17l5-5-5-5" />
+                                                    <path d="M21 12H9" />
+                                                </svg>
+                                            </span>
+                                            <span>
+                                                <strong>Đăng xuất</strong>
+                                                <small>Thoát khỏi tài khoản hiện tại</small>
+                                            </span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            @if (User.IsInRole(RoleConstants.Customer))
+                            {
+                                <a class="btn btn-primary nav-cta nav-cta--booking" asp-controller="Tours" asp-action="Index">Đặt tour ngay</a>
+                            }
                         }
                         else
                         {

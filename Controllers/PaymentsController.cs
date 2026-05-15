@@ -467,6 +467,94 @@ public class PaymentsController : Controller
     }
 
     [Authorize(Roles = RoleConstants.Customer)]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> StartSePayInline(long bookingId, string paymentMode, CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue)
+        {
+            return Unauthorized(new { success = false, message = "Vui lòng đăng nhập để thanh toán." });
+        }
+
+        var booking = await _dbContext.Bookings
+            .Include(x => x.Payments)
+            .SingleOrDefaultAsync(x => x.BookingId == bookingId && x.UserId == userId.Value, cancellationToken);
+
+        if (booking is null)
+        {
+            return NotFound(new { success = false, message = "Không tìm thấy đơn đặt tour." });
+        }
+
+        NormalizeBookingPaidAmount(booking);
+        var remainingAmount = CalculateRemainingAmount(booking);
+        if (booking.PaymentStatus == PaymentPendingVerification)
+        {
+            return BadRequest(new { success = false, message = "Đơn này đã ghi nhận giao dịch thanh toán. Bạn chưa cần thanh toán thêm." });
+        }
+
+        if (remainingAmount <= 0m || booking.PaymentStatus == PaymentFullyPaid)
+        {
+            return BadRequest(new { success = false, message = "Đơn này đã được thanh toán toàn bộ." });
+        }
+
+        var mustPayFull = MustPayFull(booking);
+        paymentMode = mustPayFull ? FullPaymentMode : NormalizePaymentMode(paymentMode);
+        if (paymentMode == DepositPaymentMode && booking.PaidAmount > 0m)
+        {
+            return BadRequest(new { success = false, message = "Đơn đã thanh toán cọc. Bạn chỉ có thể thanh toán toàn bộ phần còn lại." });
+        }
+
+        var paymentAmount = paymentMode == FullPaymentMode
+            ? remainingAmount
+            : Math.Min(CalculateDepositAmount(booking), remainingAmount);
+
+        if (paymentAmount <= 0m)
+        {
+            return BadRequest(new { success = false, message = "Số tiền thanh toán không hợp lệ." });
+        }
+
+        foreach (var stalePayment in booking.Payments
+                     .Where(x => x.PaymentGateway == "SePay"
+                                 && x.PaymentStatus == PaymentPending
+                                 && string.IsNullOrWhiteSpace(x.TransactionReference)))
+        {
+            stalePayment.PaymentStatus = PaymentFailed;
+            stalePayment.FailureReason = "Đã tạo giao dịch SePay mới thay thế giao dịch chưa hoàn tất.";
+            stalePayment.UpdatedAt = DateTime.UtcNow;
+        }
+
+        var pendingPayment = new Payment
+        {
+            BookingId = booking.BookingId,
+            PaymentCode = await GeneratePaymentCodeAsync(cancellationToken),
+            PaymentMethod = 2,
+            PaymentGateway = "SePay",
+            Amount = paymentAmount,
+            CurrencyCode = booking.CurrencyCode,
+            PaymentStatus = PaymentPending,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _dbContext.Payments.Add(pendingPayment);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        var transferContent = BuildSePayTransferContent(pendingPayment.PaymentCode, booking.BookingCode);
+        return Json(new
+        {
+            success = true,
+            paymentId = pendingPayment.PaymentId,
+            paymentCode = pendingPayment.PaymentCode,
+            amount = pendingPayment.Amount.ToString("N0", CultureInfo.InvariantCulture) + " đ",
+            transferContent,
+            qrImageUrl = BuildSePayQrUrl(pendingPayment.Amount, transferContent),
+            statusUrl = Url.Action(nameof(SePayPaymentStatus), new { paymentId = pendingPayment.PaymentId }),
+            resultUrl = Url.Action(nameof(Result), new { bookingId = pendingPayment.BookingId }),
+            message = "Đã tạo mã QR SePay. Vui lòng quét mã và chuyển khoản đúng nội dung."
+        });
+    }
+
+    [Authorize(Roles = RoleConstants.Customer)]
     [HttpGet]
     public async Task<IActionResult> SePayPayment(long paymentId, CancellationToken cancellationToken)
     {

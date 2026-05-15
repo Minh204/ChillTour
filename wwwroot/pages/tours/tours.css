@@ -2536,3 +2536,40 @@
     }
 }
 
+.tour-list-card .tour-list-card__footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.65rem;
+    align-items: end;
+}
+
+.tour-list-card .tour-list-card__footer > div:first-child {
+    min-width: 0;
+}
+
+.tour-list-card .tour-list-card__footer strong {
+    display: block;
+    white-space: nowrap;
+    overflow: visible;
+    word-break: normal;
+    overflow-wrap: normal;
+    font-size: clamp(1.05rem, 1.15vw, 1.22rem);
+    line-height: 1.15;
+    letter-spacing: 0;
+}
+
+.tour-list-card .tour-list-card__actions {
+    flex: 0 0 auto;
+    gap: 0.45rem;
+}
+
+.tour-list-card .tour-list-card__actions .btn {
+    padding-inline: 0.58rem;
+}
+
+@media (max-width: 420px) {
+    .tour-list-card .tour-list-card__footer {
+        grid-template-columns: 1fr;
+    }
+}
+

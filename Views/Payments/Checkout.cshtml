@@ -1,16 +1,17 @@
 @model ChillTour.Models.Payments.PaymentCheckoutViewModel
 @{
     ViewData["Title"] = "Thanh toán tour";
+
     var dueDateText = Model.BalanceDueAt?.ToString("dd/MM/yyyy") ?? Model.DepartureDate.AddDays(-5).ToString("dd/MM/yyyy");
     var isCancelled = Model.BookingStatus == 4;
     var paymentStatusText = isCancelled
         ? "Đơn đã hủy"
         : Model.IsFullyPaid
-            ? "Đã thanh toán toàn bộ"
+            ? "Đã thanh toán đầy đủ"
             : Model.PaymentStatus == 1
-                ? "Đã ghi nhận giao dịch"
+                ? "Đã thanh toán thành công, chờ xác nhận"
                 : Model.PaidAmount > 0
-                    ? "Đã cọc, chờ thanh toán phần còn lại"
+                    ? "Đã cọc"
                     : "Chờ thanh toán";
     var primaryAmount = isCancelled
         ? 0m
@@ -19,306 +20,408 @@
             : Model.CanPayDeposit
                 ? Model.DepositAmount
                 : Model.RemainingAmount;
+    var defaultPaymentMode = Model.MustPayFull ? "full" : "deposit";
+    var totalDiscount = Model.LastMinuteDiscountAmount + Model.DiscountAmount;
+    var hasActivePayment = !isCancelled && Model.CanPay;
+    var canApplyPromotion = Model.PaidAmount <= 0m && Model.CanPay;
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/pages/payments/payments.css" asp-append-version="true" />
 }
 
-<section class="auth-page payment-page">
-    <div class="container">
-        <div class="auth-card payment-checkout-card payment-checkout-card--wide">
-            @if (TempData["PaymentInfoMessage"] is string infoMessage)
-            {
-                <div class="auth-alert auth-alert--success">@infoMessage</div>
-            }
-            @if (TempData["PaymentErrorMessage"] is string errorMessage)
-            {
-                <div class="auth-alert auth-alert--error">@errorMessage</div>
-            }
+<section class="payment-redesign-page">
+    <div class="payment-redesign-topbar">
+        <div class="payment-redesign-steps" aria-label="Tiến trình đặt tour">
+            <span><i>1</i> Chọn tour</span>
+            <span class="is-active"><i>2</i> Thanh toán</span>
+            <span><i>3</i> Xác nhận</span>
+        </div>
+    </div>
 
-            <div class="auth-card__intro payment-checkout-hero">
-                <div>
+    <div class="container payment-redesign-container">
+        @if (TempData["PaymentInfoMessage"] is string infoMessage)
+        {
+            <div class="auth-alert auth-alert--success">@infoMessage</div>
+        }
+        @if (TempData["PaymentErrorMessage"] is string errorMessage)
+        {
+            <div class="auth-alert auth-alert--error">@errorMessage</div>
+        }
+
+        <a asp-controller="Account" asp-action="Bookings" class="payment-redesign-back">← Quay lại đặt tour</a>
+
+        <div class="payment-redesign-grid">
+            <main class="payment-redesign-main">
+                <header class="payment-redesign-hero">
                     <span class="eyebrow">Thanh toán</span>
                     <h1>Thanh toán tour</h1>
-                    <p>Tour thường có thể thanh toán cọc 30% hoặc thanh toán toàn bộ. Phần còn lại cần hoàn tất trước @dueDateText. Tour giờ chót bắt buộc thanh toán toàn bộ ngay khi đặt.</p>
-                </div>
-                <div class="payment-checkout-hero__highlight">
-                    <span>Cần thanh toán</span>
-                    <strong>@primaryAmount.ToString("N0") đ</strong>
-                    <p>@(Model.MustPayFull ? "Đơn này đang ở chế độ thanh toán toàn bộ." : "Bạn có thể chọn cọc trước hoặc thanh toán đủ ngay.")</p>
-                </div>
-            </div>
+                    <p>Đặt cọc 30% hoặc thanh toán toàn bộ trước @dueDateText để giữ chỗ.</p>
+                </header>
 
-            @if (Model.MustPayFull && Model.CanPayFull)
-            {
-                <div class="auth-alert auth-alert--warning">
-                    @(Model.IsLastMinuteDeal
-                        ? "Đây là tour giờ chót: hệ thống đã áp dụng ưu đãi lớn và yêu cầu thanh toán toàn bộ để giữ chỗ."
-                        : "Đơn đã đến hạn thanh toán phần còn lại. Vui lòng thanh toán đầy đủ trước ngày khởi hành.")
+                <div class="payment-redesign-trust">
+                    <span>Thanh toán an toàn</span>
+                    <span>Bảo mật SSL 256-bit</span>
+                    <span>Thông tin được mã hóa</span>
+                    <span>Hỗ trợ 24/7</span>
                 </div>
-            }
 
-            <div class="payment-checkout-layout">
-                <div class="payment-checkout-main">
-                    <div class="payment-summary-grid">
-                        <div class="payment-summary-card">
+                <section class="payment-redesign-panel payment-booking-panel">
+                    <h2>Thông tin đặt tour</h2>
+                    <div class="payment-booking-grid">
+                        <div class="payment-booking-cell payment-booking-cell--code">
                             <span>Mã đơn</span>
                             <strong>@Model.BookingCode</strong>
                             <p>@Model.TourName</p>
                         </div>
-                        <div class="payment-summary-card">
+                        <div class="payment-booking-cell">
                             <span>Khởi hành</span>
                             <strong>@Model.DepartureDate.ToString("dd/MM/yyyy")</strong>
                             <p>@Model.Travelers khách • @Model.ContactName</p>
                         </div>
-                        <div class="payment-summary-card">
+                        <div class="payment-booking-cell">
+                            <span>Trạng thái</span>
+                            <strong class="payment-status-pill">@paymentStatusText</strong>
+                            <p>Hạn thanh toán: @dueDateText</p>
+                        </div>
+                        <div class="payment-booking-cell">
                             <span>Đã thanh toán</span>
                             <strong>@Model.PaidAmount.ToString("N0") đ</strong>
-                            <p>@paymentStatusText</p>
                         </div>
-                        <div class="payment-summary-card payment-summary-card--accent">
-                            <span>Còn phải thanh toán</span>
-                            <strong>@Model.RemainingAmount.ToString("N0") đ</strong>
-                            <p>Hạn thanh toán đủ: @dueDateText</p>
+                        <div class="payment-booking-cell payment-booking-cell--accent">
+                            <span>Cần thanh toán</span>
+                            <strong>@primaryAmount.ToString("N0") đ</strong>
+                        </div>
+                        <div class="payment-booking-cell">
+                            <span>Tổng tiền</span>
+                            <strong>@Model.TotalAmount.ToString("N0") đ</strong>
                         </div>
                     </div>
+                </section>
 
-                    <section class="payment-promo-card">
-                        <div class="payment-promo-card__head">
-                            <div>
-                                <span class="eyebrow eyebrow--warm">Mã ưu đãi</span>
-                                <h2>Áp dụng trước khi thanh toán</h2>
-                            </div>
-                            <a asp-controller="Promotions" asp-action="Index" class="btn btn-outline-primary">Xem ưu đãi hiện có</a>
+                @if (canApplyPromotion || !string.IsNullOrWhiteSpace(Model.AppliedPromotionCode))
+                {
+                    <section class="payment-redesign-panel payment-redesign-promo">
+                        <div>
+                            <h2>Mã ưu đãi</h2>
+                            @if (!string.IsNullOrWhiteSpace(Model.AppliedPromotionCode))
+                            {
+                                <p>Đang áp dụng <strong>@Model.AppliedPromotionCode</strong>@(string.IsNullOrWhiteSpace(Model.AppliedPromotionName) ? string.Empty : $" - {Model.AppliedPromotionName}")</p>
+                            }
+                            else
+                            {
+                                <p>Nhập mã trước khi tạo giao dịch thanh toán.</p>
+                            }
                         </div>
-
-                        <form asp-action="ApplyPromotion" method="post" class="payment-promo-form">
+                        <form asp-action="ApplyPromotion" method="post" class="payment-redesign-promo-form">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="bookingId" value="@Model.BookingId" />
                             <input type="text"
                                    name="promotionCode"
                                    value="@Model.AppliedPromotionCode"
                                    class="form-control"
-                                   placeholder="Nhập mã ưu đãi, ví dụ: CHILL10"
-                                   @(Model.PaidAmount <= 0m && Model.CanPay ? null : "disabled") />
-                            <button type="submit" class="btn btn-primary" @(Model.PaidAmount <= 0m && Model.CanPay ? null : "disabled")>Áp dụng</button>
-                            @if (!string.IsNullOrWhiteSpace(Model.AppliedPromotionCode) && Model.PaidAmount <= 0m && Model.CanPay)
-                            {
-                                <button type="submit" name="promotionCode" value="" class="btn btn-outline-secondary">Bỏ mã</button>
-                            }
+                                   placeholder="Ví dụ: CHILL10"
+                                   @(canApplyPromotion ? null : "disabled") />
+                            <button type="submit" class="btn btn-primary" @(canApplyPromotion ? null : "disabled")>Áp dụng</button>
+                        </form>
+                    </section>
+                }
+
+                <section class="payment-redesign-panel payment-method-section">
+                    <div class="payment-section-head">
+                        <div>
+                            <h2>Chọn phương thức thanh toán</h2>
+                            <p>SePay là phương thức mặc định. Khi thanh toán nhanh, hệ thống sẽ tạo QR chuyển khoản SePay.</p>
+                        </div>
+                    </div>
+
+                    <div class="payment-method-inline-grid">
+                        <article class="payment-method-tile is-active">
+                            <span class="payment-method-badge">Đề xuất</span>
+                            <strong>SePay</strong>
+                            <small>QR chuyển khoản</small>
+                        </article>
+
+                        <form asp-action="StartVnPay" method="post" class="payment-method-tile payment-method-tile--form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="bookingId" value="@Model.BookingId" />
+                            <input type="hidden" name="paymentMode" value="@defaultPaymentMode" />
+                            <button type="submit" @(hasActivePayment ? null : "disabled")>
+                                <strong>VNPay</strong>
+                                <small>Thanh toán online</small>
+                            </button>
                         </form>
 
-                        @if (Model.AvailablePromotions.Count > 0)
-                        {
-                            <div class="tour-list-filter-summary">
-                                @foreach (var promotion in Model.AvailablePromotions)
-                                {
-                                    <span>@promotion.PromotionCode - @promotion.PromotionName</span>
-                                }
-                            </div>
-                        }
+                        <article class="payment-method-tile is-muted">
+                            <strong>Chuyển khoản</strong>
+                            <small>Thủ công</small>
+                        </article>
+                        <article class="payment-method-tile is-muted">
+                            <strong>Thẻ quốc tế</strong>
+                            <small>Visa, Mastercard</small>
+                        </article>
+                        <article class="payment-method-tile is-muted">
+                            <strong>Ví điện tử</strong>
+                            <small>MoMo, ZaloPay</small>
+                        </article>
+                    </div>
 
-                        <div class="payment-promo-summary">
-                            <div>
-                                <span>Tiền vé</span>
-                                <strong>@Model.BaseAmount.ToString("N0") đ</strong>
-                            </div>
-                            <div>
-                                <span>Phụ thu phòng đơn</span>
-                                <strong>@Model.SingleRoomSupplementAmount.ToString("N0") đ</strong>
-                                <p>@(Model.SingleRoomCount > 0 ? $"{Model.SingleRoomCount} phòng đơn" : "Không chọn phòng đơn")</p>
-                            </div>
-                            <div>
-                                <span>Giảm giờ chót</span>
-                                <strong>@Model.LastMinuteDiscountAmount.ToString("N0") đ</strong>
-                                <p>@(Model.IsLastMinuteDeal ? "Tự động giảm 15% vì tour khởi hành trong 5 ngày tới." : "Không áp dụng ưu đãi giờ chót")</p>
-                            </div>
-                            <div>
-                                <span>Mã ưu đãi</span>
-                                <strong>@Model.DiscountAmount.ToString("N0") đ</strong>
-                            </div>
-                            <div class="payment-promo-summary__total">
-                                <span>Tổng thanh toán</span>
-                                <strong>@Model.TotalAmount.ToString("N0") đ</strong>
+                    <div class="payment-sepay-preview" data-sepay-preview>
+                        <div class="payment-sepay-preview__qr">
+                            <img src="" alt="Mã QR SePay" data-sepay-qr hidden />
+                            <div class="payment-sepay-preview__placeholder" data-sepay-placeholder>
+                                <strong>SePay QR</strong>
+                                <span>Bấm cọc hoặc thanh toán toàn bộ để tạo mã QR</span>
                             </div>
                         </div>
 
-                        @if (!string.IsNullOrWhiteSpace(Model.AppliedPromotionCode))
-                        {
-                            <p class="payment-promo-card__applied">Đang áp dụng: <strong>@Model.AppliedPromotionCode</strong>@(string.IsNullOrWhiteSpace(Model.AppliedPromotionName) ? string.Empty : $" - {Model.AppliedPromotionName}")</p>
-                        }
-                    </section>
+                        <div class="payment-sepay-preview__info">
+                            <div>
+                                <span>Ngân hàng</span>
+                                <strong>@Model.BankName</strong>
+                            </div>
+                            <div>
+                                <span>Số tài khoản</span>
+                                <strong>@Model.BankAccountNo</strong>
+                            </div>
+                            <div>
+                                <span>Chủ tài khoản</span>
+                                <strong>@Model.BankAccountName</strong>
+                            </div>
+                            <div>
+                                <span>Nội dung chuyển khoản</span>
+                                <strong data-sepay-content>Tạo giao dịch để nhận mã chuyển khoản</strong>
+                                <button type="button" class="payment-copy-btn" data-sepay-copy hidden>Sao chép</button>
+                            </div>
+                            <div>
+                                <span>Số tiền</span>
+                                <strong data-sepay-amount>Chưa tạo giao dịch</strong>
+                            </div>
+                            <p data-sepay-message>Lưu ý: Vui lòng nhập đúng nội dung chuyển khoản để hệ thống tự động xác nhận.</p>
+                        </div>
+                    </div>
+                </section>
 
-                    <section class="payment-status-box">
-                        <div>
-                            <span>Cổng thanh toán</span>
-                            <strong>VNPay / SePay</strong>
-                        </div>
-                        <div>
-                            <span>Mã thanh toán</span>
-                            <strong>@Model.PaymentCode</strong>
-                        </div>
-                        <div>
-                            <span>Tiền cọc 30%</span>
-                            <strong>@Model.DepositAmount.ToString("N0") đ</strong>
-                        </div>
-                        <div>
-                            <span>Trạng thái</span>
-                            <strong>@paymentStatusText</strong>
-                        </div>
-                    </section>
+                <div class="payment-security-strip">
+                    <strong>ChillTour cam kết bảo mật tuyệt đối thông tin thanh toán của bạn.</strong>
+                    <span>Chúng tôi không lưu trữ thông tin tài khoản ngân hàng của bạn.</span>
                 </div>
+            </main>
 
-                <aside class="payment-qr-card">
-                    <div class="payment-qr-card__image payment-qr-card__image--placeholder">
-                        <strong>VNPay / SePay</strong>
-                        <span>Chọn số tiền, sau đó chọn phương thức thanh toán phù hợp</span>
-                    </div>
-
-                    <div class="payment-qr-card__summary">
+            <aside class="payment-redesign-sidebar">
+                <section class="payment-redesign-panel payment-total-card">
+                    <h2>Chi tiết thanh toán</h2>
+                    <div class="payment-total-lines">
                         <div>
-                            <span>Số tiền cần xử lý</span>
-                            <strong>@primaryAmount.ToString("N0") đ</strong>
+                            <span>Tiền tour</span>
+                            <strong>@Model.BaseAmount.ToString("N0") đ</strong>
                         </div>
                         <div>
-                            <span>Phương thức</span>
-                            <strong>@(Model.MustPayFull ? "Thanh toán toàn bộ" : "Cọc hoặc toàn bộ")</strong>
+                            <span>Phụ thu phòng đơn</span>
+                            <strong>@Model.SingleRoomSupplementAmount.ToString("N0") đ</strong>
                         </div>
+                        @if (totalDiscount > 0m)
+                        {
+                            <div class="is-discount">
+                                <span>Giảm giá</span>
+                                <strong>-@totalDiscount.ToString("N0") đ</strong>
+                            </div>
+                        }
+                    </div>
+                    <div class="payment-total-final">
+                        <span>Tổng tiền</span>
+                        <strong>@Model.TotalAmount.ToString("N0") đ</strong>
                     </div>
 
-                    <p class="payment-qr-card__note">Chọn số tiền cần thanh toán, sau đó chọn VNPay hoặc SePay ở bước tiếp theo. Với SePay, hệ thống sẽ mở trang QR chuyển khoản riêng.</p>
+                    <div class="payment-total-note">
+                        Bạn có thể chọn cọc 30% hoặc thanh toán toàn bộ.
+                    </div>
 
-                    <div class="payment-qr-card__actions">
+                    <h3>Thanh toán nhanh</h3>
+                    <div class="payment-fast-actions">
                         @if (isCancelled)
                         {
                             <div class="auth-alert auth-alert--error">Đơn này đã hủy, không thể tiếp tục thanh toán.</div>
                         }
                         else if (Model.CanCancelPendingBooking)
                         {
-                            <form asp-action="CancelPendingBooking" method="post" class="auth-form auth-form--compact"
+                            <form asp-action="CancelPendingBooking" method="post"
                                   onsubmit="return confirm('Hủy đơn nháp này? Đơn chưa thanh toán sẽ không được tính là đã đặt tour.');">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="bookingId" value="@Model.BookingId" />
-                                <button type="submit" class="btn btn-outline-secondary booking-submit payment-cta payment-cancel-cta">Hủy đơn nháp</button>
+                                <button type="submit" class="btn btn-outline-secondary">Hủy đơn nháp</button>
                             </form>
                         }
 
                         @if (!isCancelled && Model.CanPayDeposit)
                         {
-                            <button type="button"
-                                    class="btn btn-outline-primary booking-submit payment-cta payment-cta--secondary"
-                                    data-payment-choice
-                                    data-mode="deposit"
-                                    data-title="Thanh toán cọc 30%"
-                                    data-amount="@Model.DepositAmount.ToString("N0") đ">
-                                Thanh toán cọc 30% - @Model.DepositAmount.ToString("N0") đ
-                            </button>
+                            <form asp-action="StartSePayInline" method="post" data-sepay-start-form>
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="bookingId" value="@Model.BookingId" />
+                                <input type="hidden" name="paymentMode" value="deposit" />
+                                <button type="submit" class="btn btn-outline-primary">Cọc 30% (@Model.DepositAmount.ToString("N0") đ)</button>
+                            </form>
                         }
 
                         @if (!isCancelled && Model.CanPayFull)
                         {
-                            <button type="button"
-                                    class="btn btn-primary booking-submit payment-cta"
-                                    data-payment-choice
-                                    data-mode="full"
-                                    data-title="Thanh toán toàn bộ"
-                                    data-amount="@Model.FullPaymentAmount.ToString("N0") đ">
-                                Thanh toán toàn bộ - @Model.FullPaymentAmount.ToString("N0") đ
-                            </button>
-
-                            @if (!Model.MustPayFull && Model.PaidAmount <= 0m)
-                            {
-                                <p class="payment-qr-card__subnote">Nếu thanh toán toàn bộ ngay, bạn không cần quay lại thanh toán phần còn lại trước @dueDateText.</p>
-                            }
+                            <form asp-action="StartSePayInline" method="post" data-sepay-start-form>
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="bookingId" value="@Model.BookingId" />
+                                <input type="hidden" name="paymentMode" value="full" />
+                                <button type="submit" class="btn btn-primary">Thanh toán toàn bộ (@Model.FullPaymentAmount.ToString("N0") đ)</button>
+                            </form>
                         }
                         else if (!isCancelled)
                         {
-                            <div class="auth-alert auth-alert--success">Đơn này đã được thanh toán đầy đủ, Staff sẽ xử lý booking.</div>
+                            <div class="auth-alert auth-alert--success">Đơn này đã thanh toán đầy đủ.</div>
                         }
                     </div>
-                </aside>
-            </div>
+
+                    <p class="payment-terms-note">Bằng việc thanh toán, bạn đồng ý với Điều khoản và điều kiện của ChillTour.</p>
+                </section>
+
+                <section class="payment-redesign-panel payment-guide-card">
+                    <h2>Hướng dẫn thanh toán SePay</h2>
+                    <ol>
+                        <li><strong>Mở ứng dụng ngân hàng</strong><span>Chọn tính năng quét VietQR.</span></li>
+                        <li><strong>Quét mã QR</strong><span>Kiểm tra đúng số tiền và nội dung.</span></li>
+                        <li><strong>Xác nhận chuyển khoản</strong><span>Hoàn tất giao dịch trên app ngân hàng.</span></li>
+                        <li><strong>Chờ xác nhận</strong><span>Hệ thống sẽ tự động ghi nhận trong vài phút.</span></li>
+                    </ol>
+                </section>
+
+                <section class="payment-redesign-panel payment-support-card">
+                    <h2>Bạn cần hỗ trợ?</h2>
+                    <p>Hotline: <strong>1900 1234</strong></p>
+                    <p>Email: <strong>support@chilltour.vn</strong></p>
+                    <p>Chat trực tuyến sẵn sàng hỗ trợ 24/7.</p>
+                </section>
+            </aside>
+        </div>
+
+        <div class="payment-redesign-footnote">
+            Sau khi thanh toán thành công, bạn sẽ nhận được email xác nhận và vé điện tử trong vòng 5 phút.
         </div>
     </div>
 </section>
 
-<div class="payment-method-modal" data-payment-modal hidden>
-    <div class="payment-method-modal__backdrop" data-payment-modal-close></div>
-    <div class="payment-method-modal__panel" role="dialog" aria-modal="true" aria-labelledby="payment-method-title">
-        <button type="button" class="payment-method-modal__close" data-payment-modal-close aria-label="Đóng">×</button>
-        <div class="payment-method-modal__head">
-            <span class="eyebrow">Phương thức thanh toán</span>
-            <h2 id="payment-method-title">Chọn cách thanh toán</h2>
-            <p><span data-payment-modal-title></span> · <strong data-payment-modal-amount></strong></p>
-        </div>
-
-        <div class="payment-method-grid">
-            <form asp-action="StartVnPay" method="post" class="payment-method-option">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="bookingId" value="@Model.BookingId" />
-                <input type="hidden" name="paymentMode" value="" data-payment-mode-input />
-                <div>
-                    <span>VNPay</span>
-                    <strong>Thanh toán qua cổng VNPay</strong>
-                    <p>Chuyển sang trang VNPay sandbox để thanh toán bằng ATM, QR hoặc ví hỗ trợ.</p>
-                </div>
-                <button type="submit" class="btn btn-primary">Chọn VNPay</button>
-            </form>
-
-            <form asp-action="StartSePay" method="post" class="payment-method-option">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="bookingId" value="@Model.BookingId" />
-                <input type="hidden" name="paymentMode" value="" data-payment-mode-input />
-                <div>
-                    <span>SePay</span>
-                    <strong>Chuyển khoản ngân hàng</strong>
-                    <p>Tạo mã QR chuyển khoản. Khi webhook SePay ghi nhận giao dịch, hệ thống sẽ tự cập nhật thanh toán và báo Staff xử lý booking.</p>
-                </div>
-                <button type="submit" class="btn btn-outline-primary">Tạo QR SePay</button>
-            </form>
-        </div>
-    </div>
-</div>
-
 @section Scripts {
     <script>
         (() => {
-            const modal = document.querySelector('[data-payment-modal]');
-            if (!modal) return;
+            const qrImage = document.querySelector('[data-sepay-qr]');
+            const placeholder = document.querySelector('[data-sepay-placeholder]');
+            const content = document.querySelector('[data-sepay-content]');
+            const amount = document.querySelector('[data-sepay-amount]');
+            const message = document.querySelector('[data-sepay-message]');
+            const copyButton = document.querySelector('[data-sepay-copy]');
+            let pollingTimer = null;
 
-            const title = modal.querySelector('[data-payment-modal-title]');
-            const amount = modal.querySelector('[data-payment-modal-amount]');
-            const modeInputs = modal.querySelectorAll('[data-payment-mode-input]');
-            const openButtons = document.querySelectorAll('[data-payment-choice]');
-            const closeButtons = modal.querySelectorAll('[data-payment-modal-close]');
+            const setMessage = (text, state = 'info') => {
+                if (!message) return;
+                message.textContent = text;
+                message.dataset.state = state;
+            };
 
-            const openModal = (button) => {
-                title.textContent = button.dataset.title || '';
-                amount.textContent = button.dataset.amount || '';
-                modeInputs.forEach((input) => {
-                    input.value = button.dataset.mode || '';
+            const startPolling = (statusUrl, fallbackResultUrl) => {
+                if (!statusUrl) return;
+                window.clearInterval(pollingTimer);
+
+                pollingTimer = window.setInterval(async () => {
+                    try {
+                        const response = await fetch(statusUrl, {
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                        });
+                        const data = await response.json();
+
+                        if (data.message) {
+                            setMessage(data.message, data.failed ? 'error' : data.success ? 'success' : 'info');
+                        }
+
+                        if (data.failed) {
+                            window.clearInterval(pollingTimer);
+                            return;
+                        }
+
+                        if (data.success && (data.resultUrl || fallbackResultUrl)) {
+                            window.clearInterval(pollingTimer);
+                            window.location.href = data.resultUrl || fallbackResultUrl;
+                        }
+                    } catch {
+                        setMessage('Chưa kiểm tra được trạng thái thanh toán. Hệ thống sẽ thử lại sau vài giây.', 'error');
+                    }
+                }, 3000);
+            };
+
+            document.querySelectorAll('[data-sepay-start-form]').forEach((form) => {
+                form.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    const submitButton = form.querySelector('button[type="submit"]');
+                    const originalText = submitButton?.textContent;
+
+                    if (submitButton) {
+                        submitButton.disabled = true;
+                        submitButton.textContent = 'Đang tạo QR...';
+                    }
+
+                    try {
+                        const response = await fetch(form.action, {
+                            method: 'POST',
+                            body: new FormData(form),
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                        });
+                        const data = await response.json();
+
+                        if (!response.ok || !data.success) {
+                            setMessage(data.message || 'Không thể tạo mã QR SePay.', 'error');
+                            return;
+                        }
+
+                        if (qrImage) {
+                            qrImage.src = data.qrImageUrl;
+                            qrImage.hidden = false;
+                        }
+                        if (placeholder) {
+                            placeholder.hidden = true;
+                        }
+                        if (content) {
+                            content.textContent = data.transferContent;
+                        }
+                        if (amount) {
+                            amount.textContent = data.amount;
+                        }
+                        if (copyButton) {
+                            copyButton.hidden = false;
+                            copyButton.dataset.copyText = data.transferContent;
+                        }
+
+                        setMessage(data.message || 'Đã tạo QR SePay. Vui lòng chuyển khoản đúng nội dung.', 'success');
+                        document.querySelector('[data-sepay-preview]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        startPolling(data.statusUrl, data.resultUrl);
+                    } catch {
+                        setMessage('Có lỗi khi tạo mã QR. Vui lòng thử lại.', 'error');
+                    } finally {
+                        if (submitButton) {
+                            submitButton.disabled = false;
+                            submitButton.textContent = originalText;
+                        }
+                    }
                 });
-                modal.hidden = false;
-                document.body.classList.add('payment-modal-open');
-            };
-
-            const closeModal = () => {
-                modal.hidden = true;
-                document.body.classList.remove('payment-modal-open');
-            };
-
-            openButtons.forEach((button) => {
-                button.addEventListener('click', () => openModal(button));
             });
 
-            closeButtons.forEach((button) => {
-                button.addEventListener('click', closeModal);
-            });
+            copyButton?.addEventListener('click', async () => {
+                const text = copyButton.dataset.copyText || '';
+                if (!text) return;
 
-            document.addEventListener('keydown', (event) => {
-                if (event.key === 'Escape' && !modal.hidden) {
-                    closeModal();
+                try {
+                    await navigator.clipboard.writeText(text);
+                    const original = copyButton.textContent;
+                    copyButton.textContent = 'Đã sao chép';
+                    window.setTimeout(() => {
+                        copyButton.textContent = original;
+                    }, 1600);
+                } catch {
+                    copyButton.textContent = 'Không thể sao chép';
                 }
             });
         })();
