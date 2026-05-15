@@ -13,11 +13,11 @@
             <div class="travel-home__hero-banner" data-reveal style="@(string.IsNullOrWhiteSpace(Model.HeroImageUrl) ? null : $"background-image: linear-gradient(90deg, rgba(12, 34, 58, 0.86), rgba(12, 34, 58, 0.28)), url('{Model.HeroImageUrl}')")">
                 <div class="travel-home__hero-copy">
                     <span class="eyebrow">ChillTour Booking Platform</span>
-                    <h1>Khởi hành đến những hành trình đẹp nhất cùng ChillTour.</h1>
-                    <p>
-                        Từ biển xanh, đảo nhiệt đới đến những cung đường núi lộng gió, ChillTour giúp bạn chọn tour,
-                        lịch khởi hành và khoảng giá phù hợp chỉ trong một lần tìm kiếm.
-                    </p>
+                    <h1 class="travel-home__hero-title">
+                        <span>Khám phá thế giới</span>
+                        <span class="travel-home__hero-title-script">Theo cách của bạn</span>
+                    </h1>
+                    <p>Tìm tour du lịch với giá tốt nhất</p>
 
                     <div class="travel-home__hero-actions">
                         <a class="btn btn-primary btn-lg" asp-controller="Tours" asp-action="Index">Xem danh sách tour</a>

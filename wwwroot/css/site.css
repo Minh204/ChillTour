@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg: #f5f7fb;
   --surface: rgba(255, 255, 255, 0.88);
   --surface-solid: #ffffff;
@@ -7,6 +7,10 @@
   --line: rgba(22, 50, 79, 0.1);
   --primary: #0b74ff;
   --primary-deep: #0047ab;
+  --action-primary: #0b5ed7;
+  --action-primary-deep: #003f9e;
+  --action-primary-mid: #0754c8;
+  --price-color: #0754c8;
   --accent: #ff7a00;
   --accent-soft: #ffe0bf;
   --success-soft: #dff7ec;
@@ -38,6 +42,29 @@ body.admin-body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+.btn-primary,
+.btn-primary:focus,
+.btn-primary:active {
+  background: linear-gradient(135deg, var(--action-primary), var(--action-primary-mid)) !important;
+  border-color: var(--action-primary-mid) !important;
+  color: #fff !important;
+  box-shadow: 0 12px 24px rgba(13, 148, 136, 0.18);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--action-primary-mid), var(--action-primary-deep)) !important;
+  border-color: var(--action-primary-deep) !important;
+  color: #fff !important;
+}
+
+.btn-primary:disabled,
+.btn-primary.disabled {
+  background: linear-gradient(135deg, #8fb8f3, #76a6ea) !important;
+  border-color: #76a6ea !important;
+  color: #fff !important;
+  box-shadow: none;
 }
 
 .btn:focus,
@@ -138,14 +165,14 @@ input:focus {
 .hero-primary,
 .booking-submit {
   border: none;
-  background: linear-gradient(135deg, var(--primary), #3292ff);
-  box-shadow: 0 18px 30px rgba(11, 116, 255, 0.28);
+  background: linear-gradient(135deg, var(--action-primary), var(--action-primary-mid));
+  box-shadow: 0 18px 30px rgba(13, 148, 136, 0.22);
 }
 
 .nav-cta:hover,
 .hero-primary:hover,
 .booking-submit:hover {
-  background: linear-gradient(135deg, var(--primary-deep), var(--primary));
+  background: linear-gradient(135deg, var(--action-primary-mid), var(--action-primary-deep));
 }
 
 .hero-section {
@@ -486,6 +513,10 @@ input:focus {
   font-weight: 800;
 }
 
+.tour-price strong {
+  color: var(--price-color);
+}
+
 .destination-meta span {
   color: rgba(255, 255, 255, 0.82);
 }
@@ -759,7 +790,7 @@ input:focus {
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    background: #fff1f2;
+    background: #eef5ff;
     color: #db4437;
     font-weight: 800;
 }
@@ -902,7 +933,7 @@ input:focus {
     height: 22px;
     padding: 0 6px;
     border-radius: 999px;
-    background: #ef4444;
+    background: var(--action-primary);
     color: #fff;
     font-size: 0.75rem;
     font-weight: 700;
@@ -925,15 +956,15 @@ input:focus {
     border-radius: 14px;
     background: #fff;
     border: 1px solid var(--line);
-    color: #dc2626;
+    color: var(--price-color);
     text-decoration: none;
 }
 
 .wishlist-nav-link:hover,
 .wishlist-nav-link:focus,
 .wishlist-nav-link--active {
-    color: #b91c1c;
-    background: #fff1f2;
+    color: var(--action-primary-deep);
+    background: #eef5ff;
 }
 
 .wishlist-nav-link__icon {
@@ -949,7 +980,7 @@ input:focus {
     height: 22px;
     padding: 0 6px;
     border-radius: 999px;
-    background: #ef4444;
+    background: var(--action-primary);
     color: #fff;
     font-size: 0.75rem;
     font-weight: 700;

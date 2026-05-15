@@ -82,7 +82,7 @@
 }
 
 .contact-form__label-text strong {
-    color: #dc2626;
+    color: var(--price-color);
     line-height: 1;
 }
 
