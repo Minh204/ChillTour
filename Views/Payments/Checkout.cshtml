@@ -1,3 +1,4 @@
+@using System.Text.Json
 @model ChillTour.Models.Payments.PaymentCheckoutViewModel
 @{
     ViewData["Title"] = "Thanh toán tour";
@@ -40,15 +41,6 @@
     </div>
 
     <div class="container payment-redesign-container">
-        @if (TempData["PaymentInfoMessage"] is string infoMessage)
-        {
-            <div class="auth-alert auth-alert--success">@infoMessage</div>
-        }
-        @if (TempData["PaymentErrorMessage"] is string errorMessage)
-        {
-            <div class="auth-alert auth-alert--error">@errorMessage</div>
-        }
-
         <a asp-controller="Account" asp-action="Bookings" class="payment-redesign-back">← Quay lại đặt tour</a>
 
         <div class="payment-redesign-grid">
@@ -245,12 +237,12 @@
                         }
                         else if (Model.CanCancelPendingBooking)
                         {
-                            <form asp-action="CancelPendingBooking" method="post"
-                                  onsubmit="return confirm('Hủy đơn nháp này? Đơn chưa thanh toán sẽ không được tính là đã đặt tour.');">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="bookingId" value="@Model.BookingId" />
-                                <button type="submit" class="btn btn-outline-secondary">Hủy đơn nháp</button>
-                            </form>
+                            <button type="button"
+                                    class="btn btn-outline-secondary payment-cancel-draft-btn"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#cancelPendingBookingModal">
+                                Hủy đơn nháp
+                            </button>
                         }
 
                         @if (!isCancelled && Model.CanPayDeposit)
@@ -306,9 +298,58 @@
     </div>
 </section>
 
+<div class="modal fade" id="cancelPendingBookingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content payment-cancel-modal">
+            <div class="payment-cancel-modal__icon">!</div>
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title">Hủy đơn nháp?</h5>
+                    <p>Đơn @Model.BookingCode chưa thanh toán sẽ được hủy và không còn giữ chỗ.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body">
+                <div class="payment-cancel-summary">
+                    <div>
+                        <span>Tour</span>
+                        <strong>@Model.TourName</strong>
+                    </div>
+                    <div>
+                        <span>Khởi hành</span>
+                        <strong>@Model.DepartureDate.ToString("dd/MM/yyyy")</strong>
+                    </div>
+                    <div>
+                        <span>Trạng thái</span>
+                        <strong>Chưa thanh toán</strong>
+                    </div>
+                </div>
+                <p class="payment-cancel-note">Bạn vẫn có thể đặt lại tour này sau nếu lịch còn chỗ.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Giữ đơn</button>
+                <form asp-action="CancelPendingBooking" method="post" data-cancel-pending-form>
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="bookingId" value="@Model.BookingId" />
+                    <button type="submit" class="btn btn-danger">Xác nhận hủy</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
         (() => {
+            const paymentInfoMessage = @Html.Raw(JsonSerializer.Serialize(TempData["PaymentInfoMessage"] as string ?? string.Empty));
+            const paymentErrorMessage = @Html.Raw(JsonSerializer.Serialize(TempData["PaymentErrorMessage"] as string ?? string.Empty));
+            if (paymentInfoMessage) {
+                window.ChillTourToast?.(paymentInfoMessage, 'success', 'Thanh toán');
+            }
+            if (paymentErrorMessage) {
+                window.ChillTourToast?.(paymentErrorMessage, 'error', 'Thanh toán');
+            }
+
             const qrImage = document.querySelector('[data-sepay-qr]');
             const placeholder = document.querySelector('[data-sepay-placeholder]');
             const content = document.querySelector('[data-sepay-content]');
@@ -422,6 +463,50 @@
                     }, 1600);
                 } catch {
                     copyButton.textContent = 'Không thể sao chép';
+                }
+            });
+
+            const cancelForm = document.querySelector('[data-cancel-pending-form]');
+            cancelForm?.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                const submitButton = cancelForm.querySelector('button[type="submit"]');
+                const originalText = submitButton?.textContent;
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.textContent = 'Đang hủy...';
+                }
+
+                try {
+                    const response = await fetch(cancelForm.action, {
+                        method: 'POST',
+                        body: new FormData(cancelForm),
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    const data = await response.json();
+
+                    if (!response.ok || !data.success) {
+                        window.ChillTourToast?.(data.message || 'Không thể hủy đơn nháp.', 'error', 'Hủy đơn');
+                        return;
+                    }
+
+                    bootstrap.Modal.getInstance(document.getElementById('cancelPendingBookingModal'))?.hide();
+                    window.sessionStorage.setItem('chilltour:toast', JSON.stringify({
+                        type: 'success',
+                        title: 'Đã hủy đơn',
+                        message: data.message || 'Đã hủy đơn nháp.'
+                    }));
+                    window.location.href = data.redirectUrl || '@Url.Action("Bookings", "Account")';
+                } catch {
+                    window.ChillTourToast?.('Có lỗi khi hủy đơn nháp. Vui lòng thử lại.', 'error', 'Hủy đơn');
+                } finally {
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.textContent = originalText;
+                    }
                 }
             });
         })();

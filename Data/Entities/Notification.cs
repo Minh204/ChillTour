@@ -10,7 +10,9 @@ public class Notification
     public string? RelatedEntityType { get; set; }
     public long? RelatedEntityId { get; set; }
     public bool IsRead { get; set; }
+    public bool IsDeleted { get; set; }
     public DateTime? SentAt { get; set; }
+    public DateTime? DeletedAt { get; set; }
     public DateTime CreatedAt { get; set; }
 
     public User User { get; set; } = null!;

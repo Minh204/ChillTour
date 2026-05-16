@@ -1,3 +1,8 @@
+window.ChillTourPendingToasts = window.ChillTourPendingToasts || [];
+window.ChillTourToast = window.ChillTourToast || function (message, type = "info", title = "") {
+    window.ChillTourPendingToasts.push({ message, type, title });
+};
+
 document.addEventListener("DOMContentLoaded", function () {
     const revealItems = document.querySelectorAll("[data-reveal]");
 
@@ -35,6 +40,49 @@ document.addEventListener("DOMContentLoaded", function () {
 
         return stack;
     };
+
+    const showAppToast = (message, type = "info", title = "") => {
+        const stack = ensureToastStack();
+        const toast = document.createElement("div");
+        const normalizedType = ["success", "error", "warning", "info"].includes(type) ? type : "info";
+        const toastTitle = title || (normalizedType === "success"
+            ? "Thành công"
+            : normalizedType === "error"
+                ? "Không thể xử lý"
+                : normalizedType === "warning"
+                    ? "Cần kiểm tra"
+                    : "Thông báo");
+
+        toast.className = `notification-toast app-toast app-toast--${normalizedType}`;
+        toast.innerHTML = `
+            <strong>${escapeHtml(toastTitle)}</strong>
+            <p>${escapeHtml(message || "Đã cập nhật trạng thái.")}</p>
+        `;
+
+        stack.prepend(toast);
+        window.setTimeout(() => toast.classList.add("is-visible"), 20);
+        window.setTimeout(() => {
+            toast.classList.remove("is-visible");
+            window.setTimeout(() => toast.remove(), 220);
+        }, normalizedType === "error" ? 6200 : 4200);
+    };
+
+    window.ChillTourToast = showAppToast;
+
+    window.ChillTourPendingToasts.splice(0).forEach((toast) => {
+        showAppToast(toast.message, toast.type, toast.title);
+    });
+
+    try {
+        const pendingToast = window.sessionStorage.getItem("chilltour:toast");
+        if (pendingToast) {
+            window.sessionStorage.removeItem("chilltour:toast");
+            const payload = JSON.parse(pendingToast);
+            showAppToast(payload.message, payload.type, payload.title);
+        }
+    } catch {
+        window.sessionStorage.removeItem("chilltour:toast");
+    }
 
     const updateNotificationBadge = () => {
         if (!notificationBadge) {
@@ -96,24 +144,45 @@ document.addEventListener("DOMContentLoaded", function () {
         const actionHtml = isBooking || isContract
             ? `<a href="${link}" class="btn btn-outline-primary">${actionLabel}</a>`
             : `<span class="status-pill status-pill--info">${actionLabel}</span>`;
+        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || "";
+        const deleteFormHtml = notification?.notificationId && token
+            ? `<form action="/Account/DeleteNotification" method="post" class="customer-notification-delete-form" data-delete-notification-form>
+                    <input name="__RequestVerificationToken" type="hidden" value="${escapeHtml(token)}">
+                    <input type="hidden" name="notificationId" value="${escapeHtml(notification.notificationId)}">
+                    <button type="submit" class="customer-notification-delete-btn" aria-label="Đưa thông báo vào thùng rác" title="Đưa vào thùng rác">×</button>
+                </form>`
+            : "";
 
-        item.className = "customer-notification-card customer-notification-card--wide is-unread";
+        item.className = "customer-notification-row is-unread";
+        item.setAttribute("data-notification-row", "");
+        if (notification?.notificationId) {
+            item.setAttribute("data-notification-id", notification.notificationId);
+        }
         item.innerHTML = `
-            <div class="customer-notification-card__main">
-                <div class="customer-notification-card__head">
-                    <div>
-                        <span class="notification-dot is-unread"></span>
-                        <h3>${escapeHtml(notification?.title || "Thông báo mới")}</h3>
-                    </div>
-                    <span>Vừa xong</span>
+            <span class="notification-dot is-unread"></span>
+            <div class="customer-notification-row__icon customer-notification-row__icon--booking">
+                <span>i</span>
+            </div>
+            <div class="customer-notification-row__content">
+                <div class="customer-notification-row__head">
+                    <h3>${escapeHtml(notification?.title || "Thông báo mới")}</h3>
+                    <span class="status-pill status-pill--info">Mới</span>
                 </div>
                 <p>${escapeHtml(notification?.message || "Bạn có một cập nhật mới từ ChillTour.")}</p>
+                <span class="customer-notification-row__time">Vừa xong</span>
             </div>
-            <div class="customer-notification-card__actions">
+            <div class="customer-notification-row__action">
                 ${actionHtml}
+                ${deleteFormHtml}
             </div>
         `;
         list.prepend(item);
+
+        const totalHeading = document.querySelector(".customer-order-head h2");
+        const totalMatch = totalHeading?.textContent?.match(/\((\d+)\)/);
+        if (totalHeading && totalMatch) {
+            totalHeading.textContent = `Danh sách thông báo (${Number(totalMatch[1]) + 1})`;
+        }
     };
 
     const startNotificationHub = async () => {

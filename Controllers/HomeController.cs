@@ -194,6 +194,11 @@ namespace ChillTour.Controllers
             return View();
         }
 
+        public IActionResult Support()
+        {
+            return View();
+        }
+
         [HttpGet]
         public IActionResult Contact()
         {

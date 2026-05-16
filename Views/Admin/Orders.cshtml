@@ -5,15 +5,18 @@
     var canManageBookings = RoleConstants.ManageBookings.Any(User.IsInRole);
     var canManageFinance = RoleConstants.ManageFinance.Any(User.IsInRole);
     var canEditBookingStatus = canManageBookings;
+    var firstItem = Model.TotalItems == 0 ? 0 : ((Model.CurrentPage - 1) * Model.PageSize) + 1;
+    var lastItem = Model.TotalItems == 0 ? 0 : Math.Min(firstItem + Model.Bookings.Count - 1, Model.TotalItems);
 }
 
-<section class="admin-page-stack">
-    <div class="admin-page-head">
+<section class="admin-page-stack admin-orders-page">
+    <div class="admin-page-head admin-orders-hero">
         <div>
             <span class="admin-panel__label">Operations</span>
             <h2>Xử lý đơn đặt tour</h2>
+            <p>Theo dõi thanh toán, xác nhận booking và cập nhật trạng thái vận hành tour.</p>
         </div>
-        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#orderRulesModal">
+        <button type="button" class="btn btn-outline-primary admin-orders-rule-btn" data-bs-toggle="modal" data-bs-target="#orderRulesModal">
             Quy tắc xử lý đơn
         </button>
     </div>
@@ -27,34 +30,40 @@
         <div class="auth-alert auth-alert--error">@errorMessage</div>
     }
 
-    <div class="admin-metrics">
-        <div class="admin-stat-card admin-stat-card--orange">
+    <div class="admin-metrics admin-orders-metrics">
+        <div class="admin-stat-card admin-order-stat admin-order-stat--blue">
+            <div class="admin-order-stat__icon" aria-hidden="true">P</div>
             <span>Đơn chờ xử lý</span>
             <strong>@Model.PendingOrders</strong>
             <p>Bao gồm đơn chờ thanh toán hoặc cần Staff xử lý.</p>
+            <i aria-hidden="true"></i>
         </div>
-        <div class="admin-stat-card admin-stat-card--mint">
+        <div class="admin-stat-card admin-order-stat admin-order-stat--green">
+            <div class="admin-order-stat__icon" aria-hidden="true">C</div>
             <span>Đơn đã xác nhận</span>
             <strong>@Model.ConfirmedOrders</strong>
             <p>Đang vận hành hoặc đã hoàn tất.</p>
+            <i aria-hidden="true"></i>
         </div>
-        <div class="admin-stat-card">
+        <div class="admin-stat-card admin-order-stat admin-order-stat--orange">
+            <div class="admin-order-stat__icon" aria-hidden="true">R</div>
             <span>Đơn hủy/hoàn tiền</span>
             <strong>@Model.CancelledOrders</strong>
             <p>Các đơn đã đóng hoặc hủy.</p>
+            <i aria-hidden="true"></i>
         </div>
     </div>
 
-    <section class="admin-panel">
+    <section class="admin-panel admin-orders-panel">
         <div class="admin-panel__header">
             <div>
                 <span class="admin-panel__label">Bookings</span>
-                <h3>Danh sách đơn</h3>
+                <h2>Danh sách đơn</h2>
             </div>
-            <div class="admin-topbar__badge">@Model.TotalItems đơn</div>
+            <div class="admin-orders-count">@Model.TotalItems đơn</div>
         </div>
 
-        <form method="get" class="admin-form-grid admin-order-filter app-filter-row mb-4">
+        <form method="get" class="admin-orders-filter mb-4">
             <input type="hidden" name="page" value="1" />
             <label>
                 Từ khóa
@@ -89,14 +98,14 @@
                 Đến ngày khởi hành
                 <input type="date" name="departureTo" value="@(Model.Filter.DepartureTo?.ToString("yyyy-MM-dd"))" class="form-control" />
             </label>
-            <div class="hero-actions align-items-end">
+            <div class="admin-orders-filter__actions">
                 <button type="submit" class="btn btn-primary">Lọc đơn</button>
                 <a asp-action="Orders" class="btn btn-outline-secondary">Xóa lọc</a>
             </div>
         </form>
 
-        <div class="table-responsive">
-            <table class="table align-middle admin-orders-table">
+        <div class="table-responsive admin-orders-table-wrap">
+            <table class="table align-middle admin-orders-table admin-orders-polished-table">
                 <thead>
                     <tr>
                         <th>Mã đơn</th>
@@ -139,7 +148,10 @@
                                     <div class="text-muted small">Còn lại: @booking.RemainingAmount.ToString("N0") đ</div>
                                 </td>
                                 <td>
-                                    <span class="status-pill @StatusClass(booking.BookingStatus, booking.IsCompletedByDeparture)">@booking.BookingStatusText</span>
+                                    <span class="status-pill admin-orders-status @StatusClass(booking.BookingStatus, booking.IsCompletedByDeparture)">
+                                        <i aria-hidden="true"></i>
+                                        @booking.BookingStatusText
+                                    </span>
                                 </td>
                                 <td>
                                     @if (canEditBookingStatus && !booking.IsStatusLocked)
@@ -220,9 +232,11 @@
             </table>
         </div>
 
-        @if (Model.TotalPages > 1)
-        {
-            <nav aria-label="Phân trang đơn">
+        <div class="admin-orders-footer">
+            <span>Hiển thị @firstItem - @lastItem trong tổng số @Model.TotalItems đơn</span>
+            @if (Model.TotalPages > 1)
+            {
+                <nav aria-label="Phân trang đơn">
                 <ul class="pagination justify-content-end mb-0">
                     <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : string.Empty)">
                         <a class="page-link" asp-action="Orders" asp-route-page="@(Model.CurrentPage - 1)" asp-route-searchTerm="@Model.Filter.SearchTerm" asp-route-bookingStatus="@Model.Filter.BookingStatus" asp-route-paymentStatus="@Model.Filter.PaymentStatus" asp-route-departureFrom="@(Model.Filter.DepartureFrom?.ToString("yyyy-MM-dd"))" asp-route-departureTo="@(Model.Filter.DepartureTo?.ToString("yyyy-MM-dd"))">Trước</a>
@@ -237,8 +251,9 @@
                         <a class="page-link" asp-action="Orders" asp-route-page="@(Model.CurrentPage + 1)" asp-route-searchTerm="@Model.Filter.SearchTerm" asp-route-bookingStatus="@Model.Filter.BookingStatus" asp-route-paymentStatus="@Model.Filter.PaymentStatus" asp-route-departureFrom="@(Model.Filter.DepartureFrom?.ToString("yyyy-MM-dd"))" asp-route-departureTo="@(Model.Filter.DepartureTo?.ToString("yyyy-MM-dd"))">Sau</a>
                     </li>
                 </ul>
-            </nav>
-        }
+                </nav>
+            }
+        </div>
     </section>
 </section>
 
@@ -312,15 +327,18 @@
     </div>
 </div>
 
-<div class="modal fade" id="orderDetailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
+<div class="modal fade admin-order-detail-modal" id="orderDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content admin-order-detail">
             <div class="modal-header">
-                <h5 class="modal-title">Chi tiết đơn</h5>
+                <div>
+                    <span class="admin-panel__label">Booking detail</span>
+                    <h5 class="modal-title">Chi tiết đơn</h5>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
             <div class="modal-body">
-                <div class="admin-form-grid">
+                <div class="admin-order-detail-grid">
                     <label>
                         Mã đơn
                         <input id="detailBookingCode" class="form-control" readonly />
@@ -329,6 +347,11 @@
                         Trạng thái
                         <input id="detailBookingStatus" class="form-control" readonly />
                     </label>
+                </div>
+
+                <div class="admin-order-detail-section">
+                    <h6>Khách hàng</h6>
+                    <div class="admin-order-detail-grid">
                     <label>
                         Khách hàng
                         <input id="detailCustomerName" class="form-control" readonly />
@@ -345,6 +368,12 @@
                         Số điện thoại
                         <input id="detailContactPhone" class="form-control" readonly />
                     </label>
+                    </div>
+                </div>
+
+                <div class="admin-order-detail-section">
+                    <h6>Thông tin tour</h6>
+                    <div class="admin-order-detail-grid">
                     <label>
                         Tour
                         <input id="detailTourName" class="form-control" readonly />
@@ -365,6 +394,12 @@
                         Số lượng khách
                         <input id="detailTravelers" class="form-control" readonly />
                     </label>
+                    </div>
+                </div>
+
+                <div class="admin-order-detail-section admin-order-detail-section--finance">
+                    <h6>Thanh toán</h6>
+                    <div class="admin-order-detail-grid">
                     <label>
                         Tổng tiền
                         <input id="detailTotalAmount" class="form-control" readonly />
@@ -401,9 +436,10 @@
                         Thời điểm xác nhận booking
                         <input id="detailBookingConfirmedAt" class="form-control" readonly />
                     </label>
+                    </div>
                 </div>
 
-                <label class="mt-3">
+                <label class="admin-order-detail-note">
                     Yêu cầu đặc biệt
                     <textarea id="detailSpecialRequests" class="form-control admin-textarea" readonly></textarea>
                 </label>

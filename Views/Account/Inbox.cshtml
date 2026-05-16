@@ -65,7 +65,7 @@
                     @foreach (var notification in Model.Notifications)
                     {
                         var iconClass = NotificationIconClass(notification.RelatedEntityType, notification.IsRelatedBookingCancelled);
-                        <article class="customer-notification-row @(notification.IsRead ? string.Empty : "is-unread")">
+                        <article class="customer-notification-row @(notification.IsRead ? string.Empty : "is-unread")" data-notification-row data-notification-id="@notification.NotificationId">
                             <span class="notification-dot @(notification.IsRead ? string.Empty : "is-unread")"></span>
                             <div class="customer-notification-row__icon @iconClass">
                                 @NotificationIcon(notification.RelatedEntityType, notification.IsRelatedBookingCancelled)
@@ -86,7 +86,7 @@
                                     if (User.IsInRole(RoleConstants.Customer))
                                     {
                                         <a asp-controller="Payments" asp-action="Checkout" asp-route-bookingId="@notification.RelatedEntityId.Value" class="btn @(notification.IsRelatedBookingCancelled ? "btn-outline-danger" : "btn-outline-primary")">
-                                            @(notification.IsRelatedBookingCancelled ? "Đơn đã hủy" : "Xem đơn liên quan")
+                                            @(notification.IsRelatedBookingCancelled ? "Đơn đã hủy" : "Xem")
                                         </a>
                                     }
                                     else
@@ -102,6 +102,13 @@
                                 {
                                     <span class="status-pill status-pill--info">Hệ thống</span>
                                 }
+                                <form asp-action="DeleteNotification" method="post" class="customer-notification-delete-form" data-delete-notification-form>
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="notificationId" value="@notification.NotificationId" />
+                                    <button type="submit" class="customer-notification-delete-btn" aria-label="Đưa thông báo vào thùng rác" title="Đưa vào thùng rác">
+                                        ×
+                                    </button>
+                                </form>
                             </div>
                         </article>
                     }
@@ -138,6 +145,78 @@
         </main>
     </div>
 </section>
+
+@section Scripts {
+    <script>
+        (() => {
+            const totalHeading = document.querySelector('.customer-order-head h2');
+            const emptyMessage = 'Hộp thư của bạn hiện chưa có thông báo phù hợp.';
+            let totalItems = @Model.TotalItems;
+
+            const updateTotal = () => {
+                const rows = document.querySelectorAll('[data-notification-row]').length;
+                totalItems = Math.max(0, totalItems - 1);
+                if (totalHeading) {
+                    totalHeading.textContent = `Danh sách thông báo (${totalItems})`;
+                }
+
+                const list = document.querySelector('.customer-notification-list');
+                if (list && rows === 0) {
+                    list.insertAdjacentHTML('afterend', `<div class="auth-alert auth-alert--error">${emptyMessage}</div>`);
+                    list.remove();
+                }
+            };
+
+            document.addEventListener('submit', async (event) => {
+                const form = event.target.closest('[data-delete-notification-form]');
+                if (!form) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                const row = form.closest('[data-notification-row]');
+                const button = form.querySelector('button[type="submit"]');
+                button?.setAttribute('disabled', 'disabled');
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        body: new FormData(form),
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    const data = await response.json();
+
+                    if (!response.ok || !data.success) {
+                        window.ChillTourToast?.(data.message || 'Không thể xóa thông báo.', 'error', 'Thông báo');
+                        return;
+                    }
+
+                    const badge = document.querySelector('[data-notification-badge]');
+                    if (badge) {
+                        const count = Number(data.unreadCount || 0);
+                        badge.textContent = String(count);
+                        badge.classList.toggle('is-hidden', count <= 0);
+                    }
+
+                    row?.classList.add('is-removing');
+                    window.setTimeout(() => {
+                        row?.remove();
+                        updateTotal();
+                    }, 180);
+                    window.ChillTourToast?.(data.message || 'Đã đưa thông báo vào thùng rác.', 'success', 'Thông báo');
+                } catch {
+                    window.ChillTourToast?.('Có lỗi khi xóa thông báo. Vui lòng thử lại.', 'error', 'Thông báo');
+                } finally {
+                    button?.removeAttribute('disabled');
+                }
+            });
+        })();
+    </script>
+}
 
 @functions {
     private static string NotificationIcon(string? relatedType, bool isCancelled) => isCancelled ? "!" : relatedType switch

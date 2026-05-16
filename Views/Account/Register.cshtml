@@ -3,49 +3,80 @@
     ViewData["Title"] = "Đăng ký";
 }
 
-<section class="auth-page">
-    <div class="container">
-        <div class="auth-card">
-            <div class="auth-card__intro">
-                <span class="eyebrow eyebrow--warm">Tạo tài khoản</span>
-                <h1>Đăng ký Customer</h1>
+<section class="auth-page auth-page--login auth-page--register">
+    <div class="auth-login-shell auth-register-shell">
+        <div class="auth-login-card auth-register-card">
+            <div class="auth-card__intro auth-login-card__intro">
+                <span class="eyebrow">ChillTour Account</span>
+                <h1>Đăng ký</h1>
+                <p>Tạo tài khoản để đặt tour và theo dõi hành trình của bạn</p>
             </div>
 
-            <form asp-action="Register" method="post" class="auth-form">
+            <form asp-action="Register" method="post" class="auth-form auth-login-form auth-register-form">
                 <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
                 <label>
-                    Họ tên
-                    <input asp-for="FullName" class="form-control" />
+                    <span>Họ tên</span>
+                    <span class="auth-input">
+                        <span class="auth-input__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="M20 21a8 8 0 0 0-16 0" /><circle cx="12" cy="7" r="4" /></svg>
+                        </span>
+                        <input asp-for="FullName" class="form-control" autocomplete="name" />
+                    </span>
                     <span asp-validation-for="FullName" class="text-danger"></span>
                 </label>
 
                 <label>
-                    Email
-                    <input asp-for="Email" class="form-control" />
+                    <span>Email</span>
+                    <span class="auth-input">
+                        <span class="auth-input__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z" /><path d="m22 6-10 7L2 6" /></svg>
+                        </span>
+                        <input asp-for="Email" class="form-control" autocomplete="email" />
+                    </span>
                     <span asp-validation-for="Email" class="text-danger"></span>
                 </label>
 
                 <label>
-                    Số điện thoại
-                    <input asp-for="PhoneNumber" class="form-control" />
+                    <span>Số điện thoại</span>
+                    <span class="auth-input">
+                        <span class="auth-input__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.77.62 2.61a2 2 0 0 1-.45 2.11L8 9.72a16 16 0 0 0 6.28 6.28l1.28-1.28a2 2 0 0 1 2.11-.45c.84.29 1.71.5 2.61.62A2 2 0 0 1 22 16.92Z" /></svg>
+                        </span>
+                        <input asp-for="PhoneNumber" class="form-control" autocomplete="tel" />
+                    </span>
                     <span asp-validation-for="PhoneNumber" class="text-danger"></span>
                 </label>
 
                 <label>
-                    Mật khẩu
-                    <input asp-for="Password" class="form-control" />
+                    <span>Mật khẩu</span>
+                    <span class="auth-input">
+                        <span class="auth-input__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+                        </span>
+                        <input asp-for="Password" class="form-control" autocomplete="new-password" />
+                    </span>
                     <span asp-validation-for="Password" class="text-danger"></span>
                 </label>
 
                 <label>
-                    Xác nhận mật khẩu
-                    <input asp-for="ConfirmPassword" class="form-control" />
+                    <span>Xác nhận mật khẩu</span>
+                    <span class="auth-input">
+                        <span class="auth-input__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /><path d="M5 11V7a7 7 0 0 1 13.3-3" /><rect x="5" y="11" width="14" height="10" rx="2" /></svg>
+                        </span>
+                        <input asp-for="ConfirmPassword" class="form-control" autocomplete="new-password" />
+                    </span>
                     <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
                 </label>
 
-                <button type="submit" class="btn btn-primary booking-submit">Đăng ký</button>
-                <p class="auth-switch">Đã có tài khoản? <a asp-action="Login">Đăng nhập</a></p>
+                <button type="submit" class="btn btn-primary booking-submit auth-login-submit auth-register-submit">
+                    <span aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6" /><path d="M22 11h-6" /></svg>
+                    </span>
+                    Đăng ký
+                </button>
+                <p class="auth-switch">Đã có tài khoản? <a asp-action="Login">Đăng nhập</a> <span aria-hidden="true">→</span></p>
             </form>
         </div>
     </div>

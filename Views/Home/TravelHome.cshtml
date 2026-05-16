@@ -20,23 +20,48 @@
                     <p>Tìm tour du lịch với giá tốt nhất</p>
 
                     <div class="travel-home__hero-actions">
-                        <a class="btn btn-primary btn-lg" asp-controller="Tours" asp-action="Index">Xem danh sách tour</a>
-                        <a class="btn btn-outline-light btn-lg" href="#diem-den-hot">Khám phá điểm đến</a>
+                        <a class="btn btn-primary btn-lg" asp-controller="Tours" asp-action="Index">
+                            Xem danh sách tour
+                            <span class="travel-home__button-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+                            </span>
+                        </a>
+                        <a class="btn btn-outline-light btn-lg" href="#diem-den-hot">
+                            Khám phá điểm đến
+                            <span class="travel-home__button-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" /><path d="M12 10a2.5 2.5 0 1 0 0-.01" /></svg>
+                            </span>
+                        </a>
                     </div>
                 </div>
 
                 <div class="travel-home__hero-stats">
                     <div>
-                        <strong>@Model.PublishedTourCount+</strong>
-                        <span>Tour đã xuất bản</span>
+                        <span class="travel-home__stat-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><path d="M9 7a4 4 0 1 0 0 .01" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                        </span>
+                        <span>
+                            <strong>@Model.PublishedTourCount+</strong>
+                            <small>Tour đã xuất bản</small>
+                        </span>
                     </div>
                     <div>
-                        <strong>@Model.ActiveDestinationCount+</strong>
-                        <span>Điểm đến đang hoạt động</span>
+                        <span class="travel-home__stat-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="M11.5 2.5 13.9 8l6 .5-4.5 3.9 1.4 5.8-5.3-3.1-5.3 3.1 1.4-5.8L3.1 8.5l6-.5 2.4-5.5Z" /></svg>
+                        </span>
+                        <span>
+                            <strong>@Model.ActiveDestinationCount+</strong>
+                            <small>Điểm đến đang hoạt động</small>
+                        </span>
                     </div>
                     <div>
-                        <strong>@Model.UpcomingDepartureCount+</strong>
-                        <span>Lịch khởi hành đang mở bán</span>
+                        <span class="travel-home__stat-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="M8 2v4" /><path d="M16 2v4" /><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M3 10h18" /><path d="M9 16h6" /></svg>
+                        </span>
+                        <span>
+                            <strong>@Model.UpcomingDepartureCount+</strong>
+                            <small>Lịch khởi hành đang mở bán</small>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -45,32 +70,46 @@
                 <form asp-controller="Tours" asp-action="Index" method="get" class="travel-home__search-inline">
                     <label>
                         <span>Điểm đến</span>
-                        <select name="destinationId">
-                            <option value="">Chọn điểm đến</option>
-                            @foreach (var destination in Model.SearchDestinations)
-                            {
-                                <option value="@destination.DestinationId">@destination.DestinationName</option>
-                            }
-                        </select>
+                        <span class="travel-home__field">
+                            <i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" /><path d="M12 10a2.5 2.5 0 1 0 0-.01" /></svg></i>
+                            <select name="destinationId">
+                                <option value="">Chọn điểm đến</option>
+                                @foreach (var destination in Model.SearchDestinations)
+                                {
+                                    <option value="@destination.DestinationId">@destination.DestinationName</option>
+                                }
+                            </select>
+                        </span>
                     </label>
 
                     <label>
                         <span>Ngày đi</span>
-                        <input type="date" name="departureDate" />
+                        <span class="travel-home__field">
+                            <i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 2v4" /><path d="M16 2v4" /><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M3 10h18" /></svg></i>
+                            <input type="date" name="departureDate" />
+                        </span>
                     </label>
 
                     <label>
                         <span>Ngân sách</span>
-                        <select name="budgetRange">
-                            <option value="">Chọn khoảng giá</option>
-                            <option value="under-5">Dưới 5 triệu</option>
-                            <option value="5-10">5 - 10 triệu</option>
-                            <option value="10-20">10 - 20 triệu</option>
-                            <option value="over-20">Trên 20 triệu</option>
-                        </select>
+                        <span class="travel-home__field">
+                            <i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 12V8H6a2 2 0 0 1 0-4h14v4" /><path d="M4 6v12a2 2 0 0 0 2 2h14v-4" /><path d="M18 12h4v4h-4a2 2 0 0 1 0-4Z" /></svg></i>
+                            <select name="budgetRange">
+                                <option value="">Chọn khoảng giá</option>
+                                <option value="under-5">Dưới 5 triệu</option>
+                                <option value="5-10">5 - 10 triệu</option>
+                                <option value="10-20">10 - 20 triệu</option>
+                                <option value="over-20">Trên 20 triệu</option>
+                            </select>
+                        </span>
                     </label>
 
-                    <button type="submit" class="btn btn-primary btn-lg">Tìm tour</button>
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <span class="travel-home__button-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="m21 21-4.3-4.3" /><path d="M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z" /></svg>
+                        </span>
+                        Search 
+                    </button>
                 </form>
             </div>
 

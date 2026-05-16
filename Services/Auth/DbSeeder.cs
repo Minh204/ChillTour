@@ -438,6 +438,18 @@ public partial class DbSeeder
                                    CONSTRAINT FK_Notifications_User FOREIGN KEY (UserId) REFERENCES auth.Users(UserId)
                                )');
                            END;
+
+                           IF COL_LENGTH('integration.Notifications', 'IsDeleted') IS NULL
+                           BEGIN
+                               ALTER TABLE integration.Notifications
+                               ADD IsDeleted BIT NOT NULL CONSTRAINT DF_Notifications_IsDeleted DEFAULT (0);
+                           END;
+
+                           IF COL_LENGTH('integration.Notifications', 'DeletedAt') IS NULL
+                           BEGIN
+                               ALTER TABLE integration.Notifications
+                               ADD DeletedAt DATETIME2(0) NULL;
+                           END;
                            """;
 
         await _dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);

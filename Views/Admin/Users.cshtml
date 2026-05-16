@@ -2,16 +2,22 @@
 @using ChillTour.Security
 @{
     ViewData["Title"] = "Quản lý tài khoản";
+    const int pageSize = 10;
+    var firstItem = Model.TotalItems == 0 ? 0 : ((Model.CurrentPage - 1) * pageSize) + 1;
+    var lastItem = Model.TotalItems == 0 ? 0 : Math.Min(firstItem + Model.Users.Count - 1, Model.TotalItems);
 }
 
-<section class="admin-page-stack">
-    <div class="admin-page-head">
+<section class="admin-page-stack admin-users-page">
+    <div class="admin-page-head admin-users-hero">
         <div>
             <span class="admin-panel__label">Admin tools</span>
             <h2>Quản lý tài khoản người dùng</h2>
-            <p>Thêm tài khoản mới, đổi quyền và khóa hoặc mở khóa user trong hệ thống.</p>
+            <p>Thêm tài khoản mới, phân quyền và quản lý hoạt động của người dùng trong hệ thống.</p>
         </div>
-        <a asp-action="CreateUser" class="btn btn-primary nav-cta">Thêm tài khoản</a>
+        <a asp-action="CreateUser" class="btn btn-primary nav-cta admin-users-add">
+            <span aria-hidden="true">+</span>
+            Thêm tài khoản
+        </a>
     </div>
 
     @if (TempData["AdminSuccessMessage"] is string successMessage)
@@ -23,36 +29,50 @@
         <div class="auth-alert auth-alert--error">@errorMessage</div>
     }
 
-    <div class="admin-metrics">
-        <div class="admin-stat-card admin-stat-card--blue">
-            <span>Tổng tài khoản</span>
-            <strong>@Model.TotalUsers</strong>
-            <p>Tổng người dùng đang có trong hệ thống.</p>
+    <div class="admin-metrics admin-users-metrics">
+        <div class="admin-stat-card admin-user-stat admin-user-stat--blue">
+            <div class="admin-user-stat__icon" aria-hidden="true">U</div>
+            <div>
+                <span>Tổng tài khoản</span>
+                <strong>@Model.TotalUsers</strong>
+                <p>@Model.TotalItems tài khoản khớp bộ lọc hiện tại</p>
+            </div>
+            <i aria-hidden="true"></i>
         </div>
-        <div class="admin-stat-card">
-            <span>Đang hoạt động</span>
-            <strong>@Model.ActiveUsers</strong>
-            <p>Các tài khoản hiện có thể đăng nhập.</p>
+        <div class="admin-stat-card admin-user-stat admin-user-stat--green">
+            <div class="admin-user-stat__icon" aria-hidden="true">A</div>
+            <div>
+                <span>Đang hoạt động</span>
+                <strong>@Model.ActiveUsers</strong>
+                <p>Có thể đăng nhập và sử dụng hệ thống</p>
+            </div>
+            <i aria-hidden="true"></i>
         </div>
-        <div class="admin-stat-card admin-stat-card--orange">
-            <span>Đang bị khóa</span>
-            <strong>@Model.LockedUsers</strong>
-            <p>Những tài khoản tạm thời bị vô hiệu hóa.</p>
+        <div class="admin-stat-card admin-user-stat admin-user-stat--orange">
+            <div class="admin-user-stat__icon" aria-hidden="true">L</div>
+            <div>
+                <span>Đang bị khóa</span>
+                <strong>@Model.LockedUsers</strong>
+                <p>Tài khoản đang bị vô hiệu hóa tạm thời</p>
+            </div>
+            <i aria-hidden="true"></i>
         </div>
     </div>
 
-    <section class="admin-panel">
-        <div class="admin-panel__header">
+    <section class="admin-panel admin-users-panel">
+        @* <div class="admin-panel__header">
             <div>
                 <span class="admin-panel__label">User Management</span>
                 <h2>Danh sách tài khoản</h2>
             </div>
-        </div>
+        </div> *@
 
-        <form method="get" class="admin-form-grid app-filter-row mb-4">
+        <form method="get" class="admin-users-filter mb-4">
             <label>
                 Từ khóa
-                <input type="text" name="searchTerm" value="@Model.Filter.SearchTerm" class="form-control" placeholder="Tên, email, số điện thoại..." />
+                <span class="admin-users-search">
+                    <input type="text" name="searchTerm" value="@Model.Filter.SearchTerm" class="form-control" placeholder="Tên, email, số điện thoại..." />
+                </span>
             </label>
             <label>
                 Quyền
@@ -72,14 +92,14 @@
                     <option value="true" selected="@(Model.Filter.IsLocked == true)">Đang bị khóa</option>
                 </select>
             </label>
-            <div class="hero-actions align-items-end">
+            <div class="admin-users-filter__actions">
                 <button type="submit" class="btn btn-primary">Lọc tài khoản</button>
                 <a asp-action="Users" class="btn btn-outline-secondary">Xóa lọc</a>
             </div>
         </form>
 
-        <div class="admin-table-wrap">
-            <table class="admin-table">
+        <div class="admin-table-wrap admin-users-table-wrap">
+            <table class="admin-table admin-users-table">
                 <thead>
                     <tr>
                         <th>Tài khoản</th>
@@ -93,14 +113,27 @@
                 <tbody>
                 @foreach (var user in Model.Users)
                 {
+                    var displayName = string.IsNullOrWhiteSpace(user.FullName) ? user.Email : user.FullName;
+                    var initials = string.Concat(displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(part => part[0])).ToUpperInvariant();
+                    if (string.IsNullOrWhiteSpace(initials))
+                    {
+                        initials = "U";
+                    }
+                    var avatarClass = (int)(Math.Abs(user.UserId) % 5);
+
                     <tr>
                         <td>
-                            <strong>@user.FullName</strong>
-                            <div class="admin-table__sub">@user.Email</div>
+                            <div class="admin-users-account">
+                                <span class="admin-users-avatar admin-users-avatar--@avatarClass">@initials</span>
+                                <span>
+                                    <strong>@displayName</strong>
+                                    <small>@user.Email</small>
+                                </span>
+                            </div>
                         </td>
                         <td>@(string.IsNullOrWhiteSpace(user.PhoneNumber) ? "Chưa cập nhật" : user.PhoneNumber)</td>
                         <td>
-                            <form asp-action="ChangeRole" method="post" class="admin-inline-form">
+                            <form asp-action="ChangeRole" method="post" class="admin-users-role-form">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="userId" value="@user.UserId" />
                                 <select name="roleCode" class="form-select form-select-sm">
@@ -113,11 +146,14 @@
                             </form>
                         </td>
                         <td>
-                            <span class="status-pill @(user.IsLocked ? "status-pill--danger" : "status-pill--success")">@user.StatusLabel</span>
+                            <span class="status-pill admin-users-status @(user.IsLocked ? "status-pill--danger" : "status-pill--success")">
+                                <i aria-hidden="true"></i>
+                                @user.StatusLabel
+                            </span>
                         </td>
                         <td>@(user.LastLoginAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Chưa đăng nhập")</td>
                         <td>
-                            <form asp-action="ToggleLock" method="post">
+                            <form asp-action="ToggleLock" method="post" class="admin-users-action-form">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="userId" value="@user.UserId" />
                                 <button type="submit" class="btn @(user.IsLocked ? "btn-outline-success" : "btn-outline-danger") btn-sm">
@@ -131,32 +167,35 @@
             </table>
         </div>
 
-        @if (Model.TotalPages > 1)
-        {
-            <div class="admin-pagination">
-                @if (Model.CurrentPage > 1)
-                {
-                    <a asp-action="Users" asp-route-page="@(Model.CurrentPage - 1)" asp-route-searchTerm="@Model.Filter.SearchTerm" asp-route-roleCode="@Model.Filter.RoleCode" asp-route-isLocked="@Model.Filter.IsLocked" class="admin-pagination__link">Trước</a>
-                }
-                else
-                {
-                    <span class="admin-pagination__link is-disabled">Trước</span>
-                }
+        <div class="admin-users-footer">
+            <span>Hiển thị @firstItem - @lastItem trong tổng số @Model.TotalItems tài khoản</span>
+            @if (Model.TotalPages > 1)
+            {
+                <div class="admin-pagination">
+                    @if (Model.CurrentPage > 1)
+                    {
+                        <a asp-action="Users" asp-route-page="@(Model.CurrentPage - 1)" asp-route-searchTerm="@Model.Filter.SearchTerm" asp-route-roleCode="@Model.Filter.RoleCode" asp-route-isLocked="@Model.Filter.IsLocked" class="admin-pagination__link">Trước</a>
+                    }
+                    else
+                    {
+                        <span class="admin-pagination__link is-disabled">Trước</span>
+                    }
 
-                @for (var pageNumber = 1; pageNumber <= Model.TotalPages; pageNumber++)
-                {
-                    <a asp-action="Users" asp-route-page="@pageNumber" asp-route-searchTerm="@Model.Filter.SearchTerm" asp-route-roleCode="@Model.Filter.RoleCode" asp-route-isLocked="@Model.Filter.IsLocked" class="admin-pagination__link @(pageNumber == Model.CurrentPage ? "is-active" : "")">@pageNumber</a>
-                }
+                    @for (var pageNumber = 1; pageNumber <= Model.TotalPages; pageNumber++)
+                    {
+                        <a asp-action="Users" asp-route-page="@pageNumber" asp-route-searchTerm="@Model.Filter.SearchTerm" asp-route-roleCode="@Model.Filter.RoleCode" asp-route-isLocked="@Model.Filter.IsLocked" class="admin-pagination__link @(pageNumber == Model.CurrentPage ? "is-active" : "")">@pageNumber</a>
+                    }
 
-                @if (Model.CurrentPage < Model.TotalPages)
-                {
-                    <a asp-action="Users" asp-route-page="@(Model.CurrentPage + 1)" asp-route-searchTerm="@Model.Filter.SearchTerm" asp-route-roleCode="@Model.Filter.RoleCode" asp-route-isLocked="@Model.Filter.IsLocked" class="admin-pagination__link">Sau</a>
-                }
-                else
-                {
-                    <span class="admin-pagination__link is-disabled">Sau</span>
-                }
-            </div>
-        }
+                    @if (Model.CurrentPage < Model.TotalPages)
+                    {
+                        <a asp-action="Users" asp-route-page="@(Model.CurrentPage + 1)" asp-route-searchTerm="@Model.Filter.SearchTerm" asp-route-roleCode="@Model.Filter.RoleCode" asp-route-isLocked="@Model.Filter.IsLocked" class="admin-pagination__link">Sau</a>
+                    }
+                    else
+                    {
+                        <span class="admin-pagination__link is-disabled">Sau</span>
+                    }
+                </div>
+            }
+        </div>
     </section>
 </section>

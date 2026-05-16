@@ -318,6 +318,7 @@ public class ChillTourDbContext : DbContext
             entity.Property(x => x.Title).HasMaxLength(200);
             entity.Property(x => x.Message).HasMaxLength(1000);
             entity.Property(x => x.RelatedEntityType).HasMaxLength(50);
+            entity.Property(x => x.IsDeleted).HasDefaultValue(false);
             entity.HasOne(x => x.User).WithMany(x => x.Notifications).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
         });
 

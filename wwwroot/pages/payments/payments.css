@@ -1216,6 +1216,123 @@
   font-weight: 850;
 }
 
+.payment-cancel-draft-btn {
+  color: #5d6b7d;
+  border-color: rgba(93, 107, 125, 0.28);
+  background: #f8fbff;
+}
+
+.payment-cancel-draft-btn:hover {
+  color: #fff;
+  border-color: #5d6b7d;
+  background: #5d6b7d;
+}
+
+.payment-cancel-modal {
+  position: relative;
+  overflow: hidden;
+  padding-top: 1.1rem;
+  border: 0;
+  border-radius: 22px;
+  box-shadow: 0 30px 90px rgba(15, 23, 42, 0.22);
+}
+
+.payment-cancel-modal::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 6px;
+  background: linear-gradient(90deg, #0b4fb3, #1d6ff2);
+}
+
+.payment-cancel-modal__icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 0.35rem;
+  border-radius: 50%;
+  color: #0b4fb3;
+  background: #eaf2ff;
+  font-size: 1.7rem;
+  font-weight: 950;
+}
+
+.payment-cancel-modal .modal-header {
+  align-items: start;
+  padding: 0.55rem 1.35rem 1rem;
+  border: 0;
+  text-align: center;
+}
+
+.payment-cancel-modal .modal-header > div {
+  flex: 1;
+}
+
+.payment-cancel-modal .modal-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.35rem;
+  font-weight: 950;
+}
+
+.payment-cancel-modal .modal-header p,
+.payment-cancel-note {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.payment-cancel-modal .modal-body {
+  padding: 0 1.35rem 1.1rem;
+}
+
+.payment-cancel-summary {
+  display: grid;
+  gap: 0.7rem;
+  padding: 1rem;
+  border: 1px solid rgba(18, 48, 87, 0.08);
+  border-radius: 16px;
+  background: #f8fbff;
+}
+
+.payment-cancel-summary > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.payment-cancel-summary span {
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.payment-cancel-summary strong {
+  color: var(--text);
+  font-weight: 900;
+  text-align: right;
+}
+
+.payment-cancel-modal .modal-footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  padding: 1rem 1.35rem 1.35rem;
+  border: 0;
+}
+
+.payment-cancel-modal .modal-footer form,
+.payment-cancel-modal .modal-footer .btn {
+  width: 100%;
+  margin: 0;
+}
+
+.payment-cancel-modal .modal-footer .btn {
+  min-height: 46px;
+  border-radius: 12px;
+  font-weight: 900;
+}
+
 .payment-terms-note {
   margin: 1rem 0 0;
   color: var(--muted);

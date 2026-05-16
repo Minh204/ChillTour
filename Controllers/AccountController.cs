@@ -175,6 +175,7 @@ public class AccountController : Controller
     {
         if (!ModelState.IsValid)
         {
+            ViewBag.GoogleLoginEnabled = IsGoogleLoginEnabled();
             return View(model);
         }
 
@@ -182,6 +183,7 @@ public class AccountController : Controller
         if (!result.Succeeded || result.User is null)
         {
             ModelState.AddModelError(string.Empty, result.Error ?? "Đăng nhập thất bại.");
+            ViewBag.GoogleLoginEnabled = IsGoogleLoginEnabled();
             return View(model);
         }
         return await RedirectToSignedInDestinationAsync(result, model.RememberMe, model.ReturnUrl);
@@ -774,6 +776,7 @@ public class AccountController : Controller
 
         var query = _dbContext.Notifications
             .Where(x => x.UserId == userId.Value)
+            .Where(x => !x.IsDeleted)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -845,7 +848,7 @@ public class AccountController : Controller
           }
 
         var unreadIds = await _dbContext.Notifications
-            .Where(x => x.UserId == userId.Value && !x.IsRead)
+            .Where(x => x.UserId == userId.Value && !x.IsRead && !x.IsDeleted)
             .Select(x => x.NotificationId)
             .ToListAsync(cancellationToken);
 
@@ -869,6 +872,41 @@ public class AccountController : Controller
             TotalPages = totalPages,
             TotalItems = totalItems,
             Notifications = notifications
+        });
+    }
+
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteNotification(long notificationId, CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue)
+        {
+            return Unauthorized(new { success = false, message = "Vui lòng đăng nhập để xử lý thông báo." });
+        }
+
+        var notification = await _dbContext.Notifications
+            .SingleOrDefaultAsync(x => x.NotificationId == notificationId && x.UserId == userId.Value && !x.IsDeleted, cancellationToken);
+
+        if (notification is null)
+        {
+            return NotFound(new { success = false, message = "Không tìm thấy thông báo cần xóa." });
+        }
+
+        notification.IsDeleted = true;
+        notification.IsRead = true;
+        notification.DeletedAt = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        var unreadCount = await _dbContext.Notifications
+            .CountAsync(x => x.UserId == userId.Value && !x.IsRead && !x.IsDeleted, cancellationToken);
+
+        return Json(new
+        {
+            success = true,
+            message = "Đã đưa thông báo vào thùng rác.",
+            unreadCount
         });
     }
 
@@ -1012,7 +1050,7 @@ public class AccountController : Controller
             return RedirectToAction("Index", "Admin");
         }
 
-        return RedirectToAction(nameof(Profile));
+        return RedirectToAction("Index", "Home");
     }
 }
 

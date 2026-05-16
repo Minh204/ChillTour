@@ -163,11 +163,21 @@ public class PaymentsController : Controller
 
         if (booking is null)
         {
+            if (IsAjaxRequest())
+            {
+                return NotFound(new { success = false, message = "Không tìm thấy đơn cần hủy." });
+            }
+
             return NotFound();
         }
 
         if (!CanCancelPendingBooking(booking))
         {
+            if (IsAjaxRequest())
+            {
+                return BadRequest(new { success = false, message = "Đơn đã ghi nhận thanh toán hoặc đang chờ xác nhận, không thể hủy tại bước checkout." });
+            }
+
             TempData["PaymentErrorMessage"] = "Đơn đã ghi nhận thanh toán hoặc đang chờ xác nhận, không thể hủy tại bước checkout.";
             return RedirectToAction(nameof(Checkout), new { bookingId });
         }
@@ -220,6 +230,16 @@ public class PaymentsController : Controller
             relatedEntityType: "Booking",
             relatedEntityId: booking.BookingId,
             cancellationToken: cancellationToken);
+
+        if (IsAjaxRequest())
+        {
+            return Json(new
+            {
+                success = true,
+                message = $"Đã hủy đơn nháp {booking.BookingCode}. Bạn có thể đặt lại tour khi cần.",
+                redirectUrl = Url.Action("Details", "Tours", new { slug = booking.Tour.Slug })
+            });
+        }
 
         return RedirectToAction("Details", "Tours", new { slug = booking.Tour.Slug });
     }
@@ -1203,6 +1223,12 @@ public class PaymentsController : Controller
         return !booking.Payments.Any(x =>
             x.PaymentStatus is PaymentDepositPaid or PaymentFullyPaid
             || (x.PaymentStatus == PaymentPending && !string.IsNullOrWhiteSpace(x.TransactionReference)));
+    }
+
+    private bool IsAjaxRequest()
+    {
+        return string.Equals(Request.Headers["X-Requested-With"].ToString(), "XMLHttpRequest", StringComparison.OrdinalIgnoreCase)
+               || Request.Headers.Accept.Any(x => x?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true);
     }
 
     private async Task EnsureFirstOrderPromotionAsync(long userId, CancellationToken cancellationToken)
