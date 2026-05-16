@@ -21,15 +21,6 @@
         </button>
     </div>
 
-    @if (TempData["AdminSuccessMessage"] is string successMessage)
-    {
-        <div class="auth-alert auth-alert--success">@successMessage</div>
-    }
-    @if (TempData["AdminErrorMessage"] is string errorMessage)
-    {
-        <div class="auth-alert auth-alert--error">@errorMessage</div>
-    }
-
     <div class="admin-metrics admin-orders-metrics">
         <div class="admin-stat-card admin-order-stat admin-order-stat--blue">
             <div class="admin-order-stat__icon" aria-hidden="true">P</div>
@@ -111,7 +102,6 @@
                         <th>Mã đơn</th>
                         <th>Khách hàng</th>
                         <th>Tour</th>
-                        <th>Khởi hành</th>
                         <th>Tổng tiền</th>
                         <th>Trạng thái</th>
                         <th>Thao tác</th>
@@ -121,7 +111,7 @@
                     @if (Model.Bookings.Count == 0)
                     {
                         <tr>
-                            <td colspan="7" class="text-center py-4">Không có đơn phù hợp với bộ lọc hiện tại.</td>
+                            <td colspan="6" class="text-center py-4">Không có đơn phù hợp với bộ lọc hiện tại.</td>
                         </tr>
                     }
                     else
@@ -141,7 +131,6 @@
                                     <strong title="@booking.TourName">@booking.TourName</strong>
                                     <div class="text-muted small">@booking.TourCode</div>
                                 </td>
-                                <td>@booking.DepartureDate.ToString("dd/MM/yyyy")</td>
                                 <td>
                                     <strong>@booking.TotalAmount.ToString("N0") đ</strong>
                                     <div class="text-muted small">Đã trả: @booking.PaidAmount.ToString("N0") đ</div>
@@ -318,15 +307,6 @@
     </div>
 </div>
 
-<div class="toast-container position-fixed top-0 end-0 p-3">
-    <div id="lockedOrderToast" class="toast align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-            <div class="toast-body" data-locked-toast-message>Không thể sửa trạng thái đơn này.</div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Đóng"></button>
-        </div>
-    </div>
-</div>
-
 <div class="modal fade admin-order-detail-modal" id="orderDetailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content admin-order-detail">
@@ -454,6 +434,19 @@
 @section Scripts {
 <script>
     (() => {
+        const successMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["AdminSuccessMessage"] as string));
+        const errorMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["AdminErrorMessage"] as string));
+
+        if (successMessage) {
+            toastr.success(successMessage, 'Thành công');
+        }
+
+        if (errorMessage) {
+            toastr.error(errorMessage, 'Không thể xử lý');
+        }
+    })();
+
+    (() => {
         const modal = document.getElementById('editOrderStatusModal');
         if (!modal) {
             return;
@@ -510,18 +503,13 @@
     })();
 
     (() => {
-        const toastElement = document.getElementById('lockedOrderToast');
-        if (!toastElement || !window.bootstrap) {
+        if (!window.toastr) {
             return;
         }
 
-        const toast = bootstrap.Toast.getOrCreateInstance(toastElement);
-        const message = toastElement.querySelector('[data-locked-toast-message]');
-
         document.querySelectorAll('[data-locked-edit]').forEach(button => {
             button.addEventListener('click', () => {
-                message.textContent = button.getAttribute('data-locked-reason') || 'Không thể sửa trạng thái đơn này.';
-                toast.show();
+                toastr.warning(button.getAttribute('data-locked-reason') || 'Không thể sửa trạng thái đơn này.', 'Cần kiểm tra');
             });
         });
     })();

@@ -6,6 +6,13 @@
     private static readonly CultureInfo Vi = new("vi-VN");
 
     private string Money(decimal amount) => string.Format(Vi, "{0:N0} đ", amount);
+    private string MoneyShort(decimal amount) => amount >= 1000000000m
+        ? $"{(amount / 1000000000m).ToString("0.#", Vi)}B"
+        : amount >= 1000000m
+            ? $"{(amount / 1000000m).ToString("0.#", Vi)}M"
+            : amount >= 1000m
+                ? $"{(amount / 1000m).ToString("0.#", Vi)}K"
+                : amount.ToString("0", Vi);
 
     private string LinePath(IReadOnlyList<decimal> values, double width = 760, double height = 230, double pad = 26)
     {
@@ -66,39 +73,43 @@
     var confirmPct = Math.Clamp(Model.ConfirmationRate, 0, 100);
     var dashboardPeriod = (ViewBag.DashboardPeriod as string) ?? "week";
     var metricLabelFormat = dashboardPeriod == "year" ? "MM/yyyy" : "dd/MM";
+    var maxRevenueValue = revenueValues.Count == 0 ? 0m : revenueValues.Max();
+    var maxBookingValue = bookingValues.Count == 0 ? 0m : bookingValues.Max();
+    var maxCustomerValue = customerValues.Count == 0 ? 0m : customerValues.Max();
 }
 
-<section class="admin-analytics-shell">
-    <div class="admin-analytics-head">
+<section class="admin-analytics-shell admin-dashboard-redesign">
+    <div class="admin-analytics-head admin-dashboard-hero">
         <div>
             <span class="admin-chip">Dashboard</span>
             <h1>Tổng quan vận hành</h1>
+            <p>Theo dõi hiệu quả kinh doanh và tình hình hoạt động của hệ thống.</p>
         </div>
+        <div class="admin-hero-art" aria-hidden="true"><span></span><i></i><b></b></div>
         <div class="admin-analytics-actions">
-            <a asp-action="Reports" class="btn btn-primary">Mở báo cáo</a>
+            <a asp-action="Reports" class="btn btn-primary admin-hero-action">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg>
+                Mở báo cáo
+            </a>
         </div>
     </div>
 
     <section class="admin-kpi-grid">
-        <article class="admin-kpi-card">
-            <span>Tổng doanh thu</span>
-            <strong>@Money(Model.DepositRevenue)</strong>
-            <small>Dự kiến @Money(Model.ExpectedRevenue)</small>
+        <article class="admin-kpi-card admin-kpi-card--blue">
+            <div class="admin-kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8" /><path d="M14 7h7v7" /></svg></div>
+            <div><span>Tổng doanh thu</span><strong>@Money(Model.DepositRevenue)</strong><small>▲ Dự kiến @Money(Model.ExpectedRevenue)</small></div>
         </article>
-        <article class="admin-kpi-card">
-            <span>Tổng booking</span>
-            <strong>@Model.TotalBookings</strong>
-            <small>@Model.PendingBookings đơn cần xử lý</small>
+        <article class="admin-kpi-card admin-kpi-card--violet">
+            <div class="admin-kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 2v20" /><path d="M18 6H6" /><path d="M18 18H6" /><path d="M18 6a4 4 0 0 1 0 8H6" /></svg></div>
+            <div><span>Tổng booking</span><strong>@Model.TotalBookings</strong><small>▲ @Model.PendingBookings đơn cần xử lý</small></div>
         </article>
-        <article class="admin-kpi-card">
-            <span>Khách hàng</span>
-            <strong>@Model.TotalUsers</strong>
-            <small>+@Model.NewUsersThisWeek trong tuần</small>
+        <article class="admin-kpi-card admin-kpi-card--green">
+            <div class="admin-kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg></div>
+            <div><span>Khách hàng</span><strong>@Model.TotalUsers</strong><small>▲ @Model.NewUsersThisWeek khách hàng mới</small></div>
         </article>
-        <article class="admin-kpi-card">
-            <span>Tour đang bán</span>
-            <strong>@Model.PublishedTours</strong>
-            <small>@Model.UpcomingSchedules lịch mở bán</small>
+        <article class="admin-kpi-card admin-kpi-card--orange">
+            <div class="admin-kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /><path d="M12 12v3" /><path d="M9 12h6" /></svg></div>
+            <div><span>Tour đang bán</span><strong>@Model.PublishedTours</strong><small>▲ @Model.UpcomingSchedules lịch mở bán</small></div>
         </article>
     </section>
 
@@ -127,10 +138,21 @@
                 @for (var row = 0; row < 5; row++)
                 {
                     var y = 26 + (178d / 4 * row);
+                    var label = maxRevenueValue <= 0 ? 0 : maxRevenueValue - (maxRevenueValue / 4 * row);
+                    @:<text x="2" y="@((y + 4).ToString("0.##", CultureInfo.InvariantCulture))" class="admin-chart-axis-label">@MoneyShort(label)</text>
                     <line x1="26" y1="@y.ToString("0.##", CultureInfo.InvariantCulture)" x2="734" y2="@y.ToString("0.##", CultureInfo.InvariantCulture)" />
                 }
                 <path d="@AreaPath(revenueValues)" class="admin-svg-area"></path>
                 <path d="@LinePath(revenueValues)" class="admin-svg-line admin-svg-line--blue"></path>
+                @for (var i = 0; i < revenueValues.Count; i++)
+                {
+                    var step = revenueValues.Count == 1 ? 0 : 708d / (revenueValues.Count - 1);
+                    var ratio = maxRevenueValue <= 0 ? 0 : (double)(revenueValues[i] / maxRevenueValue);
+                    var x = 26 + (step * i);
+                    var y = 204 - (178d * ratio);
+                    <circle cx="@x.ToString("0.##", CultureInfo.InvariantCulture)" cy="@y.ToString("0.##", CultureInfo.InvariantCulture)" r="4.5" class="admin-chart-dot admin-chart-dot--blue" />
+                    @:<text x="@x.ToString("0.##", CultureInfo.InvariantCulture)" y="@Math.Max(16, y - 10).ToString("0.##", CultureInfo.InvariantCulture)" class="admin-chart-value">@MoneyShort(revenueValues[i])</text>
+                }
             </svg>
             <div class="admin-chart-labels">
                 @foreach (var item in Model.DailyMetrics)
@@ -177,9 +199,20 @@
                 @for (var row = 0; row < 5; row++)
                 {
                     var y = 26 + (178d / 4 * row);
+                    var label = maxBookingValue <= 0 ? 0 : maxBookingValue - (maxBookingValue / 4 * row);
+                    @:<text x="4" y="@((y + 4).ToString("0.##", CultureInfo.InvariantCulture))" class="admin-chart-axis-label">@label.ToString("0", Vi)</text>
                     <line x1="26" y1="@y.ToString("0.##", CultureInfo.InvariantCulture)" x2="734" y2="@y.ToString("0.##", CultureInfo.InvariantCulture)" />
                 }
                 <path d="@LinePath(bookingValues)" class="admin-svg-line admin-svg-line--green"></path>
+                @for (var i = 0; i < bookingValues.Count; i++)
+                {
+                    var step = bookingValues.Count == 1 ? 0 : 708d / (bookingValues.Count - 1);
+                    var ratio = maxBookingValue <= 0 ? 0 : (double)(bookingValues[i] / maxBookingValue);
+                    var x = 26 + (step * i);
+                    var y = 204 - (178d * ratio);
+                    <circle cx="@x.ToString("0.##", CultureInfo.InvariantCulture)" cy="@y.ToString("0.##", CultureInfo.InvariantCulture)" r="4.5" class="admin-chart-dot admin-chart-dot--green" />
+                    @:<text x="@x.ToString("0.##", CultureInfo.InvariantCulture)" y="@Math.Max(16, y - 10).ToString("0.##", CultureInfo.InvariantCulture)" class="admin-chart-value">@bookingValues[i].ToString("0", Vi)</text>
+                }
             </svg>
         </article>
 
@@ -201,9 +234,20 @@
                 @for (var row = 0; row < 5; row++)
                 {
                     var y = 26 + (178d / 4 * row);
+                    var label = maxCustomerValue <= 0 ? 0 : maxCustomerValue - (maxCustomerValue / 4 * row);
+                    @:<text x="4" y="@((y + 4).ToString("0.##", CultureInfo.InvariantCulture))" class="admin-chart-axis-label">@label.ToString("0", Vi)</text>
                     <line x1="26" y1="@y.ToString("0.##", CultureInfo.InvariantCulture)" x2="734" y2="@y.ToString("0.##", CultureInfo.InvariantCulture)" />
                 }
                 <path d="@LinePath(customerValues)" class="admin-svg-line admin-svg-line--orange"></path>
+                @for (var i = 0; i < customerValues.Count; i++)
+                {
+                    var step = customerValues.Count == 1 ? 0 : 708d / (customerValues.Count - 1);
+                    var ratio = maxCustomerValue <= 0 ? 0 : (double)(customerValues[i] / maxCustomerValue);
+                    var x = 26 + (step * i);
+                    var y = 204 - (178d * ratio);
+                    <circle cx="@x.ToString("0.##", CultureInfo.InvariantCulture)" cy="@y.ToString("0.##", CultureInfo.InvariantCulture)" r="4.5" class="admin-chart-dot admin-chart-dot--orange" />
+                    @:<text x="@x.ToString("0.##", CultureInfo.InvariantCulture)" y="@Math.Max(16, y - 10).ToString("0.##", CultureInfo.InvariantCulture)" class="admin-chart-value">@customerValues[i].ToString("0", Vi)</text>
+                }
             </svg>
         </article>
 

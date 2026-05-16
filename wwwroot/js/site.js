@@ -2,6 +2,20 @@ window.ChillTourPendingToasts = window.ChillTourPendingToasts || [];
 window.ChillTourToast = window.ChillTourToast || function (message, type = "info", title = "") {
     window.ChillTourPendingToasts.push({ message, type, title });
 };
+window.toastr = window.toastr || {
+    success(message, title) {
+        window.ChillTourToast(message, "success", title);
+    },
+    error(message, title) {
+        window.ChillTourToast(message, "error", title);
+    },
+    warning(message, title) {
+        window.ChillTourToast(message, "warning", title);
+    },
+    info(message, title) {
+        window.ChillTourToast(message, "info", title);
+    }
+};
 
 document.addEventListener("DOMContentLoaded", function () {
     const revealItems = document.querySelectorAll("[data-reveal]");
@@ -68,6 +82,20 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     window.ChillTourToast = showAppToast;
+    window.toastr = {
+        success(message, title) {
+            showAppToast(message, "success", title);
+        },
+        error(message, title) {
+            showAppToast(message, "error", title);
+        },
+        warning(message, title) {
+            showAppToast(message, "warning", title);
+        },
+        info(message, title) {
+            showAppToast(message, "info", title);
+        }
+    };
 
     window.ChillTourPendingToasts.splice(0).forEach((toast) => {
         showAppToast(toast.message, toast.type, toast.title);

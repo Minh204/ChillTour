@@ -6,6 +6,13 @@
     private static readonly CultureInfo Vi = new("vi-VN");
 
     private string Money(decimal amount) => string.Format(Vi, "{0:N0} đ", amount);
+    private string MoneyShort(decimal amount) => amount >= 1000000000m
+        ? $"{(amount / 1000000000m).ToString("0.#", Vi)}B"
+        : amount >= 1000000m
+            ? $"{(amount / 1000000m).ToString("0.#", Vi)}M"
+            : amount >= 1000m
+                ? $"{(amount / 1000m).ToString("0.#", Vi)}K"
+                : amount.ToString("0", Vi);
     private string Number(decimal value) => value.ToString("N1", Vi);
     private string Invariant(decimal value) => value.ToString("0.##", CultureInfo.InvariantCulture);
 
@@ -81,15 +88,19 @@
     var contractPct = Math.Clamp(Model.Summary.ContractSignSuccessRate, 0, 100);
     var paymentSuccessPct = Model.Summary.SuccessfulPayments + Model.Summary.FailedPayments == 0 ? 0m : Math.Round(Model.Summary.SuccessfulPayments * 100m / (Model.Summary.SuccessfulPayments + Model.Summary.FailedPayments), 1);
     var currentPeriod = string.IsNullOrWhiteSpace(Model.Filter.Period) ? "month" : Model.Filter.Period;
+    var maxRevenueValue = revenueValues.Count == 0 ? 0m : revenueValues.Max();
+    var maxBookingValue = bookingValues.Count == 0 ? 0m : bookingValues.Max();
+    var maxCustomerValue = customerValues.Count == 0 ? 0m : customerValues.Max();
 }
 
-<section class="admin-analytics-shell admin-report-compact">
-    <div class="admin-analytics-head">
+<section class="admin-analytics-shell admin-report-compact admin-dashboard-redesign">
+    <div class="admin-analytics-head admin-dashboard-hero">
         <div>
             <span class="admin-chip">@Model.RoleLabel</span>
             <h1>Báo cáo & thống kê</h1>
             <p>@Model.Summary.FromDate.ToString("dd/MM/yyyy") - @Model.Summary.ToDate.ToString("dd/MM/yyyy")</p>
         </div>
+        <div class="admin-hero-art" aria-hidden="true"><span></span><i></i><b></b></div>
         <div class="admin-analytics-actions">
             <a asp-action="ExportReportsExcel"
                asp-route-period="@Model.Filter.Period"
@@ -100,7 +111,7 @@
                asp-route-paymentStatus="@Model.Filter.PaymentStatus"
                asp-route-paymentMethod="@Model.Filter.PaymentMethod"
                asp-route-customerSearch="@Model.Filter.CustomerSearch"
-               class="btn btn-outline-primary">Excel</a>
+               class="btn btn-outline-primary admin-hero-action admin-hero-action--light">Excel</a>
             <a asp-action="ExportReportsPdf"
                asp-route-period="@Model.Filter.Period"
                asp-route-fromDate="@Model.Filter.FromDate"
@@ -110,7 +121,10 @@
                asp-route-paymentStatus="@Model.Filter.PaymentStatus"
                asp-route-paymentMethod="@Model.Filter.PaymentMethod"
                asp-route-customerSearch="@Model.Filter.CustomerSearch"
-               class="btn btn-primary">PDF</a>
+               class="btn btn-primary admin-hero-action">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 15h6" /><path d="M9 18h4" /></svg>
+                PDF
+            </a>
         </div>
     </div>
 
@@ -133,19 +147,31 @@
     <section class="admin-kpi-grid admin-kpi-grid--six">
         @if (canRevenue)
         {
-            <article class="admin-kpi-card"><span>Doanh thu</span><strong>@Money(Model.Summary.TotalRevenue)</strong><small>Đã thu @Money(Model.Summary.CollectedRevenue)</small></article>
+            <article class="admin-kpi-card admin-kpi-card--blue">
+                <div class="admin-kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8" /><path d="M14 7h7v7" /></svg></div>
+                <div><span>Doanh thu</span><strong>@Money(Model.Summary.TotalRevenue)</strong><small>▲ Đã thu @Money(Model.Summary.CollectedRevenue)</small></div>
+            </article>
         }
         @if (canBooking)
         {
-            <article class="admin-kpi-card"><span>Booking</span><strong>@Model.Summary.TotalBookings</strong><small>@Model.Summary.NewBookings đơn mới</small></article>
+            <article class="admin-kpi-card admin-kpi-card--violet">
+                <div class="admin-kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 2v20" /><path d="M18 6H6" /><path d="M18 18H6" /><path d="M18 6a4 4 0 0 1 0 8H6" /></svg></div>
+                <div><span>Booking</span><strong>@Model.Summary.TotalBookings</strong><small>▲ @Model.Summary.NewBookings đơn mới</small></div>
+            </article>
         }
         @if (canCustomer)
         {
-            <article class="admin-kpi-card"><span>Khách hàng</span><strong>@Model.Summary.TotalCustomers</strong><small>@Model.Summary.ReturningCustomers khách quay lại</small></article>
+            <article class="admin-kpi-card admin-kpi-card--green">
+                <div class="admin-kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg></div>
+                <div><span>Khách hàng</span><strong>@Model.Summary.TotalCustomers</strong><small>▲ @Model.Summary.ReturningCustomers khách quay lại</small></div>
+            </article>
         }
         @if (canTour)
         {
-            <article class="admin-kpi-card"><span>Tour / lịch</span><strong>@Model.Summary.ActiveTours</strong><small>@Model.Summary.LowSeatSchedules lịch sắp hết chỗ</small></article>
+            <article class="admin-kpi-card admin-kpi-card--orange">
+                <div class="admin-kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /><path d="M12 12v3" /><path d="M9 12h6" /></svg></div>
+                <div><span>Tour / lịch</span><strong>@Model.Summary.ActiveTours</strong><small>▲ @Model.Summary.LowSeatSchedules lịch sắp hết chỗ</small></div>
+            </article>
         }
         @if (canPayment)
         {
@@ -203,10 +229,21 @@
                         @for (var row = 0; row < 5; row++)
                         {
                             var y = 26 + (178d / 4 * row);
+                            var label = maxRevenueValue <= 0 ? 0 : maxRevenueValue - (maxRevenueValue / 4 * row);
+                            @:<text x="2" y="@((y + 4).ToString("0.##", CultureInfo.InvariantCulture))" class="admin-chart-axis-label">@MoneyShort(label)</text>
                             <line x1="26" y1="@y.ToString("0.##", CultureInfo.InvariantCulture)" x2="734" y2="@y.ToString("0.##", CultureInfo.InvariantCulture)" />
                         }
                         <path d="@AreaPath(revenueValues)" class="admin-svg-area"></path>
                         <path d="@LinePath(revenueValues)" class="admin-svg-line admin-svg-line--blue"></path>
+                        @for (var i = 0; i < revenueValues.Count; i++)
+                        {
+                            var step = revenueValues.Count == 1 ? 0 : 708d / (revenueValues.Count - 1);
+                            var ratio = maxRevenueValue <= 0 ? 0 : (double)(revenueValues[i] / maxRevenueValue);
+                            var x = 26 + (step * i);
+                            var y = 204 - (178d * ratio);
+                            <circle cx="@x.ToString("0.##", CultureInfo.InvariantCulture)" cy="@y.ToString("0.##", CultureInfo.InvariantCulture)" r="4.5" class="admin-chart-dot admin-chart-dot--blue" />
+                            @:<text x="@x.ToString("0.##", CultureInfo.InvariantCulture)" y="@Math.Max(16, y - 10).ToString("0.##", CultureInfo.InvariantCulture)" class="admin-chart-value">@MoneyShort(revenueValues[i])</text>
+                        }
                     </svg>
                     <div class="admin-chart-labels">
                         @foreach (var item in Model.Summary.RevenueSeries)
@@ -264,9 +301,20 @@
                     @for (var row = 0; row < 5; row++)
                     {
                         var y = 26 + (178d / 4 * row);
+                        var label = maxBookingValue <= 0 ? 0 : maxBookingValue - (maxBookingValue / 4 * row);
+                        @:<text x="4" y="@((y + 4).ToString("0.##", CultureInfo.InvariantCulture))" class="admin-chart-axis-label">@label.ToString("0", Vi)</text>
                         <line x1="26" y1="@y.ToString("0.##", CultureInfo.InvariantCulture)" x2="734" y2="@y.ToString("0.##", CultureInfo.InvariantCulture)" />
                     }
                     <path d="@LinePath(bookingValues)" class="admin-svg-line admin-svg-line--green"></path>
+                    @for (var i = 0; i < bookingValues.Count; i++)
+                    {
+                        var step = bookingValues.Count == 1 ? 0 : 708d / (bookingValues.Count - 1);
+                        var ratio = maxBookingValue <= 0 ? 0 : (double)(bookingValues[i] / maxBookingValue);
+                        var x = 26 + (step * i);
+                        var y = 204 - (178d * ratio);
+                        <circle cx="@x.ToString("0.##", CultureInfo.InvariantCulture)" cy="@y.ToString("0.##", CultureInfo.InvariantCulture)" r="4.5" class="admin-chart-dot admin-chart-dot--green" />
+                        @:<text x="@x.ToString("0.##", CultureInfo.InvariantCulture)" y="@Math.Max(16, y - 10).ToString("0.##", CultureInfo.InvariantCulture)" class="admin-chart-value">@bookingValues[i].ToString("0", Vi)</text>
+                    }
                 </svg>
             </article>
         }
@@ -291,9 +339,20 @@
                     @for (var row = 0; row < 5; row++)
                     {
                         var y = 26 + (178d / 4 * row);
+                        var label = maxCustomerValue <= 0 ? 0 : maxCustomerValue - (maxCustomerValue / 4 * row);
+                        @:<text x="4" y="@((y + 4).ToString("0.##", CultureInfo.InvariantCulture))" class="admin-chart-axis-label">@label.ToString("0", Vi)</text>
                         <line x1="26" y1="@y.ToString("0.##", CultureInfo.InvariantCulture)" x2="734" y2="@y.ToString("0.##", CultureInfo.InvariantCulture)" />
                     }
                     <path d="@LinePath(customerValues)" class="admin-svg-line admin-svg-line--orange"></path>
+                    @for (var i = 0; i < customerValues.Count; i++)
+                    {
+                        var step = customerValues.Count == 1 ? 0 : 708d / (customerValues.Count - 1);
+                        var ratio = maxCustomerValue <= 0 ? 0 : (double)(customerValues[i] / maxCustomerValue);
+                        var x = 26 + (step * i);
+                        var y = 204 - (178d * ratio);
+                        <circle cx="@x.ToString("0.##", CultureInfo.InvariantCulture)" cy="@y.ToString("0.##", CultureInfo.InvariantCulture)" r="4.5" class="admin-chart-dot admin-chart-dot--orange" />
+                        @:<text x="@x.ToString("0.##", CultureInfo.InvariantCulture)" y="@Math.Max(16, y - 10).ToString("0.##", CultureInfo.InvariantCulture)" class="admin-chart-value">@customerValues[i].ToString("0", Vi)</text>
+                    }
                 </svg>
                 <div class="admin-mini-stats">
                     <div><b>@Model.Summary.NewCustomers</b><span>Khách mới</span></div>
