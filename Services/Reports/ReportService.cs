@@ -228,8 +228,7 @@ public sealed class ReportService : IReportService
         var isAdmin = user.IsInRole(RoleConstants.Admin);
         var isDirector = user.IsInRole(RoleConstants.Director);
         var isManager = user.IsInRole(RoleConstants.Manager);
-        var isAccountant = user.IsInRole(RoleConstants.Accountant);
-        var isEmployeeOnly = user.IsInRole(RoleConstants.Employee) && !isAdmin && !isDirector && !isManager && !isAccountant;
+        var isEmployeeOnly = user.IsInRole(RoleConstants.Employee) && !isAdmin && !isDirector && !isManager;
         var currentUserId = GetCurrentUserId(user);
 
         var bookings = _dbContext.Bookings.AsNoTracking()
@@ -661,9 +660,9 @@ public sealed class ReportService : IReportService
             },
             new()
             {
-                Label = "Đơn chờ Accountant đối soát",
+                Label = "Đơn chờ Staff đối soát",
                 Count = bookingSnapshot.Count(x => x.PaymentStatus == PaymentPendingVerification),
-                Hint = "Giao dịch đã ghi nhận nhưng cần xác minh từ kế toán."
+                Hint = "Giao dịch đã ghi nhận nhưng cần Staff xác minh trước khi cập nhật trạng thái thanh toán."
             },
             new()
             {

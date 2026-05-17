@@ -3,7 +3,6 @@
 @{
     ViewData["Title"] = "Xử lý đơn";
     var canManageBookings = RoleConstants.ManageBookings.Any(User.IsInRole);
-    var canManageFinance = RoleConstants.ManageFinance.Any(User.IsInRole);
     var canEditBookingStatus = canManageBookings;
     var firstItem = Model.TotalItems == 0 ? 0 : ((Model.CurrentPage - 1) * Model.PageSize) + 1;
     var lastItem = Model.TotalItems == 0 ? 0 : Math.Min(firstItem + Model.Bookings.Count - 1, Model.TotalItems);
@@ -164,7 +163,7 @@
                                             Sửa
                                         </button>
                                     }
-                                    @if (booking.HasPaymentToVerify && canManageFinance && booking.LatestPaymentId.HasValue)
+                                    @if (booking.HasPaymentToVerify && canManageBookings && booking.LatestPaymentId.HasValue)
                                     {
                                         <form asp-action="VerifyPayment" method="post" class="admin-row-action-form">
                                             @Html.AntiForgeryToken()
@@ -174,7 +173,7 @@
                                             <button type="submit" name="isValid" value="false" class="btn btn-outline-danger btn-sm" onclick="return confirm('Từ chối giao dịch này?');">Sai giao dịch</button>
                                         </form>
                                     }
-                                    @if (booking.BookingStatus == 10 && canManageFinance)
+                                    @if (booking.BookingStatus == 10 && canManageBookings)
                                     {
                                         <form asp-action="CompleteRefund" method="post" class="admin-row-action-form" onsubmit="return confirm('Xác nhận đã hoàn tiền cho đơn này?');">
                                             @Html.AntiForgeryToken()
@@ -504,7 +503,7 @@
 }
 
 @functions {
-    private static int[] FilterStatusOptions() => [1, 2, 8, 3, 4, 5, 9, 10];
+    private static int[] FilterStatusOptions() => [0, 1, 2, 6, 7, 8, 3, 9, 10, 4, 5];
 
     private static int[] EditableStatusOptions() => [2, 8, 3, 4, 9, 10, 5];
 

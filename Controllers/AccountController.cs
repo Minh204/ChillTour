@@ -26,6 +26,8 @@ public class AccountController : Controller
     private const byte BookingFullyPaid = 8;
     private const byte BookingRefundRequested = 9;
     private const byte BookingPendingRefund = 10;
+    private const byte PaymentPending = 0;
+    private const byte PaymentPendingVerification = 1;
     private const byte PaymentDepositPaid = 2;
     private const byte PaymentFullyPaid = 3;
     private const int BalanceAutoCancelDaysBeforeDeparture = 3;
@@ -336,8 +338,9 @@ public class AccountController : Controller
             .AsNoTracking()
             .Include(x => x.Tour)
             .Include(x => x.TourSchedule)
+            .Include(x => x.Payments)
             .Include(x => x.ElectronicContracts)
-            .Where(x => x.UserId == userId.Value && (x.PaymentStatus == 1 || x.PaymentStatus == 2 || x.PaymentStatus == 3))
+            .Where(x => x.UserId == userId.Value)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -418,12 +421,24 @@ public class AccountController : Controller
                 CancellationReason = x.CancellationReason,
                 CreatedAt = x.CreatedAt,
                 PaymentConfirmedByName = x.StatusHistory
-                    .Where(h => h.Notes != null && h.Notes.Contains("Accountant xác nhận"))
+                    .Where(h => h.NewStatus == BookingDepositPaid
+                                || h.NewStatus == BookingFullyPaid
+                                || (h.Notes != null
+                                    && (h.Notes.Contains("Staff")
+                                        || h.Notes.Contains("Nhân viên")
+                                        || h.Notes.Contains("xác nhận thanh toán")
+                                        || h.Notes.Contains("Hệ thống tự ghi nhận thanh toán"))))
                     .OrderByDescending(h => h.ChangedAt)
                     .Select(h => h.ChangedByUser != null ? h.ChangedByUser.FullName : null)
                     .FirstOrDefault(),
                 PaymentConfirmedAt = x.StatusHistory
-                    .Where(h => h.Notes != null && h.Notes.Contains("Accountant xác nhận"))
+                    .Where(h => h.NewStatus == BookingDepositPaid
+                                || h.NewStatus == BookingFullyPaid
+                                || (h.Notes != null
+                                    && (h.Notes.Contains("Staff")
+                                        || h.Notes.Contains("Nhân viên")
+                                        || h.Notes.Contains("xác nhận thanh toán")
+                                        || h.Notes.Contains("Hệ thống tự ghi nhận thanh toán"))))
                     .OrderByDescending(h => h.ChangedAt)
                     .Select(h => (DateTime?)h.ChangedAt)
                     .FirstOrDefault(),
@@ -457,20 +472,64 @@ public class AccountController : Controller
                     && x.BookingStatus != BookingRefundRequested
                     && x.BookingStatus != BookingPendingRefund
                     && x.PaidAmount <= 0m
+                    && x.PaymentStatus != PaymentPendingVerification
+                    && !x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference)
+                                             || p.PaymentStatus == PaymentPendingVerification
+                                             || p.PaymentStatus == PaymentDepositPaid
+                                             || p.PaymentStatus == PaymentFullyPaid)
                     && x.TourSchedule.DepartureDate >= today,
                 CanRequestRefund = x.BookingStatus != BookingCancelled
                     && x.BookingStatus != BookingRefunded
                     && x.BookingStatus != BookingRefundRequested
                     && x.BookingStatus != BookingPendingRefund
-                    && x.PaidAmount > 0m
+                    && (x.PaidAmount > 0m
+                        || x.PaymentStatus == PaymentPendingVerification
+                        || x.PaymentStatus == PaymentDepositPaid
+                        || x.PaymentStatus == PaymentFullyPaid
+                        || x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference)
+                                               || p.PaymentStatus == PaymentPendingVerification
+                                               || p.PaymentStatus == PaymentDepositPaid
+                                               || p.PaymentStatus == PaymentFullyPaid))
                     && x.TourSchedule.DepartureDate >= today,
-                RequiresRefundRequest = x.PaidAmount > 0m
+                RequiresRefundRequest = (x.PaidAmount > 0m
+                        || x.PaymentStatus == PaymentPendingVerification
+                        || x.PaymentStatus == PaymentDepositPaid
+                        || x.PaymentStatus == PaymentFullyPaid
+                        || x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference)
+                                               || p.PaymentStatus == PaymentPendingVerification
+                                               || p.PaymentStatus == PaymentDepositPaid
+                                               || p.PaymentStatus == PaymentFullyPaid))
                     && x.TourSchedule.DepartureDate >= today,
-                RefundPercent = x.PaidAmount > 0m && x.TourSchedule.DepartureDate >= today
+                RefundPercent = (x.PaidAmount > 0m
+                        || x.PaymentStatus == PaymentPendingVerification
+                        || x.PaymentStatus == PaymentDepositPaid
+                        || x.PaymentStatus == PaymentFullyPaid
+                        || x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference)
+                                               || p.PaymentStatus == PaymentPendingVerification
+                                               || p.PaymentStatus == PaymentDepositPaid
+                                               || p.PaymentStatus == PaymentFullyPaid))
+                    && x.TourSchedule.DepartureDate >= today
                     ? (x.TourSchedule.DepartureDate >= fullRefundCutoffDate ? 100 : 60)
                     : 0,
-                EstimatedRefundAmount = x.PaidAmount > 0m && x.TourSchedule.DepartureDate >= today
-                    ? Math.Round(x.PaidAmount * (x.TourSchedule.DepartureDate >= fullRefundCutoffDate ? 1m : 0.6m), 0)
+                EstimatedRefundAmount = (x.PaidAmount > 0m
+                        || x.PaymentStatus == PaymentPendingVerification
+                        || x.PaymentStatus == PaymentDepositPaid
+                        || x.PaymentStatus == PaymentFullyPaid
+                        || x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference)
+                                               || p.PaymentStatus == PaymentPendingVerification
+                                               || p.PaymentStatus == PaymentDepositPaid
+                                               || p.PaymentStatus == PaymentFullyPaid))
+                    && x.TourSchedule.DepartureDate >= today
+                    ? Math.Round((x.PaidAmount > 0m
+                            ? x.PaidAmount
+                            : x.Payments
+                                .Where(p => !string.IsNullOrWhiteSpace(p.TransactionReference)
+                                            || p.PaymentStatus == PaymentPending
+                                            || p.PaymentStatus == PaymentPendingVerification
+                                            || p.PaymentStatus == PaymentDepositPaid
+                                            || p.PaymentStatus == PaymentFullyPaid)
+                                .Sum(p => p.Amount))
+                        * (x.TourSchedule.DepartureDate >= fullRefundCutoffDate ? 1m : 0.6m), 0)
                     : 0m
             })
             .ToListAsync(cancellationToken);
@@ -623,6 +682,7 @@ public class AccountController : Controller
         var booking = await _dbContext.Bookings
             .Include(x => x.Tour)
             .Include(x => x.TourSchedule)
+            .Include(x => x.Payments)
             .SingleOrDefaultAsync(x => x.BookingId == model.BookingId && x.UserId == userId.Value, cancellationToken);
 
         if (booking is null)
@@ -646,21 +706,22 @@ public class AccountController : Controller
 
         var oldStatus = booking.BookingStatus;
         var bookedSeats = booking.AdultCount + booking.ChildCount;
-        var hasPaidAmount = booking.PaidAmount > 0m;
-        var refundPercent = hasPaidAmount && booking.TourSchedule.DepartureDate >= today.AddDays(7) ? 100 : 60;
-        var estimatedRefundAmount = hasPaidAmount
-            ? Math.Round(booking.PaidAmount * (refundPercent == 100 ? 1m : 0.6m), 0)
+        var hasFinancialActivity = HasFinancialActivity(booking);
+        var refundBaseAmount = GetRefundBaseAmount(booking);
+        var refundPercent = hasFinancialActivity && booking.TourSchedule.DepartureDate >= today.AddDays(7) ? 100 : 60;
+        var estimatedRefundAmount = hasFinancialActivity
+            ? Math.Round(refundBaseAmount * (refundPercent == 100 ? 1m : 0.6m), 0)
             : 0m;
         var cancellationReason = model.CancellationReason.Trim();
 
-        booking.BookingStatus = hasPaidAmount ? (byte)9 : (byte)4;
+        booking.BookingStatus = hasFinancialActivity ? BookingRefundRequested : BookingCancelled;
         booking.CancelledAt = DateTime.UtcNow;
-        booking.CancellationReason = hasPaidAmount
+        booking.CancellationReason = hasFinancialActivity
             ? $"{cancellationReason} | Chính sách hoàn tiền: {refundPercent}% số tiền đã thanh toán, dự kiến {estimatedRefundAmount:N0} {booking.CurrencyCode}."
             : cancellationReason;
         booking.UpdatedAt = DateTime.UtcNow;
 
-        if (!hasPaidAmount)
+        if (!hasFinancialActivity)
         {
             booking.Tour.RemainingSeats += bookedSeats;
             booking.Tour.UpdatedAt = DateTime.UtcNow;
@@ -684,9 +745,9 @@ public class AccountController : Controller
         await _notificationService.CreateAsync(
             booking.UserId,
             notificationType: 4,
-            title: hasPaidAmount ? "Đã gửi yêu cầu hoàn tiền" : "Bạn đã hủy đơn đặt tour",
-            message: hasPaidAmount
-                ? $"Đơn {booking.BookingCode} đã gửi yêu cầu hoàn tiền. Dự kiến hoàn {refundPercent}% số tiền đã thanh toán ({estimatedRefundAmount:N0} đ). Staff sẽ kiểm tra và chuyển sang Accountant xử lý."
+            title: hasFinancialActivity ? "Đã gửi yêu cầu hoàn tiền" : "Bạn đã hủy đơn đặt tour",
+            message: hasFinancialActivity
+                ? $"Đơn {booking.BookingCode} đã gửi yêu cầu hoàn tiền. Dự kiến hoàn {refundPercent}% số tiền đã thanh toán ({estimatedRefundAmount:N0} đ). Staff sẽ kiểm tra và xử lý hoàn tiền."
                 : $"Đơn {booking.BookingCode} đã được hủy thành công. Lý do: {booking.CancellationReason}",
             relatedEntityType: "Booking",
             relatedEntityId: booking.BookingId,
@@ -695,15 +756,15 @@ public class AccountController : Controller
         await _notificationService.CreateForRolesAsync(
             RoleConstants.ManageBookings,
             notificationType: 13,
-            title: hasPaidAmount ? "Khách yêu cầu hoàn tiền" : "Khách hàng đã hủy đơn tour",
-            message: hasPaidAmount
+            title: hasFinancialActivity ? "Khách yêu cầu hoàn tiền" : "Khách hàng đã hủy đơn tour",
+            message: hasFinancialActivity
                 ? $"Đơn {booking.BookingCode} đã được khách yêu cầu hoàn tiền {refundPercent}% ({estimatedRefundAmount:N0} đ). Lý do: {booking.CancellationReason}. Staff cần kiểm tra và chuyển trạng thái chờ hoàn tiền."
                 : $"Đơn {booking.BookingCode} đã được khách hàng hủy. Lý do: {booking.CancellationReason}",
             relatedEntityType: "Booking",
             relatedEntityId: booking.BookingId,
             cancellationToken: cancellationToken);
 
-        TempData["BookingSuccessMessage"] = hasPaidAmount
+        TempData["BookingSuccessMessage"] = hasFinancialActivity
             ? $"Đã gửi yêu cầu hoàn tiền cho đơn {booking.BookingCode}. Dự kiến hoàn {refundPercent}% ({estimatedRefundAmount:N0} đ)."
             : $"Đã hủy đơn {booking.BookingCode}.";
         return RedirectToAction(nameof(Bookings));
@@ -999,6 +1060,28 @@ public class AccountController : Controller
     {
         return !string.IsNullOrWhiteSpace(_googleAuthOptions.ClientId)
             && !string.IsNullOrWhiteSpace(_googleAuthOptions.ClientSecret);
+    }
+
+    private static bool HasFinancialActivity(Data.Entities.Booking booking)
+    {
+        return booking.PaidAmount > 0m
+               || booking.PaymentStatus is PaymentPendingVerification or PaymentDepositPaid or PaymentFullyPaid
+               || booking.Payments.Any(x =>
+                   x.PaymentStatus is PaymentPendingVerification or PaymentDepositPaid or PaymentFullyPaid
+                   || !string.IsNullOrWhiteSpace(x.TransactionReference));
+    }
+
+    private static decimal GetRefundBaseAmount(Data.Entities.Booking booking)
+    {
+        if (booking.PaidAmount > 0m)
+        {
+            return booking.PaidAmount;
+        }
+
+        return booking.Payments
+            .Where(x => x.PaymentStatus is PaymentPending or PaymentPendingVerification or PaymentDepositPaid or PaymentFullyPaid
+                        || !string.IsNullOrWhiteSpace(x.TransactionReference))
+            .Sum(x => x.Amount);
     }
 
     private static string BookingStatusText(byte status) => status switch

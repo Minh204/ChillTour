@@ -76,10 +76,10 @@ public class AdminController : Controller
 
         var totalUsers = await _dbContext.Users.AsNoTracking().CountAsync(cancellationToken);
         var newUsersThisWeek = await _dbContext.Users.AsNoTracking().CountAsync(x => x.CreatedAt >= startOfWeek, cancellationToken);
-        var totalBookings = await _dbContext.Bookings.AsNoTracking().CountAsync(x => x.PaidAmount > 0m || x.PaymentStatus == PaymentDepositPaid || x.PaymentStatus == PaymentFullyPaid || (x.PaymentStatus == PaymentPendingVerification && (x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification) && x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference))), cancellationToken);
-        var pendingBookings = await _dbContext.Bookings.AsNoTracking().CountAsync(x => (x.PaidAmount > 0m || x.PaymentStatus == PaymentDepositPaid || x.PaymentStatus == PaymentFullyPaid || (x.PaymentStatus == PaymentPendingVerification && (x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification) && x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference)))) && (x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification || x.BookingStatus == BookingRefundRequested || x.BookingStatus == BookingPendingRefund), cancellationToken);
-        var confirmedBookings = await _dbContext.Bookings.AsNoTracking().CountAsync(x => (x.PaidAmount > 0m || x.PaymentStatus == PaymentDepositPaid || x.PaymentStatus == PaymentFullyPaid || (x.PaymentStatus == PaymentPendingVerification && (x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification) && x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference)))) && (x.BookingStatus == BookingConfirmed || x.BookingStatus == BookingFullyPaid), cancellationToken);
-        var cancelledBookings = await _dbContext.Bookings.AsNoTracking().CountAsync(x => (x.PaidAmount > 0m || x.PaymentStatus == PaymentDepositPaid || x.PaymentStatus == PaymentFullyPaid || (x.PaymentStatus == PaymentPendingVerification && (x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification) && x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference)))) && (x.BookingStatus == BookingCancelled || x.BookingStatus == BookingRefunded || x.BookingStatus == BookingRefundRequested || x.BookingStatus == BookingPendingRefund), cancellationToken);
+        var totalBookings = await _dbContext.Bookings.AsNoTracking().CountAsync(cancellationToken);
+        var pendingBookings = await _dbContext.Bookings.AsNoTracking().CountAsync(x => x.BookingStatus == BookingPendingPayment || x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPayment || x.BookingStatus == BookingPendingFullPaymentVerification || x.BookingStatus == BookingRefundRequested || x.BookingStatus == BookingPendingRefund, cancellationToken);
+        var confirmedBookings = await _dbContext.Bookings.AsNoTracking().CountAsync(x => x.BookingStatus == BookingConfirmed || x.BookingStatus == BookingFullyPaid, cancellationToken);
+        var cancelledBookings = await _dbContext.Bookings.AsNoTracking().CountAsync(x => x.BookingStatus == BookingCancelled || x.BookingStatus == BookingRefunded || x.BookingStatus == BookingRefundRequested || x.BookingStatus == BookingPendingRefund, cancellationToken);
         var paidBookings = await _dbContext.Bookings.AsNoTracking().CountAsync(x => x.PaymentStatus == PaymentDepositPaid || x.PaymentStatus == PaymentFullyPaid, cancellationToken);
         var publishedTours = await _dbContext.Tours.AsNoTracking().CountAsync(x => x.IsPublished, cancellationToken);
         var upcomingSchedules = await _dbContext.TourSchedules.AsNoTracking().CountAsync(x => x.DepartureDate >= todayOnly && x.Status == 1, cancellationToken);
@@ -384,7 +384,6 @@ public class AdminController : Controller
         var isAdmin = User.IsInRole(RoleConstants.Admin);
         var isDirector = User.IsInRole(RoleConstants.Director);
         var isManager = User.IsInRole(RoleConstants.Manager);
-        var isAccountant = User.IsInRole(RoleConstants.Accountant);
         var isEmployee = User.IsInRole(RoleConstants.Employee);
 
         return new AdminReportPageViewModel
@@ -394,11 +393,10 @@ public class AdminController : Controller
             RoleLabel = isAdmin ? "Admin" :
                 isDirector ? "Director" :
                 isManager ? "Manager" :
-                isAccountant ? "Accountant" :
                 isEmployee ? "Employee" : "BackOffice",
             CanSeeBusiness = isAdmin || isDirector,
             CanSeeOperations = isAdmin || isDirector || isManager,
-            CanSeeFinance = isAdmin || isDirector || isAccountant,
+            CanSeeFinance = isAdmin || isDirector || isManager,
             CanSeeCustomer = isAdmin || isDirector || isEmployee,
             CanSeeStaff = isAdmin || isManager || isEmployee,
             PeriodOptions =
@@ -593,12 +591,6 @@ public class AdminController : Controller
             .Include(x => x.Payments)
             .Include(x => x.StatusHistory)
             .ThenInclude(x => x.ChangedByUser)
-            .Where(x => x.PaidAmount > 0m
-                        || x.PaymentStatus == PaymentDepositPaid
-                        || x.PaymentStatus == PaymentFullyPaid
-                        || (x.PaymentStatus == PaymentPendingVerification
-                            && (x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification)
-                            && x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference))))
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
@@ -658,7 +650,9 @@ public class AdminController : Controller
                     .Where(h => h.NewStatus == BookingDepositPaid
                                 || h.NewStatus == BookingFullyPaid
                                 || (h.Notes != null
-                                    && (h.Notes.Contains("Accountant xác nhận")
+                                    && (h.Notes.Contains("Staff xác nhận")
+                                        || h.Notes.Contains("Nhân viên xác nhận")
+                                        || h.Notes.Contains("xác nhận thanh toán")
                                         || h.Notes.Contains("Hệ thống tự ghi nhận thanh toán"))))
                     .OrderByDescending(h => h.ChangedAt)
                     .FirstOrDefault();
@@ -698,7 +692,7 @@ public class AdminController : Controller
                     LatestPaymentStatus = latestPayment?.PaymentStatus,
                     LatestPaymentTransactionReference = latestPayment?.TransactionReference,
                     HasPaymentToVerify = latestPayment is not null
-                        && latestPayment.PaymentStatus == PaymentPending
+                        && latestPayment.PaymentStatus is PaymentPending or PaymentPendingVerification
                         && !string.IsNullOrWhiteSpace(latestPayment.TransactionReference),
                     CanStaffProcess = x.PaymentStatus is PaymentDepositPaid or PaymentFullyPaid,
                     SpecialRequests = x.SpecialRequests,
@@ -713,12 +707,6 @@ public class AdminController : Controller
 
         var statusCounts = await _dbContext.Bookings
             .AsNoTracking()
-            .Where(x => x.PaidAmount > 0m
-                        || x.PaymentStatus == PaymentDepositPaid
-                        || x.PaymentStatus == PaymentFullyPaid
-                        || (x.PaymentStatus == PaymentPendingVerification
-                            && (x.BookingStatus == BookingPendingDepositVerification || x.BookingStatus == BookingPendingFullPaymentVerification)
-                            && x.Payments.Any(p => !string.IsNullOrWhiteSpace(p.TransactionReference))))
             .GroupBy(x => 1)
             .Select(x => new
             {
@@ -2155,7 +2143,7 @@ public class AdminController : Controller
         return RedirectToAction(nameof(Tours));
     }
 
-    [Authorize(Policy = PermissionConstants.ManageFinance)]
+    [Authorize(Policy = PermissionConstants.ManageBookings)]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> VerifyPayment(long paymentId, bool isValid, int currentPage, CancellationToken cancellationToken)
@@ -2180,7 +2168,7 @@ public class AdminController : Controller
             return RedirectToAction(nameof(Orders), new { page = currentPage <= 0 ? 1 : currentPage });
         }
 
-        if (payment.PaymentStatus != PaymentPending || string.IsNullOrWhiteSpace(payment.TransactionReference))
+        if (payment.PaymentStatus is not (PaymentPending or PaymentPendingVerification) || string.IsNullOrWhiteSpace(payment.TransactionReference))
         {
             TempData["AdminErrorMessage"] = $"Giao dịch {payment.PaymentCode} chưa có mã giao dịch VNPay để đối soát.";
             return RedirectToAction(nameof(Orders), new { page = currentPage <= 0 ? 1 : currentPage });
@@ -2193,6 +2181,7 @@ public class AdminController : Controller
         {
             var newPaidAmount = Math.Min(booking.PaidAmount + payment.Amount, booking.TotalAmount);
             var isFullyPaid = newPaidAmount >= booking.TotalAmount;
+            var isRefundFlow = booking.BookingStatus is BookingRefundRequested or BookingPendingRefund;
 
             payment.PaymentStatus = isFullyPaid ? PaymentFullyPaid : PaymentDepositPaid;
             payment.PaidAt = DateTime.UtcNow;
@@ -2201,7 +2190,7 @@ public class AdminController : Controller
 
             booking.PaidAmount = newPaidAmount;
             booking.PaymentStatus = isFullyPaid ? PaymentFullyPaid : PaymentDepositPaid;
-            booking.BookingStatus = isFullyPaid ? BookingFullyPaid : BookingDepositPaid;
+            booking.BookingStatus = isRefundFlow ? oldBookingStatus : isFullyPaid ? BookingFullyPaid : BookingDepositPaid;
             booking.FullyPaidAt = isFullyPaid ? DateTime.UtcNow : booking.FullyPaidAt;
             booking.UpdatedAt = DateTime.UtcNow;
 
@@ -2222,7 +2211,7 @@ public class AdminController : Controller
                 OldStatus = oldBookingStatus,
                 NewStatus = booking.BookingStatus,
                 ChangedByUserId = GetCurrentUserId(),
-                Notes = $"Accountant xác nhận thanh toán {payment.Amount:N0} đ. PaymentStatus: {oldPaymentStatus} -> {booking.PaymentStatus}.",
+                Notes = $"Staff xác nhận thanh toán {payment.Amount:N0} đ. PaymentStatus: {oldPaymentStatus} -> {booking.PaymentStatus}.",
                 ChangedAt = DateTime.UtcNow
             });
 
@@ -2234,10 +2223,12 @@ public class AdminController : Controller
             await _notificationService.CreateAsync(
                 booking.UserId,
                 notificationType: 3,
-                title: isFullyPaid ? "Đã xác nhận thanh toán toàn bộ" : "Đã xác nhận thanh toán cọc",
-                message: isFullyPaid
-                    ? $"Accountant đã xác nhận đơn {booking.BookingCode} thanh toán đủ {booking.PaidAmount:N0} đ. Staff sẽ xử lý và xác nhận booking."
-                    : $"Accountant đã xác nhận đơn {booking.BookingCode} đã cọc {booking.PaidAmount:N0} đ. Bạn cần thanh toán phần còn lại {remainingAmount:N0} đ trước {dueDateText}.",
+                title: isRefundFlow ? "Đã xác nhận giao dịch chờ hoàn tiền" : isFullyPaid ? "Đã xác nhận thanh toán toàn bộ" : "Đã xác nhận thanh toán cọc",
+                message: isRefundFlow
+                    ? $"Staff đã xác nhận giao dịch của đơn {booking.BookingCode}. Đơn đang trong luồng hoàn tiền và sẽ được xử lý theo chính sách hủy tour."
+                    : isFullyPaid
+                    ? $"Staff đã xác nhận đơn {booking.BookingCode} thanh toán đủ {booking.PaidAmount:N0} đ. Staff sẽ xử lý và xác nhận booking."
+                    : $"Staff đã xác nhận đơn {booking.BookingCode} đã cọc {booking.PaidAmount:N0} đ. Bạn cần thanh toán phần còn lại {remainingAmount:N0} đ trước {dueDateText}.",
                 relatedEntityType: "Booking",
                 relatedEntityId: booking.BookingId,
                 cancellationToken: cancellationToken);
@@ -2245,10 +2236,12 @@ public class AdminController : Controller
             await _notificationService.CreateForRolesAsync(
                 RoleConstants.ManageBookings,
                 notificationType: 13,
-                title: isFullyPaid ? "Đơn đã thanh toán đủ, chờ Staff xử lý" : "Đơn đã cọc, chờ Staff xác nhận",
-                message: isFullyPaid
-                    ? $"Đơn {booking.BookingCode} đã được Accountant xác nhận thanh toán toàn bộ. Staff có thể xác nhận booking và chuẩn bị dịch vụ."
-                    : $"Đơn {booking.BookingCode} đã được Accountant xác nhận cọc. Staff có thể liên hệ khách, kiểm tra thông tin và giữ chỗ.",
+                title: isRefundFlow ? "Giao dịch hoàn tiền đã được xác nhận" : isFullyPaid ? "Đơn đã thanh toán đủ, chờ Staff xử lý" : "Đơn đã cọc, chờ Staff xác nhận",
+                message: isRefundFlow
+                    ? $"Đơn {booking.BookingCode} đã được Staff xác nhận có giao dịch {booking.PaidAmount:N0} đ. Tiếp tục chuyển sang chờ hoàn tiền và hoàn tất xử lý."
+                    : isFullyPaid
+                    ? $"Đơn {booking.BookingCode} đã được Staff xác nhận thanh toán toàn bộ. Staff có thể xác nhận booking và chuẩn bị dịch vụ."
+                    : $"Đơn {booking.BookingCode} đã được Staff xác nhận cọc. Staff có thể liên hệ khách, kiểm tra thông tin và giữ chỗ.",
                 relatedEntityType: "Booking",
                 relatedEntityId: booking.BookingId,
                 cancellationToken: cancellationToken);
@@ -2258,7 +2251,7 @@ public class AdminController : Controller
         else
         {
             payment.PaymentStatus = PaymentFailed;
-            payment.FailureReason = "Accountant đối soát không hợp lệ.";
+            payment.FailureReason = "Staff đối soát không hợp lệ.";
             payment.UpdatedAt = DateTime.UtcNow;
 
             booking.PaymentStatus = PaymentFailed;
@@ -2271,7 +2264,7 @@ public class AdminController : Controller
                 OldStatus = oldBookingStatus,
                 NewStatus = booking.BookingStatus,
                 ChangedByUserId = GetCurrentUserId(),
-                Notes = $"Accountant từ chối giao dịch {payment.PaymentCode}. PaymentStatus: {oldPaymentStatus} -> {booking.PaymentStatus}.",
+                Notes = $"Staff từ chối giao dịch {payment.PaymentCode}. PaymentStatus: {oldPaymentStatus} -> {booking.PaymentStatus}.",
                 ChangedAt = DateTime.UtcNow
             });
 
@@ -2281,7 +2274,7 @@ public class AdminController : Controller
                 booking.UserId,
                 notificationType: 4,
                 title: "Thanh toán chưa hợp lệ",
-                message: $"Giao dịch cho đơn {booking.BookingCode} chưa được Accountant xác nhận. Vui lòng kiểm tra lại và thanh toán lại nếu cần.",
+                message: $"Giao dịch cho đơn {booking.BookingCode} chưa được Staff xác nhận. Vui lòng kiểm tra lại và thanh toán lại nếu cần.",
                 relatedEntityType: "Booking",
                 relatedEntityId: booking.BookingId,
                 cancellationToken: cancellationToken);
@@ -2292,7 +2285,7 @@ public class AdminController : Controller
         return RedirectToAction(nameof(Orders), new { page = currentPage <= 0 ? 1 : currentPage });
     }
 
-    [Authorize(Policy = PermissionConstants.ManageFinance)]
+    [Authorize(Policy = PermissionConstants.ManageBookings)]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CompleteRefund(long bookingId, int currentPage, CancellationToken cancellationToken)
@@ -2313,6 +2306,12 @@ public class AdminController : Controller
             return RedirectToAction(nameof(Orders), new { page = currentPage <= 0 ? 1 : currentPage });
         }
 
+        if (booking.PaidAmount <= 0m)
+        {
+            TempData["AdminErrorMessage"] = $"Đơn {booking.BookingCode} chưa có số tiền đã xác nhận nên không thể hoàn tiền.";
+            return RedirectToAction(nameof(Orders), new { page = currentPage <= 0 ? 1 : currentPage });
+        }
+
         var oldStatus = booking.BookingStatus;
         var cancellationDate = DateOnly.FromDateTime((booking.CancelledAt ?? DateTime.UtcNow).ToLocalTime());
         var refundPercent = booking.TourSchedule.DepartureDate >= cancellationDate.AddDays(7) ? 100 : 60;
@@ -2327,7 +2326,7 @@ public class AdminController : Controller
             OldStatus = oldStatus,
             NewStatus = BookingRefunded,
             ChangedByUserId = GetCurrentUserId(),
-            Notes = $"Accountant đã hoàn tiền {refundAmount:N0} đ ({refundPercent}% số tiền đã thanh toán).",
+            Notes = $"Staff đã hoàn tiền {refundAmount:N0} đ ({refundPercent}% số tiền đã thanh toán).",
             ChangedAt = DateTime.UtcNow
         });
 
@@ -2337,7 +2336,7 @@ public class AdminController : Controller
             booking.UserId,
             notificationType: 4,
             title: "Đã hoàn tiền",
-            message: $"Đơn {booking.BookingCode} đã được Accountant xử lý hoàn tiền {refundAmount:N0} đ ({refundPercent}% số tiền đã thanh toán).",
+            message: $"Đơn {booking.BookingCode} đã được Staff xử lý hoàn tiền {refundAmount:N0} đ ({refundPercent}% số tiền đã thanh toán).",
             relatedEntityType: "Booking",
             relatedEntityId: booking.BookingId,
             cancellationToken: cancellationToken);
@@ -2382,6 +2381,12 @@ public class AdminController : Controller
         if (model.BookingStatus == BookingConfirmed && booking.PaymentStatus is not (PaymentDepositPaid or PaymentFullyPaid))
         {
             TempData["AdminErrorMessage"] = "Chỉ có thể chuyển sang Đã đặt sau khi đơn đã được xác nhận cọc hoặc thanh toán đầy đủ.";
+            return RedirectToAction(nameof(Orders), new { page = model.CurrentPage <= 0 ? 1 : model.CurrentPage });
+        }
+
+        if (model.BookingStatus == BookingPendingRefund && booking.PaidAmount <= 0m)
+        {
+            TempData["AdminErrorMessage"] = "Cần xác nhận giao dịch thanh toán trước khi chuyển đơn sang chờ hoàn tiền.";
             return RedirectToAction(nameof(Orders), new { page = model.CurrentPage <= 0 ? 1 : model.CurrentPage });
         }
 
@@ -2537,16 +2542,16 @@ public class AdminController : Controller
                 booking.UserId,
                 notificationType: 4,
                 title: "Đơn đang chờ hoàn tiền",
-                message: $"Đơn {booking.BookingCode} đã được Staff chuyển sang trạng thái chờ hoàn tiền. Accountant sẽ xử lý hoàn tiền.",
+                message: $"Đơn {booking.BookingCode} đã được Staff chuyển sang trạng thái chờ hoàn tiền. Staff sẽ xử lý hoàn tiền.",
                 relatedEntityType: "Booking",
                 relatedEntityId: booking.BookingId,
                 cancellationToken: cancellationToken);
 
             await _notificationService.CreateForRolesAsync(
-                RoleConstants.ManageFinance,
+                RoleConstants.ManageBookings,
                 notificationType: 14,
                 title: "Có đơn chờ hoàn tiền",
-                message: $"Đơn {booking.BookingCode} cần Accountant hoàn lại {booking.PaidAmount:N0} đ cho khách.",
+                message: $"Đơn {booking.BookingCode} cần Staff hoàn lại {booking.PaidAmount:N0} đ cho khách.",
                 relatedEntityType: "Booking",
                 relatedEntityId: booking.BookingId,
                 cancellationToken: cancellationToken);
