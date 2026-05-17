@@ -1869,7 +1869,6 @@ public class AdminController : Controller
     {
         await ValidateTourSelectionsAsync(model, cancellationToken);
         ValidateUploadedImages(model, existingImageCount: 0);
-        ValidateSeatInventory(model);
         ValidateTourSchedules(model);
         ValidateTourItineraryDays(model);
 
@@ -1894,8 +1893,8 @@ public class AdminController : Controller
             DurationNights = model.DurationNights,
             MinGroupSize = model.MinGroupSize,
             MaxGroupSize = model.MaxGroupSize,
-            TotalSeats = model.TotalSeats,
-            RemainingSeats = model.RemainingSeats,
+            TotalSeats = 0,
+            RemainingSeats = 0,
             BasePrice = model.BasePrice,
             ChildPrice = null,
             SingleSupplement = model.SingleSupplement,
@@ -1985,6 +1984,8 @@ public class AdminController : Controller
                 {
                     TourScheduleId = x.TourScheduleId,
                     DepartureDate = x.DepartureDate,
+                    TotalSeats = x.TotalSeats,
+                    AvailableSeats = x.AvailableSeats,
                     AdultPrice = x.AdultPrice
                 })
                 .ToList(),
@@ -2041,8 +2042,8 @@ public class AdminController : Controller
         await ValidateTourSelectionsAsync(model, cancellationToken);
         var remainingExistingImages = tour.MediaItems.Count(x => !model.DeleteImageIds.Contains(x.TourMediaId));
         ValidateUploadedImages(model, remainingExistingImages);
-        ValidateSeatInventory(model);
         ValidateTourSchedules(model);
+        ValidateExistingScheduleSeatInventory(tour, model);
         ValidateTourItineraryDays(model);
 
         if (!ModelState.IsValid)
@@ -2074,8 +2075,6 @@ public class AdminController : Controller
         tour.DurationNights = model.DurationNights;
         tour.MinGroupSize = model.MinGroupSize;
         tour.MaxGroupSize = model.MaxGroupSize;
-        tour.TotalSeats = model.TotalSeats;
-        tour.RemainingSeats = model.RemainingSeats;
         tour.BasePrice = model.BasePrice;
         tour.ChildPrice = null;
         tour.SingleSupplement = model.SingleSupplement;
@@ -2394,7 +2393,7 @@ public class AdminController : Controller
         }
         else if (IsCancelledStatus(oldStatus) && !IsCancelledStatus(model.BookingStatus))
         {
-            if (booking.Tour.RemainingSeats < bookedSeats || booking.TourSchedule.AvailableSeats < bookedSeats)
+            if (booking.TourSchedule.AvailableSeats < bookedSeats)
             {
                 TempData["AdminErrorMessage"] = "Không đủ vé để kích hoạt lại đơn đã hủy.";
                 return RedirectToAction(nameof(Orders));
@@ -2745,7 +2744,9 @@ public class AdminController : Controller
         {
             model.Schedules.Add(new TourDepartureEditorViewModel
             {
-                DepartureDate = DateOnly.FromDateTime(DateTime.Today.AddDays(7))
+                DepartureDate = DateOnly.FromDateTime(DateTime.Today.AddDays(7)),
+                TotalSeats = model.TotalSeats,
+                AvailableSeats = model.TotalSeats
             });
         }
 
@@ -2858,6 +2859,49 @@ public class AdminController : Controller
                 ModelState.AddModelError($"Schedules[{i}].AdultPrice", "Vui lòng nhập giá người lớn lớn hơn 0.");
             }
 
+            if (schedule.TotalSeats <= 0)
+            {
+                ModelState.AddModelError($"Schedules[{i}].TotalSeats", "Tổng số chỗ phải lớn hơn 0.");
+            }
+
+            if (schedule.AvailableSeats < 0)
+            {
+                ModelState.AddModelError($"Schedules[{i}].AvailableSeats", "Số chỗ còn lại không hợp lệ.");
+            }
+
+            if (schedule.AvailableSeats > schedule.TotalSeats)
+            {
+                ModelState.AddModelError($"Schedules[{i}].AvailableSeats", "Số chỗ còn lại không được lớn hơn tổng chỗ của lịch.");
+            }
+        }
+    }
+
+    private void ValidateExistingScheduleSeatInventory(Tour tour, TourFormViewModel model)
+    {
+        for (var i = 0; i < model.Schedules.Count; i++)
+        {
+            var item = model.Schedules[i];
+            if (item.IsDeleted || !item.TourScheduleId.HasValue)
+            {
+                continue;
+            }
+
+            var schedule = tour.Schedules.FirstOrDefault(x => x.TourScheduleId == item.TourScheduleId.Value);
+            if (schedule is null)
+            {
+                continue;
+            }
+
+            var heldSeats = CountHeldSeats(schedule);
+            if (item.TotalSeats < heldSeats)
+            {
+                ModelState.AddModelError($"Schedules[{i}].TotalSeats", $"Tổng chỗ không được nhỏ hơn {heldSeats} chỗ đang được giữ/đã đặt.");
+            }
+
+            if (item.AvailableSeats > item.TotalSeats - heldSeats)
+            {
+                ModelState.AddModelError($"Schedules[{i}].AvailableSeats", $"Chỗ còn lại tối đa là {Math.Max(item.TotalSeats - heldSeats, 0)} vì lịch này đã giữ {heldSeats} chỗ.");
+            }
         }
     }
 
@@ -2975,14 +3019,16 @@ public class AdminController : Controller
                 tour.Schedules.Add(schedule);
             }
 
-            var reservedSeats = schedule.ReservedSeats;
-            var totalSeats = tour.TotalSeats;
-            var availableSeats = Math.Max(totalSeats - reservedSeats, 0);
+            var heldSeats = CountHeldSeats(schedule);
+            var totalSeats = Math.Max(item.TotalSeats, heldSeats);
+            var maxAvailableSeats = Math.Max(totalSeats - heldSeats, 0);
+            var availableSeats = Math.Min(Math.Max(item.AvailableSeats, 0), maxAvailableSeats);
 
             schedule.DepartureDate = item.DepartureDate!.Value;
             schedule.ReturnDate = item.DepartureDate.Value.AddDays(Math.Max(tour.DurationDays - 1, 0));
             schedule.TotalSeats = totalSeats;
             schedule.AvailableSeats = availableSeats;
+            schedule.ReservedSeats = heldSeats;
             schedule.AdultPrice = item.AdultPrice;
             schedule.ChildPrice = decimal.Round(item.AdultPrice * 0.5m, 0, MidpointRounding.AwayFromZero);
             schedule.InfantPrice = 0m;
@@ -3000,6 +3046,8 @@ public class AdminController : Controller
         {
             tour.BasePrice = activeSchedulePrices.Min();
         }
+
+        RecalculateTourSeatSummary(tour);
     }
 
     private void SyncTourItineraryDays(Tour tour, TourFormViewModel model)
@@ -3141,6 +3189,24 @@ public class AdminController : Controller
     private static string GenerateScheduleCode(long tourId)
     {
         return $"SCH{tourId:D6}{DateTime.UtcNow:HHmmss}{Random.Shared.Next(10, 99)}";
+    }
+
+    private static int CountHeldSeats(TourSchedule schedule)
+    {
+        return schedule.Bookings
+            .Where(x => !IsCancelledStatus(x.BookingStatus))
+            .Sum(x => x.AdultCount + x.ChildCount);
+    }
+
+    private static void RecalculateTourSeatSummary(Tour tour)
+    {
+        var activeSchedules = tour.Schedules
+            .Where(x => x.Status == 1)
+            .ToList();
+
+        tour.TotalSeats = activeSchedules.Sum(x => x.TotalSeats);
+        tour.RemainingSeats = activeSchedules.Sum(x => x.AvailableSeats);
+        tour.UpdatedAt = DateTime.UtcNow;
     }
 
     private static bool IsCancelledStatus(byte status)

@@ -12,15 +12,6 @@
         </div>
     </div>
 
-    @if (TempData["ContractInfoMessage"] is string infoMessage)
-    {
-        <div class="auth-alert auth-alert--success">@infoMessage</div>
-    }
-    @if (TempData["ContractErrorMessage"] is string errorMessage)
-    {
-        <div class="auth-alert auth-alert--error">@errorMessage</div>
-    }
-
     <div class="admin-metrics">
         <div class="admin-stat-card admin-stat-card--orange">
             <span>Chờ Giám đốc ký</span>

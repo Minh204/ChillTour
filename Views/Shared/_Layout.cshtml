@@ -16,6 +16,29 @@
             wishlistCount = DbContext.Wishlists.Count(x => x.UserId == currentUserId);
         }
     }
+
+    var appToastKeys = new[]
+    {
+        ("SuccessMessage", "success", "Thành công"),
+        ("ErrorMessage", "error", "Không thể xử lý"),
+        ("TourSuccessMessage", "success", "Thành công"),
+        ("TourErrorMessage", "error", "Không thể xử lý"),
+        ("PaymentInfoMessage", "info", "Thông báo"),
+        ("PaymentErrorMessage", "error", "Không thể xử lý"),
+        ("BookingSuccessMessage", "success", "Thành công"),
+        ("BookingErrorMessage", "error", "Không thể xử lý"),
+        ("WishlistSuccessMessage", "success", "Danh sách yêu thích"),
+        ("ProfileSuccessMessage", "success", "Thành công"),
+        ("PromotionSuccessMessage", "success", "Thành công"),
+        ("PromotionErrorMessage", "error", "Không thể xử lý"),
+        ("ContactSuccessMessage", "success", "Thành công"),
+        ("ContractInfoMessage", "info", "Thông báo"),
+        ("ContractErrorMessage", "error", "Không thể xử lý")
+    };
+    var appToasts = appToastKeys
+        .Select(x => new { Message = TempData[x.Item1] as string, Type = x.Item2, Title = x.Item3 })
+        .Where(x => !string.IsNullOrWhiteSpace(x.Message))
+        .ToList();
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -308,6 +331,15 @@
         <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@@8.0.8/dist/browser/signalr.min.js"></script>
     }
     <script src="~/js/site.js" asp-append-version="true"></script>
+    @if (appToasts.Count > 0)
+    {
+        <script>
+            (() => {
+                const toasts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(appToasts));
+                toasts.forEach((toast) => window.toastr?.[toast.Type]?.(toast.Message, toast.Title));
+            })();
+        </script>
+    }
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

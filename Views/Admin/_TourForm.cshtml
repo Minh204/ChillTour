@@ -83,21 +83,9 @@
             </label>
 
             <label>
-                Tổng số vé
-                <input asp-for="TotalSeats" class="form-control" />
-                <span asp-validation-for="TotalSeats" class="text-danger"></span>
-            </label>
-
-            <label>
-                Vé còn lại
-                <input asp-for="RemainingSeats" class="form-control" />
-                <span asp-validation-for="RemainingSeats" class="text-danger"></span>
-            </label>
-
-            <label>
                 Giá từ
                 <input asp-for="BasePrice" class="form-control" />
-                <small class="admin-field-help">Giá này sẽ tự đồng bộ theo mức thấp nhất trong các lịch khởi hành khi lưu tour.</small>
+                <small class="admin-field-help">Giá và số chỗ tổng của tour sẽ tự đồng bộ theo các lịch khởi hành khi lưu.</small>
                 <span asp-validation-for="BasePrice" class="text-danger"></span>
             </label>
 
@@ -204,8 +192,18 @@
                                 <input asp-for="Schedules[i].AdultPrice" class="form-control" />
                                 <span asp-validation-for="Schedules[i].AdultPrice" class="text-danger"></span>
                             </label>
+                            <label>
+                                Tổng chỗ
+                                <input asp-for="Schedules[i].TotalSeats" class="form-control" />
+                                <span asp-validation-for="Schedules[i].TotalSeats" class="text-danger"></span>
+                            </label>
+                            <label>
+                                Chỗ còn lại
+                                <input asp-for="Schedules[i].AvailableSeats" class="form-control" />
+                                <span asp-validation-for="Schedules[i].AvailableSeats" class="text-danger"></span>
+                            </label>
                         </div>
-                        <p class="tour-booking-card__note">Giá người lớn được cấu hình riêng theo từng lịch. Trẻ em tự tính 50%, em bé miễn phí.</p>
+                        <p class="tour-booking-card__note">Giá và số chỗ được quản lý riêng theo từng ngày khởi hành. Chỗ còn lại không được lớn hơn tổng chỗ.</p>
                     </div>
                 }
             </div>
@@ -336,8 +334,16 @@
                 Giá người lớn
                 <input name="Schedules[__index__].AdultPrice" class="form-control" value="0" />
             </label>
+            <label>
+                Tổng chỗ
+                <input name="Schedules[__index__].TotalSeats" class="form-control" value="@Model.TotalSeats" />
+            </label>
+            <label>
+                Chỗ còn lại
+                <input name="Schedules[__index__].AvailableSeats" class="form-control" value="@Model.TotalSeats" />
+            </label>
         </div>
-        <p class="tour-booking-card__note">Hệ thống sẽ tự tính ngày kết thúc, số chỗ, giá trẻ em và em bé từ lịch khởi hành này.</p>
+        <p class="tour-booking-card__note">Hệ thống sẽ tự tính ngày kết thúc, giá trẻ em và em bé từ lịch khởi hành này.</p>
     </div>
 </template>
 

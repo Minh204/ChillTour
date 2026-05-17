@@ -1,4 +1,17 @@
 ﻿@using ChillTour.Security
+@{
+    var adminToastKeys = new[]
+    {
+        ("AdminSuccessMessage", "success", "Thành công"),
+        ("AdminErrorMessage", "error", "Không thể xử lý"),
+        ("ContractInfoMessage", "info", "Thông báo"),
+        ("ContractErrorMessage", "error", "Không thể xử lý")
+    };
+    var adminToasts = adminToastKeys
+        .Select(x => new { Message = TempData[x.Item1] as string, Type = x.Item2, Title = x.Item3 })
+        .Where(x => !string.IsNullOrWhiteSpace(x.Message))
+        .ToList();
+}
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -124,6 +137,15 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    @if (adminToasts.Count > 0)
+    {
+        <script>
+            (() => {
+                const toasts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(adminToasts));
+                toasts.forEach((toast) => window.toastr?.[toast.Type]?.(toast.Message, toast.Title));
+            })();
+        </script>
+    }
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

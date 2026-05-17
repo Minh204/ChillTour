@@ -27,6 +27,7 @@ public class Booking
     public string? SpecialRequests { get; set; }
     public long? PromotionId { get; set; }
     public bool IsLastMinuteDeal { get; set; }
+    public DateTime? HoldExpiresAt { get; set; }
     public DateTime? BalanceDueAt { get; set; }
     public DateTime? BalanceReminderSentAt { get; set; }
     public DateTime? FullyPaidAt { get; set; }

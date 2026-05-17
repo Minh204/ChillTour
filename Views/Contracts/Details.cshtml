@@ -10,14 +10,6 @@
 <section class="contract-page">
     <div class="container">
         <div class="contract-shell">
-            @if (TempData["ContractInfoMessage"] is string info)
-            {
-                <div class="auth-alert auth-alert--success">@info</div>
-            }
-            @if (TempData["ContractErrorMessage"] is string error)
-            {
-                <div class="auth-alert auth-alert--error">@error</div>
-            }
             @if (!string.IsNullOrWhiteSpace(Model.DevOtp))
             {
                 <div class="auth-alert auth-alert--warning">Môi trường dev: OTP là <strong>@Model.DevOtp</strong>.</div>

@@ -17,6 +17,8 @@ public class ToursController : Controller
 {
     private const int PageSize = 12;
     private const decimal LastMinuteDiscountRate = 0.15m;
+    private const int StandardHoldMinutes = 30;
+    private const int LastMinuteHoldMinutes = 15;
     private static readonly string[] AllowedReviewImageExtensions = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
     private readonly ChillTourDbContext _dbContext;
     private readonly INotificationService _notificationService;
@@ -645,7 +647,7 @@ public class ToursController : Controller
             return RedirectToAction(nameof(Details), new { slug = tour.Slug });
         }
 
-        if (tour.RemainingSeats < seatsRequested || schedule.AvailableSeats < seatsRequested)
+        if (schedule.AvailableSeats < seatsRequested)
         {
             TempData["TourErrorMessage"] = "Số vé còn lại không đủ để hoàn tất đơn đặt này.";
             return RedirectToAction(nameof(Details), new { slug = tour.Slug });
@@ -682,21 +684,7 @@ public class ToursController : Controller
             return RedirectToAction(nameof(Details), new { slug = tour.Slug });
         }
 
-        var tourRows = await _dbContext.Tours
-            .Where(x => x.TourId == tour.TourId
-                        && x.IsPublished
-                        && x.RemainingSeats >= seatsRequested)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(x => x.RemainingSeats, x => x.RemainingSeats - seatsRequested)
-                .SetProperty(x => x.UpdatedAt, reservedAt),
-                cancellationToken);
-
-        if (tourRows == 0)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            TempData["TourErrorMessage"] = "Rất tiếc, kho vé của tour vừa thay đổi. Vui lòng tải lại trang và thử lại.";
-            return RedirectToAction(nameof(Details), new { slug = tour.Slug });
-        }
+        await SyncTourSeatSummaryAsync(tour.TourId, reservedAt, cancellationToken);
 
         var bookingCode = await GenerateBookingCodeAsync(cancellationToken);
         var childPrice = decimal.Round(schedule.AdultPrice * 0.5m, 0, MidpointRounding.AwayFromZero);
@@ -714,6 +702,7 @@ public class ToursController : Controller
             : 0m;
         var totalAmount = Math.Max(subtotal - lastMinuteDiscountAmount, 0m);
         var balanceDueAt = schedule.DepartureDate.ToDateTime(TimeOnly.MinValue).AddDays(-5);
+        var holdExpiresAt = reservedAt.AddMinutes(isLastMinuteDeal ? LastMinuteHoldMinutes : StandardHoldMinutes);
 
         var booking = new Booking
         {
@@ -740,6 +729,7 @@ public class ToursController : Controller
             PaymentStatus = 0,
             SpecialRequests = string.IsNullOrWhiteSpace(form.SpecialRequests) ? null : form.SpecialRequests.Trim(),
             IsLastMinuteDeal = isLastMinuteDeal,
+            HoldExpiresAt = holdExpiresAt,
             BalanceDueAt = balanceDueAt,
             CreatedAt = reservedAt
         };
@@ -772,6 +762,27 @@ public class ToursController : Controller
         return string.IsNullOrWhiteSpace(slug)
             ? RedirectToAction(nameof(Index))
             : RedirectToAction(nameof(Details), new { slug });
+    }
+
+    private async Task SyncTourSeatSummaryAsync(long tourId, DateTime updatedAt, CancellationToken cancellationToken)
+    {
+        var seatSummary = await _dbContext.TourSchedules
+            .Where(x => x.TourId == tourId && x.Status == 1)
+            .GroupBy(x => x.TourId)
+            .Select(x => new
+            {
+                TotalSeats = x.Sum(s => s.TotalSeats),
+                RemainingSeats = x.Sum(s => s.AvailableSeats)
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        await _dbContext.Tours
+            .Where(x => x.TourId == tourId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.TotalSeats, seatSummary == null ? 0 : seatSummary.TotalSeats)
+                .SetProperty(x => x.RemainingSeats, seatSummary == null ? 0 : seatSummary.RemainingSeats)
+                .SetProperty(x => x.UpdatedAt, updatedAt),
+                cancellationToken);
     }
 
     private async Task<string> GenerateBookingCodeAsync(CancellationToken cancellationToken)

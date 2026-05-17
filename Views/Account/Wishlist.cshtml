@@ -16,11 +16,6 @@
                 <p>Lưu lại các hành trình bạn đang cân nhắc để quay lại xem lịch khởi hành, giá và số chỗ còn lại nhanh hơn.</p>
             </div>
 
-            @if (TempData["WishlistSuccessMessage"] is string successMessage)
-            {
-                <div class="auth-alert auth-alert--success">@successMessage</div>
-            }
-
             <form method="get" class="booking-history-filter wishlist-filter app-filter-row">
                 <label>
                     Từ khóa

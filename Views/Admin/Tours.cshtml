@@ -12,15 +12,6 @@
         <a asp-action="CreateTour" class="btn btn-primary nav-cta">Thêm tour</a>
     </div>
 
-    @if (TempData["AdminSuccessMessage"] is string successMessage)
-    {
-        <div class="auth-alert auth-alert--success">@successMessage</div>
-    }
-    @if (TempData["AdminErrorMessage"] is string errorMessage)
-    {
-        <div class="auth-alert auth-alert--error">@errorMessage</div>
-    }
-
     <section class="admin-panel">
         <form method="get" class="admin-form-grid app-filter-row mb-4">
             <input type="hidden" name="page" value="1" />

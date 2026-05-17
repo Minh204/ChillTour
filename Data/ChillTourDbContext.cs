@@ -263,6 +263,7 @@ public class ChillTourDbContext : DbContext
             entity.Property(x => x.ServiceFee).HasPrecision(18, 2);
             entity.Property(x => x.TotalAmount).HasPrecision(18, 2);
             entity.Property(x => x.PaidAmount).HasPrecision(18, 2);
+            entity.HasIndex(x => x.HoldExpiresAt);
             entity.HasOne(x => x.User).WithMany(x => x.Bookings).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.Tour).WithMany(x => x.Bookings).HasForeignKey(x => x.TourId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.TourSchedule).WithMany(x => x.Bookings).HasForeignKey(x => x.TourScheduleId).OnDelete(DeleteBehavior.Restrict);

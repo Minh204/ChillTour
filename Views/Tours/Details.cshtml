@@ -469,16 +469,4 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script src="~/pages/tours/details.js" asp-append-version="true"></script>
-    <script>
-        (() => {
-            const successMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["TourSuccessMessage"] as string ?? string.Empty));
-            const errorMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["TourErrorMessage"] as string ?? string.Empty));
-            if (successMessage) {
-                window.ChillTourToast?.(successMessage, 'success', 'Thông báo');
-            }
-            if (errorMessage) {
-                window.ChillTourToast?.(errorMessage, 'error', 'Thông báo');
-            }
-        })();
-    </script>
 }

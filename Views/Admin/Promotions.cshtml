@@ -13,15 +13,6 @@
         <a asp-action="CreatePromotion" class="btn btn-primary nav-cta">Thêm ưu đãi</a>
     </div>
 
-    @if (TempData["AdminSuccessMessage"] is string successMessage)
-    {
-        <div class="auth-alert auth-alert--success">@successMessage</div>
-    }
-    @if (TempData["AdminErrorMessage"] is string errorMessage)
-    {
-        <div class="auth-alert auth-alert--error">@errorMessage</div>
-    }
-
     <div class="admin-overview-grid">
         <article class="admin-stat-card">
             <span class="admin-panel__label">Total</span>

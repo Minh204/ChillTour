@@ -24,6 +24,7 @@ public class PaymentCheckoutViewModel
     public bool CanPayDeposit { get; set; }
     public bool CanPayFull { get; set; }
     public bool IsFullyPaid { get; set; }
+    public DateTime? HoldExpiresAt { get; set; }
     public DateTime? BalanceDueAt { get; set; }
     public byte BookingStatus { get; set; }
     public byte PaymentStatus { get; set; }

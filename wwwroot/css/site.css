@@ -687,6 +687,305 @@ input:focus {
   gap: 1.5rem;
 }
 
+.account-settings-page {
+  position: relative;
+  padding: 0 0 4.5rem;
+  background:
+    radial-gradient(circle at 10% 8%, rgba(37, 99, 235, 0.13), transparent 28rem),
+    linear-gradient(180deg, #f4f8ff 0%, #ffffff 58%);
+}
+
+.account-settings-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 3.25rem 0 2.2rem;
+  min-height: 250px;
+}
+
+.account-settings-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(244, 248, 255, 0.96) 0%, rgba(244, 248, 255, 0.75) 48%, rgba(244, 248, 255, 0.2) 100%),
+    url("data:image/svg+xml,%3Csvg width='860' height='260' viewBox='0 0 860 260' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath opacity='.22' d='M430 202 548 74l70 82 56-64 98 110H430Z' fill='%232563eb'/%3E%3Cpath opacity='.14' d='M580 160c32-48 68-50 104-6' stroke='%232563eb' stroke-width='18' stroke-linecap='round'/%3E%3Ccircle opacity='.18' cx='730' cy='48' r='34' fill='%232563eb'/%3E%3Cpath opacity='.2' d='M200 110c26 0 26 34 52 34s26-34 52-34 26 34 52 34' stroke='%232563eb' stroke-width='5' stroke-dasharray='12 16' stroke-linecap='round'/%3E%3Cpath opacity='.2' d='M170 86c8-10 18-10 28 0M338 74c8-10 18-10 28 0M416 112c8-10 18-10 28 0' stroke='%232563eb' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E") right 8% top 18px / min(56vw, 860px) auto no-repeat;
+  pointer-events: none;
+}
+
+.account-settings-hero .container,
+.account-settings-layout {
+  position: relative;
+  z-index: 1;
+}
+
+.account-settings-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 1.2rem;
+  color: rgba(13, 38, 75, 0.58);
+  font-weight: 600;
+}
+
+.account-settings-breadcrumb a {
+  color: rgba(13, 38, 75, 0.58);
+  text-decoration: none;
+}
+
+.account-settings-breadcrumb a:hover {
+  color: var(--primary);
+}
+
+.account-settings-hero__content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.account-settings-hero h1 {
+  margin: 0.65rem 0 0.7rem;
+  color: #102a4c;
+  font-size: clamp(2.15rem, 4vw, 3.65rem);
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.account-settings-hero p {
+  max-width: 560px;
+  margin: 0;
+  color: rgba(13, 38, 75, 0.72);
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.account-settings-hero__badge {
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ff8a00, #ffb347);
+  box-shadow: 0 20px 42px rgba(255, 138, 0, 0.24);
+}
+
+.account-settings-hero__badge span {
+  color: #fff;
+  font-size: 2.25rem;
+  font-weight: 800;
+}
+
+.account-settings-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.6rem;
+  align-items: start;
+}
+
+.account-settings-card {
+  min-width: 0;
+  padding: clamp(1.5rem, 3vw, 2rem);
+  border: 1px solid rgba(128, 151, 179, 0.24);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 22px 55px rgba(20, 51, 93, 0.11);
+}
+
+.account-settings-card__head {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1.7rem;
+}
+
+.account-settings-card__head h2 {
+  margin: 0 0 0.35rem;
+  color: #102a4c;
+  font-size: clamp(1.25rem, 2vw, 1.55rem);
+  font-weight: 800;
+}
+
+.account-settings-card__head p {
+  margin: 0;
+  color: rgba(13, 38, 75, 0.66);
+  line-height: 1.55;
+}
+
+.account-settings-card__icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+}
+
+.account-settings-card__icon svg {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.account-settings-card__icon--blue {
+  color: #1066ff;
+  background: #e9f1ff;
+}
+
+.account-settings-card__icon--green {
+  color: #0aa968;
+  background: #ddf8ea;
+}
+
+.account-settings-form {
+  display: grid;
+  gap: 1.15rem;
+}
+
+.account-settings-form label {
+  display: grid;
+  gap: 0.55rem;
+  color: #102a4c;
+  font-weight: 700;
+}
+
+.account-settings-input {
+  position: relative;
+  display: block;
+}
+
+.account-settings-input > svg {
+  position: absolute;
+  top: 50%;
+  left: 1rem;
+  z-index: 2;
+  width: 21px;
+  height: 21px;
+  transform: translateY(-50%);
+  fill: none;
+  stroke: #5d7594;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.account-settings-input .form-control {
+  width: 100%;
+  min-height: 54px;
+  padding: 0.85rem 3.2rem 0.85rem 3.05rem;
+  border: 1px solid rgba(128, 151, 179, 0.34);
+  border-radius: 16px;
+  background: #fff;
+  color: #102a4c;
+  font-weight: 600;
+  box-shadow: 0 12px 25px rgba(23, 67, 124, 0.04);
+}
+
+.account-settings-input .form-control:focus {
+  border-color: rgba(16, 102, 255, 0.58);
+  box-shadow: 0 0 0 4px rgba(16, 102, 255, 0.1);
+}
+
+.account-settings-input .form-control[readonly] {
+  background: #f7f9fc;
+  color: rgba(16, 42, 76, 0.8);
+}
+
+.account-settings-eye {
+  position: absolute;
+  top: 50%;
+  right: 0.7rem;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #5d7594;
+  transform: translateY(-50%);
+}
+
+.account-settings-eye:hover,
+.account-settings-eye.is-visible {
+  background: #eef5ff;
+  color: var(--primary);
+}
+
+.account-settings-eye svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.account-settings-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  min-height: 54px;
+  margin-top: 0.35rem;
+  border: 0;
+  border-radius: 16px;
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 18px 36px rgba(16, 102, 255, 0.22);
+}
+
+.account-settings-submit svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.account-settings-submit--primary {
+  background: linear-gradient(135deg, #1066ff, #0b56d8);
+}
+
+.account-settings-submit--success {
+  background: linear-gradient(135deg, #18c77a, #06995c);
+  box-shadow: 0 18px 36px rgba(6, 153, 92, 0.22);
+}
+
+.account-settings-submit:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.02);
+}
+
+.account-settings-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin: 0.25rem 0 0;
+  color: rgba(13, 38, 75, 0.62);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.account-settings-note span {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #11a96b;
+  color: #11a96b;
+  font-size: 0.72rem;
+}
+
 .auth-card__intro h1 {
   margin: 0.85rem 0 0.65rem;
   font-size: clamp(2rem, 4vw, 3rem);
@@ -1494,6 +1793,58 @@ input:focus {
 }
 
 @media (max-width: 767.98px) {
+    .account-settings-hero {
+        padding: 2rem 0 1.35rem;
+        min-height: auto;
+    }
+
+    .account-settings-hero::before {
+        background:
+            linear-gradient(180deg, rgba(244, 248, 255, 0.94) 0%, rgba(244, 248, 255, 0.82) 100%),
+            url("data:image/svg+xml,%3Csvg width='420' height='160' viewBox='0 0 420 160' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath opacity='.18' d='M166 140 252 48l46 54 38-42 68 80H166Z' fill='%232563eb'/%3E%3Ccircle opacity='.16' cx='344' cy='32' r='24' fill='%232563eb'/%3E%3C/svg%3E") right top / 80vw auto no-repeat;
+    }
+
+    .account-settings-hero__content {
+        align-items: flex-start;
+    }
+
+    .account-settings-hero h1 {
+        font-size: clamp(2rem, 11vw, 2.85rem);
+    }
+
+    .account-settings-hero__badge {
+        width: 64px;
+        height: 64px;
+    }
+
+    .account-settings-hero__badge span {
+        font-size: 1.55rem;
+    }
+
+    .account-settings-layout {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .account-settings-card {
+        padding: 1.25rem;
+        border-radius: 20px;
+    }
+
+    .account-settings-card__head {
+        align-items: flex-start;
+    }
+
+    .account-settings-card__icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 16px;
+    }
+
+    .account-settings-input .form-control {
+        min-height: 52px;
+    }
+
     .site-header {
         padding: 0.75rem 0;
     }

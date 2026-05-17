@@ -315,6 +315,28 @@ public partial class DbSeeder
                                         END;
                                         """;
 
+        const string addHoldExpiresSql = """
+                                         IF COL_LENGTH('booking.Bookings', 'HoldExpiresAt') IS NULL
+                                         BEGIN
+                                             ALTER TABLE booking.Bookings
+                                             ADD HoldExpiresAt DATETIME2(0) NULL;
+                                         END;
+                                         """;
+
+        const string backfillHoldExpiresSql = """
+                                              IF COL_LENGTH('booking.Bookings', 'HoldExpiresAt') IS NOT NULL
+                                              BEGIN
+                                                  EXEC('
+                                                      UPDATE booking.Bookings
+                                                      SET HoldExpiresAt = DATEADD(MINUTE, CASE WHEN IsLastMinuteDeal = 1 THEN 15 ELSE 30 END, CreatedAt)
+                                                      WHERE HoldExpiresAt IS NULL
+                                                        AND BookingStatus = 0
+                                                        AND PaymentStatus = 0
+                                                        AND PaidAmount = 0;
+                                                  ');
+                                              END;
+                                              """;
+
         const string addFullyPaidSql = """
                                        IF COL_LENGTH('booking.Bookings', 'FullyPaidAt') IS NULL
                                        BEGIN
@@ -395,7 +417,7 @@ public partial class DbSeeder
                                                  ELSE PaymentStatus
                                              END,
                                              BookingStatus = CASE
-                                                 WHEN BookingStatus IN (4, 5, 9, 10) THEN BookingStatus
+                                                 WHEN BookingStatus IN (3, 4, 5, 9, 10) THEN BookingStatus
                                                  WHEN PaidAmount >= TotalAmount AND TotalAmount > 0 THEN 8
                                                  WHEN PaidAmount > 0 THEN 2
                                                  ELSE BookingStatus
@@ -406,6 +428,8 @@ public partial class DbSeeder
 
         await _dbContext.Database.ExecuteSqlRawAsync(addPaidAmountSql, cancellationToken);
         await _dbContext.Database.ExecuteSqlRawAsync(addBalanceDueSql, cancellationToken);
+        await _dbContext.Database.ExecuteSqlRawAsync(addHoldExpiresSql, cancellationToken);
+        await _dbContext.Database.ExecuteSqlRawAsync(backfillHoldExpiresSql, cancellationToken);
         await _dbContext.Database.ExecuteSqlRawAsync(addFullyPaidSql, cancellationToken);
         await _dbContext.Database.ExecuteSqlRawAsync(addBalanceReminderSql, cancellationToken);
         await _dbContext.Database.ExecuteSqlRawAsync(updateBookingStatusConstraintSql, cancellationToken);

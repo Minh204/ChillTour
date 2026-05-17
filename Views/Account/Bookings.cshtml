@@ -48,15 +48,6 @@
                 </div>
             </section>
 
-            @if (TempData["BookingSuccessMessage"] is string bookingSuccessMessage)
-            {
-                <div class="auth-alert auth-alert--success">@bookingSuccessMessage</div>
-            }
-            @if (TempData["BookingErrorMessage"] is string bookingErrorMessage)
-            {
-                <div class="auth-alert auth-alert--error">@bookingErrorMessage</div>
-            }
-
             <form method="get" class="customer-profile-filter">
                 <input type="hidden" name="sortOrder" value="@Model.SortOrder" />
                 <label>

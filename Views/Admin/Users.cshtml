@@ -20,15 +20,6 @@
         </a>
     </div>
 
-    @if (TempData["AdminSuccessMessage"] is string successMessage)
-    {
-        <div class="auth-alert auth-alert--success">@successMessage</div>
-    }
-    @if (TempData["AdminErrorMessage"] is string errorMessage)
-    {
-        <div class="auth-alert auth-alert--error">@errorMessage</div>
-    }
-
     <div class="admin-metrics admin-users-metrics">
         <div class="admin-stat-card admin-user-stat admin-user-stat--blue">
             <div class="admin-user-stat__icon" aria-hidden="true">U</div>

@@ -30,15 +30,6 @@
             <p>Chọn mã phù hợp với giá trị đơn hàng, áp dụng ngay ở bước thanh toán.</p>
         </div>
 
-        @if (TempData["PromotionSuccessMessage"] is string successMessage)
-        {
-            <div class="auth-alert auth-alert--success">@successMessage</div>
-        }
-        @if (TempData["PromotionErrorMessage"] is string errorMessage)
-        {
-            <div class="auth-alert auth-alert--error">@errorMessage</div>
-        }
-
         <form method="get" class="admin-form-grid app-filter-row mb-4">
             <label>
                 Từ khóa

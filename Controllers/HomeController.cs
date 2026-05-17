@@ -106,15 +106,15 @@ namespace ChillTour.Controllers
                         RouteName = x.StartDestination.DestinationName + " - " + x.EndDestination.DestinationName,
                         ShortDescription = x.ShortDescription,
                         ImageUrl = x.MediaItems.OrderByDescending(m => m.IsPrimary).ThenBy(m => m.DisplayOrder).Select(m => m.MediaUrl).FirstOrDefault() ?? x.MainImageUrl,
-                        BasePrice = x.Schedules.Where(s => s.Status == 1).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice,
-                        DepartureDate = x.Schedules.Where(s => s.Status == 1).OrderBy(s => s.DepartureDate).Select(s => (DateOnly?)s.DepartureDate).FirstOrDefault(),
+                        BasePrice = x.Schedules.Where(s => s.Status == 1 && s.DepartureDate >= today).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice,
+                        DepartureDate = x.Schedules.Where(s => s.Status == 1 && s.DepartureDate >= today).OrderBy(s => s.DepartureDate).Select(s => (DateOnly?)s.DepartureDate).FirstOrDefault(),
                         DurationDays = x.DurationDays,
                         DurationNights = x.DurationNights,
-                        RemainingSeats = x.RemainingSeats,
+                        RemainingSeats = x.Schedules.Where(s => s.Status == 1 && s.DepartureDate >= today).OrderBy(s => s.DepartureDate).Select(s => (int?)s.AvailableSeats).FirstOrDefault() ?? x.RemainingSeats,
                         IsFeatured = x.IsFeatured,
                         AverageRating = x.Reviews.Count == 0 ? 0 : x.Reviews.Average(r => r.Rating),
                         ReviewCount = x.Reviews.Count,
-                        TotalSeats = x.Schedules.Where(s => s.Status == 1).OrderBy(s => s.DepartureDate).Select(s => (int?)s.TotalSeats).FirstOrDefault() ?? x.TotalSeats,
+                        TotalSeats = x.Schedules.Where(s => s.Status == 1 && s.DepartureDate >= today).OrderBy(s => s.DepartureDate).Select(s => (int?)s.TotalSeats).FirstOrDefault() ?? x.TotalSeats,
                         IsLastMinute = x.Schedules.Any(s => s.Status == 1 && s.DepartureDate >= today && s.DepartureDate <= lastMinuteLimit)
                     })
                     .Take(8)
@@ -171,15 +171,15 @@ namespace ChillTour.Controllers
                         RouteName = x.StartDestination.DestinationName + " - " + x.EndDestination.DestinationName,
                         ShortDescription = x.ShortDescription,
                         ImageUrl = x.MediaItems.OrderByDescending(m => m.IsPrimary).ThenBy(m => m.DisplayOrder).Select(m => m.MediaUrl).FirstOrDefault() ?? x.MainImageUrl,
-                        BasePrice = x.Schedules.Where(s => s.Status == 1).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice,
-                        DepartureDate = x.Schedules.Where(s => s.Status == 1).OrderBy(s => s.DepartureDate).Select(s => (DateOnly?)s.DepartureDate).FirstOrDefault(),
+                        BasePrice = x.Schedules.Where(s => s.Status == 1 && s.DepartureDate >= today).OrderBy(s => s.AdultPrice).Select(s => (decimal?)s.AdultPrice).FirstOrDefault() ?? x.BasePrice,
+                        DepartureDate = x.Schedules.Where(s => s.Status == 1 && s.DepartureDate >= today).OrderBy(s => s.DepartureDate).Select(s => (DateOnly?)s.DepartureDate).FirstOrDefault(),
                         DurationDays = x.DurationDays,
                         DurationNights = x.DurationNights,
-                        RemainingSeats = x.RemainingSeats,
+                        RemainingSeats = x.Schedules.Where(s => s.Status == 1 && s.DepartureDate >= today).OrderBy(s => s.DepartureDate).Select(s => (int?)s.AvailableSeats).FirstOrDefault() ?? x.RemainingSeats,
                         IsFeatured = x.IsFeatured,
                         AverageRating = x.Reviews.Count == 0 ? 0 : x.Reviews.Average(r => r.Rating),
                         ReviewCount = x.Reviews.Count,
-                        TotalSeats = x.Schedules.Where(s => s.Status == 1).OrderBy(s => s.DepartureDate).Select(s => (int?)s.TotalSeats).FirstOrDefault() ?? x.TotalSeats,
+                        TotalSeats = x.Schedules.Where(s => s.Status == 1 && s.DepartureDate >= today).OrderBy(s => s.DepartureDate).Select(s => (int?)s.TotalSeats).FirstOrDefault() ?? x.TotalSeats,
                         IsLastMinute = x.Schedules.Any(s => s.Status == 1 && s.DepartureDate >= today && s.DepartureDate <= lastMinuteLimit)
                     })
                     .Take(8)

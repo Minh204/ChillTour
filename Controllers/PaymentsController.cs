@@ -75,6 +75,12 @@ public class PaymentsController : Controller
             return NotFound();
         }
 
+        if (await CancelExpiredHoldAsync(booking, userId.Value, cancellationToken))
+        {
+            TempData["PaymentErrorMessage"] = $"Đơn {booking.BookingCode} đã hết hạn giữ chỗ vì chưa thanh toán. Vui lòng đặt lại tour nếu bạn vẫn muốn tham gia.";
+            return RedirectToAction("Details", "Tours", new { slug = booking.Tour.Slug });
+        }
+
         NormalizeBookingPaidAmount(booking);
         var remainingAmount = CalculateRemainingAmount(booking);
         var hasPaymentWaitingForVerification = booking.PaymentStatus == PaymentPendingVerification;
@@ -112,6 +118,7 @@ public class PaymentsController : Controller
             CanPayDeposit = canPay && !mustPayFull && booking.PaidAmount <= 0m,
             CanPayFull = canPay,
             IsFullyPaid = remainingAmount <= 0m || booking.PaymentStatus == PaymentFullyPaid,
+            HoldExpiresAt = booking.HoldExpiresAt,
             BalanceDueAt = booking.BalanceDueAt,
             BookingStatus = booking.BookingStatus,
             PaymentStatus = booking.PaymentStatus,
@@ -336,6 +343,12 @@ public class PaymentsController : Controller
             return NotFound();
         }
 
+        if (await CancelExpiredHoldAsync(booking, userId.Value, cancellationToken))
+        {
+            TempData["PaymentErrorMessage"] = $"Đơn {booking.BookingCode} đã hết hạn giữ chỗ vì chưa thanh toán. Vui lòng đặt lại tour.";
+            return RedirectToAction("Details", "Tours", new { slug = booking.Tour.Slug });
+        }
+
         NormalizeBookingPaidAmount(booking);
         var remainingAmount = CalculateRemainingAmount(booking);
         if (booking.PaymentStatus == PaymentPendingVerification)
@@ -419,11 +432,19 @@ public class PaymentsController : Controller
 
         var booking = await _dbContext.Bookings
             .Include(x => x.Payments)
+            .Include(x => x.Tour)
+            .Include(x => x.TourSchedule)
             .SingleOrDefaultAsync(x => x.BookingId == bookingId && x.UserId == userId.Value, cancellationToken);
 
         if (booking is null)
         {
             return NotFound();
+        }
+
+        if (await CancelExpiredHoldAsync(booking, userId.Value, cancellationToken))
+        {
+            TempData["PaymentErrorMessage"] = $"Đơn {booking.BookingCode} đã hết hạn giữ chỗ vì chưa thanh toán. Vui lòng đặt lại tour.";
+            return RedirectToAction("Details", "Tours", new { slug = booking.Tour.Slug });
         }
 
         NormalizeBookingPaidAmount(booking);
@@ -499,11 +520,18 @@ public class PaymentsController : Controller
 
         var booking = await _dbContext.Bookings
             .Include(x => x.Payments)
+            .Include(x => x.Tour)
+            .Include(x => x.TourSchedule)
             .SingleOrDefaultAsync(x => x.BookingId == bookingId && x.UserId == userId.Value, cancellationToken);
 
         if (booking is null)
         {
             return NotFound(new { success = false, message = "Không tìm thấy đơn đặt tour." });
+        }
+
+        if (await CancelExpiredHoldAsync(booking, userId.Value, cancellationToken))
+        {
+            return BadRequest(new { success = false, message = $"Đơn {booking.BookingCode} đã hết hạn giữ chỗ vì chưa thanh toán. Vui lòng đặt lại tour.", redirectUrl = Url.Action("Details", "Tours", new { slug = booking.Tour.Slug }) });
         }
 
         NormalizeBookingPaidAmount(booking);
@@ -1035,6 +1063,73 @@ public class PaymentsController : Controller
         payment.Booking.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<bool> CancelExpiredHoldAsync(Booking booking, long userId, CancellationToken cancellationToken)
+    {
+        if (!IsExpiredUnpaidHold(booking))
+        {
+            return false;
+        }
+
+        var oldStatus = booking.BookingStatus;
+        var bookedSeats = booking.AdultCount + booking.ChildCount;
+        var now = DateTime.UtcNow;
+        const string cancellationReason = "Hệ thống tự động hủy do quá hạn giữ chỗ nhưng chưa thanh toán.";
+
+        booking.BookingStatus = BookingCancelled;
+        booking.PaymentStatus = PaymentFailed;
+        booking.CancelledAt = now;
+        booking.CancellationReason = cancellationReason;
+        booking.UpdatedAt = now;
+
+        booking.Tour.RemainingSeats += bookedSeats;
+        booking.Tour.UpdatedAt = now;
+        booking.TourSchedule.AvailableSeats += bookedSeats;
+        booking.TourSchedule.ReservedSeats = Math.Max(booking.TourSchedule.ReservedSeats - bookedSeats, 0);
+        booking.TourSchedule.UpdatedAt = now;
+
+        foreach (var payment in booking.Payments.Where(x => x.PaymentStatus == PaymentPending && string.IsNullOrWhiteSpace(x.TransactionReference)))
+        {
+            payment.PaymentStatus = PaymentFailed;
+            payment.PaidAt = null;
+            payment.FailureReason = cancellationReason;
+            payment.UpdatedAt = now;
+        }
+
+        _dbContext.BookingStatusHistories.Add(new BookingStatusHistory
+        {
+            BookingId = booking.BookingId,
+            OldStatus = oldStatus,
+            NewStatus = BookingCancelled,
+            ChangedByUserId = userId,
+            Notes = cancellationReason,
+            ChangedAt = now
+        });
+
+        await _notificationService.CreateAsync(
+            booking.UserId,
+            notificationType: 4,
+            title: "Đơn nháp đã tự động hủy",
+            message: $"Đơn {booking.BookingCode} đã bị hủy vì quá hạn giữ chỗ nhưng chưa thanh toán. Ghế đã được mở bán lại.",
+            relatedEntityType: "Booking",
+            relatedEntityId: booking.BookingId,
+            cancellationToken: cancellationToken);
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    private static bool IsExpiredUnpaidHold(Booking booking)
+    {
+        return booking.BookingStatus == BookingPendingPayment
+               && booking.PaymentStatus == PaymentPending
+               && booking.PaidAmount <= 0m
+               && booking.HoldExpiresAt.HasValue
+               && booking.HoldExpiresAt.Value <= DateTime.UtcNow
+               && !booking.Payments.Any(x =>
+                   x.PaymentStatus is PaymentDepositPaid or PaymentFullyPaid
+                   || !string.IsNullOrWhiteSpace(x.TransactionReference));
     }
 
     private static string PaymentStatusLabel(byte status) => status switch

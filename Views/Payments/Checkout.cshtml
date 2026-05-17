@@ -4,6 +4,7 @@
     ViewData["Title"] = "Thanh toán tour";
 
     var dueDateText = Model.BalanceDueAt?.ToString("dd/MM/yyyy") ?? Model.DepartureDate.AddDays(-5).ToString("dd/MM/yyyy");
+    var holdExpiresText = Model.HoldExpiresAt?.ToLocalTime().ToString("HH:mm dd/MM/yyyy");
     var isCancelled = Model.BookingStatus == 4;
     var paymentStatusText = isCancelled
         ? "Đơn đã hủy"
@@ -48,7 +49,13 @@
                 <header class="payment-redesign-hero">
                     <span class="eyebrow">Thanh toán</span>
                     <h1>Thanh toán tour</h1>
-                    <p>Đặt cọc 30% hoặc thanh toán toàn bộ trước @dueDateText để giữ chỗ.</p>
+                    <p>
+                        Đặt cọc 30% hoặc thanh toán toàn bộ trước @dueDateText để giữ chỗ.
+                        @if (Model.PaidAmount <= 0m && !string.IsNullOrWhiteSpace(holdExpiresText))
+                        {
+                            <span>Đơn nháp được giữ đến @holdExpiresText.</span>
+                        }
+                    </p>
                 </header>
 
                 <div class="payment-redesign-trust">
@@ -74,7 +81,7 @@
                         <div class="payment-booking-cell">
                             <span>Trạng thái</span>
                             <strong class="payment-status-pill">@paymentStatusText</strong>
-                            <p>Hạn thanh toán: @dueDateText</p>
+                            <p>@(Model.PaidAmount <= 0m && !string.IsNullOrWhiteSpace(holdExpiresText) ? $"Hạn giữ chỗ: {holdExpiresText}" : $"Hạn thanh toán: {dueDateText}")</p>
                         </div>
                         <div class="payment-booking-cell">
                             <span>Đã thanh toán</span>
@@ -341,14 +348,6 @@
 @section Scripts {
     <script>
         (() => {
-            const paymentInfoMessage = @Html.Raw(JsonSerializer.Serialize(TempData["PaymentInfoMessage"] as string ?? string.Empty));
-            const paymentErrorMessage = @Html.Raw(JsonSerializer.Serialize(TempData["PaymentErrorMessage"] as string ?? string.Empty));
-            if (paymentInfoMessage) {
-                window.ChillTourToast?.(paymentInfoMessage, 'success', 'Thanh toán');
-            }
-            if (paymentErrorMessage) {
-                window.ChillTourToast?.(paymentErrorMessage, 'error', 'Thanh toán');
-            }
 
             const qrImage = document.querySelector('[data-sepay-qr]');
             const placeholder = document.querySelector('[data-sepay-placeholder]');

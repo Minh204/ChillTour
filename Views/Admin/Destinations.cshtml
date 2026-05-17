@@ -12,15 +12,6 @@
         <a asp-action="CreateDestination" class="btn btn-primary nav-cta">Thêm điểm đến</a>
     </div>
 
-    @if (TempData["AdminSuccessMessage"] is string successMessage)
-    {
-        <div class="auth-alert auth-alert--success">@successMessage</div>
-    }
-    @if (TempData["AdminErrorMessage"] is string errorMessage)
-    {
-        <div class="auth-alert auth-alert--error">@errorMessage</div>
-    }
-
     <section class="admin-panel">
         <form method="get" class="admin-form-grid app-filter-row mb-4">
             <label>
