@@ -142,10 +142,11 @@
                                     </span>
                                 </td>
                                 <td>
+                                    <div class="admin-order-actions">
                                     @if (canEditBookingStatus && !booking.IsStatusLocked)
                                     {
                                         <button type="button"
-                                                class="btn btn-primary btn-sm"
+                                                class="btn btn-primary btn-sm admin-order-actions__edit"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#editOrderStatusModal"
                                                 data-booking-id="@booking.BookingId"
@@ -157,61 +158,69 @@
                                     else if (booking.IsStatusLocked)
                                     {
                                         <button type="button"
-                                                class="btn btn-primary btn-sm"
+                                                class="btn btn-primary btn-sm admin-order-actions__edit"
                                                 data-locked-edit
                                                 data-locked-reason="@(booking.IsCompletedByDeparture ? "Đơn đã quá ngày khởi hành nên được xem là đã hoàn thành và không thể sửa." : $"Đơn {booking.BookingStatusText.ToLower()} nên không thể sửa trạng thái.")">
                                             Sửa
                                         </button>
                                     }
-                                    @if (booking.HasPaymentToVerify && canManageBookings && booking.LatestPaymentId.HasValue)
-                                    {
-                                        <form asp-action="VerifyPayment" method="post" class="admin-row-action-form">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="paymentId" value="@booking.LatestPaymentId" />
-                                            <input type="hidden" name="currentPage" value="@Model.CurrentPage" />
-                                            <button type="submit" name="isValid" value="true" class="btn btn-success btn-sm">Xác nhận tiền</button>
-                                            <button type="submit" name="isValid" value="false" class="btn btn-outline-danger btn-sm" onclick="return confirm('Từ chối giao dịch này?');">Sai giao dịch</button>
-                                        </form>
-                                    }
-                                    @if (booking.BookingStatus == 10 && canManageBookings)
-                                    {
-                                        <form asp-action="CompleteRefund" method="post" class="admin-row-action-form" onsubmit="return confirm('Xác nhận đã hoàn tiền cho đơn này?');">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="bookingId" value="@booking.BookingId" />
-                                            <input type="hidden" name="currentPage" value="@Model.CurrentPage" />
-                                            <button type="submit" class="btn btn-success btn-sm">Đã hoàn tiền</button>
-                                        </form>
-                                    }
-                                    <button type="button"
-                                            class="btn btn-outline-primary btn-sm"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#orderDetailModal"
-                                            data-booking-code="@booking.BookingCode"
-                                            data-customer-name="@booking.CustomerName"
-                                            data-contact-name="@booking.ContactName"
-                                            data-contact-email="@booking.ContactEmail"
-                                            data-contact-phone="@booking.ContactPhone"
-                                            data-tour-name="@booking.TourName"
-                                            data-tour-code="@booking.TourCode"
-                                            data-departure-date="@booking.DepartureDate.ToString("dd/MM/yyyy")"
-                                            data-return-date="@booking.ReturnDate.ToString("dd/MM/yyyy")"
-                                            data-adult-count="@booking.AdultCount"
-                                            data-child-count="@booking.ChildCount"
-                                            data-infant-count="@booking.InfantCount"
-                                            data-travelers="@booking.Travelers"
-                                            data-total-amount="@booking.TotalAmount.ToString("N0") đ"
-                                            data-paid-amount="@booking.PaidAmount.ToString("N0") đ"
-                                            data-remaining-amount="@booking.RemainingAmount.ToString("N0") đ"
-                                            data-booking-status="@booking.BookingStatusText"
-                                            data-payment-code="@booking.LatestPaymentCode"
-                                            data-payment-transaction="@booking.LatestPaymentTransactionReference"
-                                            data-payment-confirmed-by="@(string.IsNullOrWhiteSpace(booking.PaymentConfirmedByName) ? "Chưa có log" : booking.PaymentConfirmedByName)"
-                                            data-payment-confirmed-at="@(booking.PaymentConfirmedAt.HasValue ? booking.PaymentConfirmedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "Chưa có log")"
-                                            data-booking-confirmed-by="@(string.IsNullOrWhiteSpace(booking.BookingConfirmedByName) ? "Chưa có log" : booking.BookingConfirmedByName)"
-                                            data-booking-confirmed-at="@(booking.BookingConfirmedAt.HasValue ? booking.BookingConfirmedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "Chưa có log")"
-                                            data-special-requests="@(string.IsNullOrWhiteSpace(booking.SpecialRequests) ? "Không có" : booking.SpecialRequests)">
-                                        Chi tiết
-                                    </button>
+                                    <div class="dropdown admin-order-actions__menu">
+                                        <button class="btn btn-light btn-sm admin-order-actions__toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Thao tác khác">
+                                            <span aria-hidden="true">⋮</span>
+                                        </button>
+                                        <div class="dropdown-menu dropdown-menu-end admin-order-actions__dropdown">
+                                            <button type="button"
+                                                    class="dropdown-item"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#orderDetailModal"
+                                                    data-booking-code="@booking.BookingCode"
+                                                    data-customer-name="@booking.CustomerName"
+                                                    data-contact-name="@booking.ContactName"
+                                                    data-contact-email="@booking.ContactEmail"
+                                                    data-contact-phone="@booking.ContactPhone"
+                                                    data-tour-name="@booking.TourName"
+                                                    data-tour-code="@booking.TourCode"
+                                                    data-departure-date="@booking.DepartureDate.ToString("dd/MM/yyyy")"
+                                                    data-return-date="@booking.ReturnDate.ToString("dd/MM/yyyy")"
+                                                    data-adult-count="@booking.AdultCount"
+                                                    data-child-count="@booking.ChildCount"
+                                                    data-infant-count="@booking.InfantCount"
+                                                    data-travelers="@booking.Travelers"
+                                                    data-total-amount="@booking.TotalAmount.ToString("N0") đ"
+                                                    data-paid-amount="@booking.PaidAmount.ToString("N0") đ"
+                                                    data-remaining-amount="@booking.RemainingAmount.ToString("N0") đ"
+                                                    data-booking-status="@booking.BookingStatusText"
+                                                    data-payment-code="@booking.LatestPaymentCode"
+                                                    data-payment-transaction="@booking.LatestPaymentTransactionReference"
+                                                    data-payment-confirmed-by="@(string.IsNullOrWhiteSpace(booking.PaymentConfirmedByName) ? "Chưa có log" : booking.PaymentConfirmedByName)"
+                                                    data-payment-confirmed-at="@(booking.PaymentConfirmedAt.HasValue ? booking.PaymentConfirmedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "Chưa có log")"
+                                                    data-booking-confirmed-by="@(string.IsNullOrWhiteSpace(booking.BookingConfirmedByName) ? "Chưa có log" : booking.BookingConfirmedByName)"
+                                                    data-booking-confirmed-at="@(booking.BookingConfirmedAt.HasValue ? booking.BookingConfirmedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "Chưa có log")"
+                                                    data-special-requests="@(string.IsNullOrWhiteSpace(booking.SpecialRequests) ? "Không có" : booking.SpecialRequests)">
+                                                Chi tiết
+                                            </button>
+                                            @if (booking.HasPaymentToVerify && canManageBookings && booking.LatestPaymentId.HasValue)
+                                            {
+                                                <form asp-action="VerifyPayment" method="post" class="admin-dropdown-action-form">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="paymentId" value="@booking.LatestPaymentId" />
+                                                    <input type="hidden" name="currentPage" value="@Model.CurrentPage" />
+                                                    <button type="submit" name="isValid" value="true" class="dropdown-item admin-dropdown-action-form__success">Xác nhận tiền</button>
+                                                    <button type="submit" name="isValid" value="false" class="dropdown-item admin-dropdown-action-form__danger" onclick="return confirm('Từ chối giao dịch này?');">Sai giao dịch</button>
+                                                </form>
+                                            }
+                                            @if (booking.BookingStatus == 10 && canManageBookings)
+                                            {
+                                                <form asp-action="CompleteRefund" method="post" class="admin-dropdown-action-form" onsubmit="return confirm('Xác nhận đã hoàn tiền cho đơn này?');">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="bookingId" value="@booking.BookingId" />
+                                                    <input type="hidden" name="currentPage" value="@Model.CurrentPage" />
+                                                    <button type="submit" class="dropdown-item admin-dropdown-action-form__success">Đã hoàn tiền</button>
+                                                </form>
+                                            }
+                                        </div>
+                                    </div>
+                                    </div>
                                 </td>
                             </tr>
                         }

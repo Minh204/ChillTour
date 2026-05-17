@@ -3741,18 +3741,97 @@
 }
 
 .admin-orders-polished-table td:last-child {
-    width: 190px;
+    width: 140px;
 }
 
-.admin-orders-polished-table td:last-child > .btn,
-.admin-orders-polished-table td:last-child > form {
-    margin: 0.16rem 0.2rem 0.16rem 0;
+.admin-order-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.45rem;
+    width: 100%;
 }
 
-.admin-orders-polished-table td:last-child .btn,
-.admin-row-action-form .btn {
+.admin-order-actions__edit,
+.admin-order-actions__detail,
+.admin-order-actions__toggle,
+.admin-order-actions__dropdown .dropdown-item {
     border-radius: 8px;
     font-weight: 800;
+}
+
+.admin-order-actions__edit {
+    min-width: 62px;
+}
+
+.admin-order-actions__toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid #dbe7f5;
+    color: #0d2342;
+    background: #ffffff;
+    box-shadow: 0 8px 18px rgba(15, 35, 66, 0.08);
+}
+
+.admin-order-actions__toggle span {
+    display: block;
+    margin-top: -2px;
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.admin-order-actions__toggle:hover,
+.admin-order-actions__toggle:focus {
+    color: #0b63f6;
+    border-color: rgba(11, 99, 246, 0.25);
+    background: #f8fbff;
+}
+
+.admin-order-actions__dropdown {
+    min-width: 190px;
+    padding: 0.45rem;
+    border: 1px solid #dce8f6;
+    border-radius: 12px;
+    box-shadow: 0 18px 42px rgba(15, 35, 66, 0.14);
+}
+
+.admin-order-actions__dropdown .dropdown-item {
+    padding: 0.62rem 0.75rem;
+    color: #142b4d;
+}
+
+.admin-order-actions__dropdown .dropdown-item:hover,
+.admin-order-actions__dropdown .dropdown-item:focus {
+    color: #0b63f6;
+    background: #eef6ff;
+}
+
+.admin-dropdown-action-form {
+    margin: 0;
+}
+
+.admin-dropdown-action-form__success {
+    color: #087f5b !important;
+}
+
+.admin-dropdown-action-form__danger {
+    color: #dc2626 !important;
+}
+
+.admin-dropdown-action-form__success:hover,
+.admin-dropdown-action-form__success:focus {
+    color: #047857 !important;
+    background: #e9fbf3 !important;
+}
+
+.admin-dropdown-action-form__danger:hover,
+.admin-dropdown-action-form__danger:focus {
+    color: #b91c1c !important;
+    background: #fff1f2 !important;
 }
 
 .admin-orders-footer {
