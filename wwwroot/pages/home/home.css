@@ -71,10 +71,10 @@
     font-size: clamp(1rem, 1.4vw, 1.25rem);
     font-weight: 600;
 }
-
+// change color-profile 
 .travel-home__hero-copy p {
     max-width: 58ch;
-    color: rgba(255, 255, 255, 0.82);
+    color: rgb(227 61 61 / 82%);
     line-height: 1.75;
 }
 
